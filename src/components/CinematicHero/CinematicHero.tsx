@@ -21,9 +21,9 @@ import type { HeroScene }           from '../../types/hero';
 const SCENES: HeroScene[] = [
   {
     id: 0,
-    keyword: 'MOVE',
-    headline: 'MOVE',
-    subtext: 'Water intelligence for a healthier world.',
+    keyword: 'QUALITY',
+    headline: 'Water quality alerts',
+    subtext: 'A water quality alert system for Gwalior.',
     image: '/images/water-pour.jpg',      // poster / fallback
     accentColor: '#00CFFF',
     tintColor: 'rgba(0, 80, 160, 0.18)', // cool cyan tint
@@ -31,9 +31,9 @@ const SCENES: HeroScene[] = [
   },
   {
     id: 1,
-    keyword: 'IMPROVE',
-    headline: 'IMPROVE',
-    subtext: 'Understand water quality. Act before problems spread.',
+    keyword: 'ALERTS',
+    headline: 'Readings with context',
+    subtext: 'Review sample dates, water parameters, and notices together.',
     image: '/images/water-hands.jpg',
     accentColor: '#69E7F5',
     tintColor: 'rgba(3, 27, 61, 0.28)',  // deeper navy tint
@@ -41,12 +41,22 @@ const SCENES: HeroScene[] = [
   },
   {
     id: 2,
-    keyword: 'ENJOY',
-    headline: 'ENJOY',
-    subtext: 'Every drop deserves to be safe.',
+    keyword: 'UPDATES',
+    headline: 'Clear public updates',
+    subtext: 'Check screening and response information across Gwalior wards.',
     image: '/images/water-underwater.jpg',
     accentColor: '#00CFFF',
     tintColor: 'rgba(0, 40, 100, 0.20)', // ocean-depth tint
+    objectPosition: 'center center',
+  },
+  {
+    id: 3,
+    keyword: 'REPORTS',
+    headline: 'Water quality reports',
+    subtext: 'Review findings, sample dates, and verification details.',
+    image: '/images/water-pour.jpg',
+    accentColor: '#FFD166',
+    tintColor: 'rgba(8, 54, 88, 0.24)',
     objectPosition: 'center center',
   },
 ];
@@ -90,8 +100,10 @@ const VideoBackground: FC<{ tintColor: string }> = ({ tintColor }) => {
   const activeIdxRef        = useRef(0);
   const lastTriggeredIdxRef = useRef<number | null>(null);
   const cleanupTimerRef     = useRef<number | null>(null);
+  const heroVisibleRef      = useRef(true);
 
   const handleVideoTransition = useCallback((completedIdx: number) => {
+    if (!heroVisibleRef.current || document.hidden) return;
     // Prevent duplicate triggers for the same video segment
     if (lastTriggeredIdxRef.current === completedIdx) return;
     lastTriggeredIdxRef.current = completedIdx;
@@ -128,16 +140,15 @@ const VideoBackground: FC<{ tintColor: string }> = ({ tintColor }) => {
     }, 1250);
   }, []);
 
-  // Lifecycle listeners — only set up once on mount
+  // Only decode/play the background while the hero is on screen.
   useEffect(() => {
-    const v0 = video0Ref.current;
-    if (v0) {
-      v0.muted = true;
-      v0.defaultMuted = true;
-      v0.play().catch(() => {});
+    const hero = video0Ref.current?.closest('.hero');
+    if (hero) {
+      const bounds = hero.getBoundingClientRect();
+      heroVisibleRef.current = bounds.bottom > 0 && bounds.top < window.innerHeight;
     }
-
     const playCurrentVideo = () => {
+      if (!heroVisibleRef.current || document.hidden) return;
       const cur = activeIdxRef.current === 0 ? video0Ref.current : video1Ref.current;
       if (cur && cur.paused) {
         cur.muted = true;
@@ -145,20 +156,34 @@ const VideoBackground: FC<{ tintColor: string }> = ({ tintColor }) => {
       }
     };
 
-    const handleVisibility = () => {
-      if (!document.hidden) {
-        playCurrentVideo();
+    const pauseVideos = () => {
+      video0Ref.current?.pause();
+      video1Ref.current?.pause();
+      if (cleanupTimerRef.current !== null) {
+        window.clearTimeout(cleanupTimerRef.current);
+        cleanupTimerRef.current = null;
       }
     };
 
+    const observer = hero ? new IntersectionObserver(([entry]) => {
+      heroVisibleRef.current = entry.isIntersecting && entry.intersectionRatio > 0;
+      if (heroVisibleRef.current) playCurrentVideo();
+      else pauseVideos();
+    }, { threshold: 0.01 }) : null;
+    if (hero) observer?.observe(hero);
+
+    const handleVisibility = () => {
+      if (document.hidden) pauseVideos();
+      else playCurrentVideo();
+    };
     document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('click', playCurrentVideo, { once: true });
-    window.addEventListener('touchstart', playCurrentVideo, { once: true });
+    // Attempt autoplay once; the observer gates playback if the hero is offscreen.
+    playCurrentVideo();
 
     return () => {
+      observer?.disconnect();
       document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('click', playCurrentVideo);
-      window.removeEventListener('touchstart', playCurrentVideo);
+      pauseVideos();
       if (cleanupTimerRef.current !== null) {
         window.clearTimeout(cleanupTimerRef.current);
       }
@@ -188,7 +213,7 @@ const VideoBackground: FC<{ tintColor: string }> = ({ tintColor }) => {
             loop
             playsInline
             disablePictureInPicture
-            preload="auto"
+            preload="metadata"
             onTimeUpdate={(e) => {
               if (!isActive) return;
               const el = e.currentTarget;
@@ -286,7 +311,6 @@ const Particle: FC<{ x:number; y:number; size:number; duration:number; delay:num
 ───────────────────────────────────────────────────────────────────────────── */
 const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin') => void }> = ({ onLoginSelect }) => {
   const [currentScene, setCurrentScene] = useState(0);
-  const [prevScene,    setPrevScene]    = useState<number | null>(null);
   const [textPhase,    setTextPhase]    = useState<'entering' | 'exiting'>('entering');
   const [paused,       setPaused]       = useState(false);
   const [progress,     setProgress]     = useState(0);
@@ -295,6 +319,7 @@ const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin') => void 
   const mousePos      = useMouseParallax();
   const heroRef       = useRef<HTMLElement>(null);
   const parallaxRafId = useRef<number | null>(null);
+  const sceneTransitionTimerRef = useRef<number | null>(null);
 
   const bubbles   = useBubbles(14);
   const particles = useParticles(18);
@@ -305,19 +330,23 @@ const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin') => void 
   /* ── Scene transition ── */
   const goToScene = useCallback((nextIdx: number) => {
     if (nextIdx === currentScene) return;
+    if (sceneTransitionTimerRef.current !== null) {
+      window.clearTimeout(sceneTransitionTimerRef.current);
+    }
     setTextPhase('exiting');
-    setPrevScene(currentScene);
-
-    const t1 = setTimeout(() => {
+    sceneTransitionTimerRef.current = window.setTimeout(() => {
       setCurrentScene(nextIdx);
       setProgress(0);
-    }, 420);
-    const t2 = setTimeout(() => {
       setTextPhase('entering');
-      setPrevScene(null);
-    }, 470);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+      sceneTransitionTimerRef.current = null;
+    }, 400);
   }, [currentScene]);
+
+  useEffect(() => () => {
+    if (sceneTransitionTimerRef.current !== null) {
+      window.clearTimeout(sceneTransitionTimerRef.current);
+    }
+  }, []);
 
   const advance = useCallback(() => {
     goToScene((currentScene + 1) % SCENES.length);
@@ -374,8 +403,6 @@ const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin') => void 
 
   const scene = SCENES[currentScene];
 
-  void prevScene; // retained for future cross-scene logic
-
   return (
     <section
       className="hero"
@@ -403,7 +430,7 @@ const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin') => void 
       <nav className="hero__nav" aria-label="Site navigation">
         <div className="hero__logo">
           <span className="hero__logo-name">AquaAlert</span>
-          <span className="hero__logo-tagline">Water Quality System</span>
+          <span className="hero__logo-tagline">Water Quality Alert System</span>
         </div>
         <ul className="hero__nav-links" role="list">
           {NAV_LINKS.map(link => (
@@ -420,26 +447,6 @@ const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin') => void 
           </li>
         </ul>
       </nav>
-
-      {/* ── Ghost word-stack ── */}
-      <div className="hero__word-stack" aria-hidden="true">
-        {SCENES.map((s, i) => (
-          <span
-            key={s.id}
-            className={`hero__word-stack-item${i === currentScene ? ' hero__word-stack-item--active' : ''}`}
-          >
-            {s.keyword}
-          </span>
-        ))}
-        <span className="hero__word-stack-item" style={{ opacity: 0.06 }}>
-          WATER
-        </span>
-      </div>
-
-      {/* ── Click-to-ripple hint ── */}
-      <div className="hero__ripple-hint" aria-hidden="true">
-        <span className="hero__ripple-hint-text">Click to ripple</span>
-      </div>
 
       {/* ── Foreground content ── */}
       <div className="hero__content">
@@ -460,15 +467,12 @@ const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin') => void 
           {scene.subtext}
         </p>
 
-        <div
-          key={`cta-${currentScene}`}
-          className={`hero__cta-row hero__cta-row--${textPhase}`}
-        >
+        <div className="hero__cta-row">
           <a href="#monitoring" className="hero__btn hero__btn--primary"   id="hero-cta-primary">
-            Explore Water Intelligence
+            Explore Water Network
           </a>
-          <a href="#live"       className="hero__btn hero__btn--secondary" id="hero-cta-secondary">
-            View Live Water Status
+          <a href="#monitoring" className="hero__btn hero__btn--secondary" id="hero-cta-secondary">
+            View Sample Dashboard
           </a>
         </div>
       </div>
@@ -493,11 +497,6 @@ const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin') => void 
         ))}
       </nav>
 
-      {/* ── Scroll hint ── */}
-      <div className="hero__scroll-hint" aria-hidden="true">
-        <span className="hero__scroll-hint-text">Scroll</span>
-        <div className="hero__scroll-mouse" />
-      </div>
     </section>
   );
 };
