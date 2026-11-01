@@ -15,7 +15,6 @@ import {
   LayoutDashboard,
   LogOut,
   MapPin,
-  Monitor,
   Plus,
   Settings,
   SlidersHorizontal,
@@ -29,6 +28,9 @@ import { WaterSourcesView } from '../components/admin/WaterSourcesView';
 import { UsersRolesView } from '../components/admin/UsersRolesView';
 import { ReadingsView } from '../components/admin/ReadingsView';
 import { ReportsView } from '../components/admin/ReportsView';
+import { ResponseActionsView } from '../components/admin/ResponseActionsView';
+import { RulesThresholdsView } from '../components/admin/RulesThresholdsView';
+import { SettingsView } from '../components/admin/SettingsView';
 import SourceDetailDrawer from '../components/sources/SourceDetailDrawer';
 import AlertDetailDrawer from '../components/alerts/AlertDetailDrawer';
 import { useWaterData } from '../hooks/useWaterData';
@@ -229,18 +231,6 @@ const AdminPage: FC = () => {
               <span>Users &amp; Roles</span>
             </button>
 
-            {/* System & Logs */}
-            <button
-              onClick={() => setActiveNav('System & Logs')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-                activeNav === 'System & Logs'
-                  ? 'bg-blue-600 text-white font-bold'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Monitor className="w-4 h-4 shrink-0" />
-              <span>System &amp; Logs</span>
-            </button>
 
             {/* Settings */}
             <button
@@ -286,11 +276,10 @@ const AdminPage: FC = () => {
               {activeNav === 'Readings'             && 'View, search, and manage water quality readings'}
               {activeNav === 'Reports'              && 'Generate, view, and download operational and water quality reports'}
               {activeNav === 'Users & Roles'        && 'Manage system users, roles, and access permissions'}
-              {activeNav === 'Response Actions'     && 'Record and track field response actions for active alerts'}
-              {activeNav === 'Rules & Thresholds'   && 'Configure water quality alert thresholds and notification rules'}
+              {activeNav === 'Response Actions'     && 'Track, manage, and close response actions for water quality incidents'}
+              {activeNav === 'Rules & Thresholds'   && 'Configure water quality rules, threshold limits, and their versions for alert evaluation.'}
               {activeNav === 'Evidence (S3)'        && 'Upload and manage certified laboratory evidence stored in S3'}
-              {activeNav === 'System & Logs'        && 'Monitor system health, view audit logs, and diagnose issues'}
-              {activeNav === 'Settings'             && 'Configure system settings and integration preferences'}
+              {activeNav === 'Settings'             && 'Configure system preferences, integrations, security, and operational parameters.'}
             </p>
           </div>
 
@@ -422,24 +411,14 @@ const AdminPage: FC = () => {
             </div>
           )}
 
-          {/* ── REMAINING PLACEHOLDERS ── */}
-          {(activeNav === 'Rules & Thresholds' || activeNav === 'Response Actions' || activeNav === 'System & Logs' || activeNav === 'Settings') && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-                <SlidersHorizontal className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">{activeNav}</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                This section connects to the AWS Serverless backend. Configure authorized endpoints to enable full functionality.
-              </p>
-              <button
-                onClick={() => setActiveNav('Admin Dashboard')}
-                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-xl transition"
-              >
-                Return to Dashboard
-              </button>
-            </div>
-          )}
+          {/* ── RESPONSE ACTIONS ── */}
+          {activeNav === 'Response Actions' && <ResponseActionsView />}
+
+          {/* ── RULES & THRESHOLDS ── */}
+          {activeNav === 'Rules & Thresholds' && <RulesThresholdsView />}
+
+          {/* ── SETTINGS ── */}
+          {activeNav === 'Settings' && <SettingsView />}
         </div>
       </main>
 
