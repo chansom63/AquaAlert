@@ -24,8 +24,11 @@ import {
   X,
 } from 'lucide-react';
 import { AdminDashboardView } from '../components/admin/AdminDashboardView';
-import AlertsPanel from '../components/portal/AlertsPanel';
-import SourcesPanel from '../components/portal/SourcesPanel';
+import { AlertsIncidentsView } from '../components/admin/AlertsIncidentsView';
+import { WaterSourcesView } from '../components/admin/WaterSourcesView';
+import { UsersRolesView } from '../components/admin/UsersRolesView';
+import { ReadingsView } from '../components/admin/ReadingsView';
+import { ReportsView } from '../components/admin/ReportsView';
 import SourceDetailDrawer from '../components/sources/SourceDetailDrawer';
 import AlertDetailDrawer from '../components/alerts/AlertDetailDrawer';
 import { useWaterData } from '../hooks/useWaterData';
@@ -274,12 +277,20 @@ const AdminPage: FC = () => {
         <header className="bg-white border-b border-slate-200/90 px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-xs">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-              {activeNav === 'Admin Dashboard' ? 'Admin Dashboard' : activeNav}
+              {activeNav}
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              {activeNav === 'Admin Dashboard'
-                ? 'Monitor water quality, manage alerts, and take response actions'
-                : `Operational management view for ${activeNav}`}
+              {activeNav === 'Admin Dashboard'      && 'Monitor water quality, manage alerts, and take response actions'}
+              {activeNav === 'Alerts & Incidents'   && 'View active alerts, track investigation, and manage incident lifecycle'}
+              {activeNav === 'Water Sources'        && 'Manage and monitor water sources, their details, status, and latest water quality'}
+              {activeNav === 'Readings'             && 'View, search, and manage water quality readings'}
+              {activeNav === 'Reports'              && 'Generate, view, and download operational and water quality reports'}
+              {activeNav === 'Users & Roles'        && 'Manage system users, roles, and access permissions'}
+              {activeNav === 'Response Actions'     && 'Record and track field response actions for active alerts'}
+              {activeNav === 'Rules & Thresholds'   && 'Configure water quality alert thresholds and notification rules'}
+              {activeNav === 'Evidence (S3)'        && 'Upload and manage certified laboratory evidence stored in S3'}
+              {activeNav === 'System & Logs'        && 'Monitor system health, view audit logs, and diagnose issues'}
+              {activeNav === 'Settings'             && 'Configure system settings and integration preferences'}
             </p>
           </div>
 
@@ -389,166 +400,37 @@ const AdminPage: FC = () => {
             />
           )}
 
-          {/* Alerts & Incidents Panel */}
-          {activeNav === 'Alerts & Incidents' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Incident Queue &amp; Response Actions</h3>
-                  <p className="text-xs text-slate-500">Manage all screening violations, advisory notices, and laboratory test workflows.</p>
-                </div>
-                <button
-                  onClick={() => setActiveNav('Admin Dashboard')}
-                  className="text-xs font-semibold text-blue-600 hover:underline"
-                >
-                  &larr; Back to Dashboard
-                </button>
-              </div>
-              <AlertsPanel
-                admin={true}
-                alerts={data.alerts}
-                sources={data.sources}
-                busy={data.busy}
-                onSelect={(srcId) => {
-                  data.setSelected(srcId);
-                  setDrawerSourceId(srcId);
-                }}
-                onSelectAlert={(a) => handleSelectAlert(a.alertId)}
-                onSubmitAction={data.submitAction}
-              />
-            </div>
-          )}
+          {/* ── ALERTS & INCIDENTS ── */}
+          {activeNav === 'Alerts & Incidents' && <AlertsIncidentsView />}
 
-          {/* Water Sources Panel */}
-          {activeNav === 'Water Sources' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Water Monitoring Stations Directory</h3>
-                  <p className="text-xs text-slate-500">Browse stations, test coverage, and geological catchment networks.</p>
-                </div>
-                <button
-                  onClick={() => setActiveNav('Admin Dashboard')}
-                  className="text-xs font-semibold text-blue-600 hover:underline"
-                >
-                  &larr; Back to Dashboard
-                </button>
-              </div>
-              <SourcesPanel
-                admin={true}
-                loading={data.loading}
-                sources={data.visibleSources}
-                areas={data.GWALIOR_AREAS}
-                area={data.area}
-                query={data.query}
-                selectedSource={data.selectedSource}
-                readings={data.readings}
-                onAreaChange={data.setArea}
-                onQueryChange={data.setQuery}
-                onSelect={(srcId) => {
-                  data.setSelected(srcId);
-                  setDrawerSourceId(srcId);
-                }}
-              />
-            </div>
-          )}
+          {/* ── WATER SOURCES ── */}
+          {activeNav === 'Water Sources' && <WaterSourcesView />}
 
-          {/* Readings Panel */}
-          {activeNav === 'Readings' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Telemetry &amp; Field Readings Ledger</h3>
-                  <p className="text-xs text-slate-500">All recorded field sensor measurements and certified laboratory reports.</p>
-                </div>
-                <button
-                  onClick={() => handleQuickAction('submit-reading')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow-sm"
-                >
-                  + Record Field Reading
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-slate-500 font-semibold bg-slate-50">
-                      <th className="py-2.5 px-3">Reading ID</th>
-                      <th className="py-2.5 px-3">Source</th>
-                      <th className="py-2.5 px-3">Parameter</th>
-                      <th className="py-2.5 px-3">Value</th>
-                      <th className="py-2.5 px-3">Method</th>
-                      <th className="py-2.5 px-3">Verification</th>
-                      <th className="py-2.5 px-3 text-right">Collected At</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    <tr className="hover:bg-slate-50 transition">
-                      <td className="py-2.5 px-3 font-mono font-medium text-slate-700">RD-2026-03124</td>
-                      <td className="py-2.5 px-3 font-medium text-slate-800">A-04 (Jhansi)</td>
-                      <td className="py-2.5 px-3 text-slate-700">pH</td>
-                      <td className="py-2.5 px-3 font-bold text-rose-600">9.4</td>
-                      <td className="py-2.5 px-3 text-slate-600">Field Test</td>
-                      <td className="py-2.5 px-3"><span className="bg-sky-100 text-sky-700 text-xs px-2 py-0.5 rounded-full font-medium">Screening</span></td>
-                      <td className="py-2.5 px-3 text-right text-slate-500">01 Nov 2026, 07:40 PM</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50 transition">
-                      <td className="py-2.5 px-3 font-mono font-medium text-slate-700">RD-2026-03123</td>
-                      <td className="py-2.5 px-3 font-medium text-slate-800">B-02 (Orchha)</td>
-                      <td className="py-2.5 px-3 text-slate-700">Turbidity</td>
-                      <td className="py-2.5 px-3 font-bold text-rose-600">12.6 NTU</td>
-                      <td className="py-2.5 px-3 text-slate-600">Field Test</td>
-                      <td className="py-2.5 px-3"><span className="bg-sky-100 text-sky-700 text-xs px-2 py-0.5 rounded-full font-medium">Screening</span></td>
-                      <td className="py-2.5 px-3 text-right text-slate-500">01 Nov 2026, 06:28 PM</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50 transition">
-                      <td className="py-2.5 px-3 font-mono font-medium text-slate-700">RD-2026-03122</td>
-                      <td className="py-2.5 px-3 font-medium text-slate-800">C-01 (Datia)</td>
-                      <td className="py-2.5 px-3 text-slate-700">TDS</td>
-                      <td className="py-2.5 px-3 font-bold text-rose-600">1,240 mg/L</td>
-                      <td className="py-2.5 px-3 text-slate-600">Lab Test</td>
-                      <td className="py-2.5 px-3"><span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full font-medium">Lab Verified</span></td>
-                      <td className="py-2.5 px-3 text-right text-slate-500">01 Nov 2026, 05:55 PM</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50 transition">
-                      <td className="py-2.5 px-3 font-mono font-medium text-slate-700">RD-2026-03121</td>
-                      <td className="py-2.5 px-3 font-medium text-slate-800">D-03 (Lalitpur)</td>
-                      <td className="py-2.5 px-3 text-slate-700">pH</td>
-                      <td className="py-2.5 px-3 font-bold text-rose-600">6.3</td>
-                      <td className="py-2.5 px-3 text-slate-600">Field Test</td>
-                      <td className="py-2.5 px-3"><span className="bg-sky-100 text-sky-700 text-xs px-2 py-0.5 rounded-full font-medium">Screening</span></td>
-                      <td className="py-2.5 px-3 text-right text-slate-500">01 Nov 2026, 05:10 PM</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50 transition">
-                      <td className="py-2.5 px-3 font-mono font-medium text-slate-700">RD-2026-03120</td>
-                      <td className="py-2.5 px-3 font-medium text-slate-800">E-05 (Jhansi)</td>
-                      <td className="py-2.5 px-3 text-slate-700">Bacteria</td>
-                      <td className="py-2.5 px-3 font-bold text-rose-600">Detected</td>
-                      <td className="py-2.5 px-3 text-slate-600">Lab Test</td>
-                      <td className="py-2.5 px-3"><span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full font-medium">Lab Verified</span></td>
-                      <td className="py-2.5 px-3 text-right text-slate-500">01 Nov 2026, 03:45 PM</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {/* ── READINGS ── */}
+          {activeNav === 'Readings' && <ReadingsView />}
 
-          {/* Evidence (S3) Panel */}
+          {/* ── REPORTS ── */}
+          {activeNav === 'Reports' && <ReportsView />}
+
+          {/* ── USERS & ROLES ── */}
+          {activeNav === 'Users & Roles' && <UsersRolesView />}
+
+          {/* ── EVIDENCE (S3) ── */}
           {activeNav === 'Evidence (S3)' && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
               <LabReportsPanel sources={data.sources} busy={data.busy} onSubmit={data.uploadReport} />
             </div>
           )}
 
-          {/* Rules & Thresholds / Response Actions / Administration placeholders */}
-          {(activeNav === 'Rules & Thresholds' || activeNav === 'Response Actions' || activeNav === 'Reports' || activeNav === 'Users & Roles' || activeNav === 'System & Logs' || activeNav === 'Settings') && (
+          {/* ── REMAINING PLACEHOLDERS ── */}
+          {(activeNav === 'Rules & Thresholds' || activeNav === 'Response Actions' || activeNav === 'System & Logs' || activeNav === 'Settings') && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
                 <SlidersHorizontal className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">{activeNav} Workspace</h3>
+              <h3 className="text-lg font-bold text-slate-900">{activeNav}</h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                All parameters, administrative roles, and compliance policies are currently synchronized with the AWS Serverless cluster.
+                This section connects to the AWS Serverless backend. Configure authorized endpoints to enable full functionality.
               </p>
               <button
                 onClick={() => setActiveNav('Admin Dashboard')}
