@@ -1,0 +1,1184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   0. SCOPED RESET FOR MAP CONTROLS & FORM ELEMENTS
+   ========================================================================== */
+
+:where(.map-explorer) button {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: transparent;
+  background-image: none;
+  border-width: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  outline: none;
+}
+
+:where(.map-explorer) input,
+:where(.map-explorer) select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: transparent;
+  background-image: none;
+  border-width: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  outline: none;
+}
+
+.map-explorer select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+/* ==========================================================================
+   TOP FLOATING NAVIGATION & FILTER BAR
+   ========================================================================== */
+
+.map-floating-top-bar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: calc(100% - 160px);
+  max-width: 560px;
+  z-index: 500;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-search-card {
+  background: rgba(10, 18, 30, 0.92) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04) !important;
+  padding: 6px 14px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.map-search-card:focus-within {
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.6), 0 0 18px rgba(56, 189, 248, 0.22) !important;
+}
+
+.map-search-input {
+  flex: 1;
+  background: transparent !important;
+  color: #f8fafc !important;
+  font-size: 12px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  border: none !important;
+  outline: none !important;
+  padding: 3px 0 !important;
+}
+
+.map-search-input::placeholder {
+  color: #64748b !important;
+  font-size: 12px !important;
+}
+
+.map-search-divider {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+  margin: 0 3px;
+}
+
+.map-search-count {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 9999px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: -0.01em;
+}
+
+.map-filter-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 2px 4px 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.map-filter-chips-row::-webkit-scrollbar {
+  display: none;
+}
+
+.map-filter-chip {
+  appearance: none;
+  border-radius: 9999px !important;
+  padding: 5px 13px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+}
+
+.map-filter-chip:hover {
+  transform: translateY(-1.5px) scale(1.02);
+}
+
+.map-filter-chip.chip-active-all {
+  background: #1e293b !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  border: 1px solid rgba(148, 163, 184, 0.5) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+}
+
+.map-filter-chip.chip-normal {
+  background: #09261e !important;
+  color: #34d399 !important;
+  border: 1.5px solid #10b981 !important;
+}
+
+.map-filter-chip.chip-normal:hover,
+.map-filter-chip.chip-active-normal {
+  background: #064e3b !important;
+  color: #ffffff !important;
+  border-color: #34d399 !important;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.45) !important;
+}
+
+.map-filter-chip.chip-alert {
+  background: #2a1118 !important;
+  color: #fb7185 !important;
+  border: 1.5px solid #f43f5e !important;
+}
+
+.map-filter-chip.chip-alert:hover,
+.map-filter-chip.chip-active-alert {
+  background: #881337 !important;
+  color: #ffffff !important;
+  border-color: #fb7185 !important;
+  box-shadow: 0 4px 18px rgba(244, 63, 94, 0.45) !important;
+}
+
+.map-filter-chip.chip-stale {
+  background: #271d0e !important;
+  color: #fbbf24 !important;
+  border: 1.5px solid #f59e0b !important;
+}
+
+.map-filter-chip.chip-stale:hover,
+.map-filter-chip.chip-active-stale {
+  background: #78350f !important;
+  color: #ffffff !important;
+  border-color: #fbbf24 !important;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.45) !important;
+}
+
+.map-filter-chip.chip-wards-selector {
+  background: #092c3a !important;
+  color: #38bdf8 !important;
+  border: 1.5px solid #06b6d4 !important;
+  font-weight: 700 !important;
+}
+
+.map-filter-chip.chip-wards-selector:hover {
+  background: #0e485e !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 4px 18px rgba(6, 182, 212, 0.45) !important;
+}
+
+.map-filter-chip.chip-wards-selector:hover {
+  background: linear-gradient(135deg, rgba(14, 116, 144, 0.95), rgba(8, 51, 68, 0.95)) !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.3) !important;
+}
+
+.map-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.map-dot-green { background-color: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.8); }
+.map-dot-red { background-color: #f43f5e; box-shadow: 0 0 6px rgba(244, 63, 94, 0.8); }
+.map-dot-amber { background-color: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.8); }
+
+/* ==========================================================================
+   BOTTOM FLOATING WARD & STATION INFORMATION CARDS
+   ========================================================================== */
+
+.map-info-card {
+  position: absolute;
+  bottom: 22px;
+  left: 14px;
+  width: 500px;
+  max-width: calc(100% - 28px);
+  max-height: calc(100% - 75px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  z-index: 510;
+  pointer-events: auto;
+  background: rgba(10, 18, 30, 0.95) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(56, 189, 248, 0.22) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 30px rgba(56, 189, 248, 0.08) !important;
+  padding: 16px !important;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  animation: cardFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Within this card: TAB NAVBAR matching user screenshot */
+.map-card-navbar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 20px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  margin: 10px -16px 14px -16px !important;
+  padding: 0 16px !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+  background: rgba(7, 16, 29, 0.65) !important;
+}
+
+.map-card-navbar::-webkit-scrollbar {
+  display: none !important;
+}
+
+.map-card-nav-tab {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  color: #94a3b8 !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  padding: 9px 2px 10px 2px !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  outline: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  position: relative !important;
+  letter-spacing: -0.01em !important;
+}
+
+.map-card-nav-tab:hover {
+  color: #f1f5f9 !important;
+}
+
+.map-card-nav-tab.active {
+  color: #38bdf8 !important;
+  border-bottom: 2px solid #38bdf8 !important;
+  font-weight: 700 !important;
+}
+
+.map-card-tab-pane {
+  animation: tabFadeIn 0.18s ease-out;
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Historical Trend Charts Styling */
+.map-chart-pill-row {
+  display: flex !important;
+  gap: 6px !important;
+  margin-bottom: 12px !important;
+}
+
+.map-chart-pill {
+  padding: 4px 10px !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.map-chart-pill:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.map-chart-pill.active {
+  background: rgba(6, 182, 212, 0.2) !important;
+  border-color: rgba(6, 182, 212, 0.45) !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+}
+
+.map-chart-container {
+  background: rgba(5, 12, 22, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  margin-bottom: 12px !important;
+}
+
+.map-chart-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+.map-chart-param-title {
+  display: block !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+}
+
+.map-chart-standard-ref {
+  display: block !important;
+  font-size: 10px !important;
+  color: #94a3b8 !important;
+  margin-top: 2px !important;
+}
+
+.map-chart-current-val {
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #38bdf8 !important;
+}
+
+.map-chart-svg-wrap {
+  width: 100% !important;
+  position: relative !important;
+}
+
+.map-chart-x-axis {
+  display: flex !important;
+  justify-content: space-between !important;
+  font-size: 9px !important;
+  color: #64748b !important;
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  margin-top: 4px !important;
+  padding: 0 4px !important;
+}
+
+.map-chart-footer {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-top: 10px !important;
+  padding-top: 8px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  font-size: 10px !important;
+  color: #94a3b8 !important;
+  line-height: 1.35 !important;
+}
+
+/* Chronological Samples (1) Styling */
+.map-sample-card {
+  background: rgba(5, 12, 22, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  margin-bottom: 12px !important;
+}
+
+.map-sample-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin-bottom: 10px !important;
+}
+
+.map-sample-tag {
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.15) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 6px !important;
+  padding: 2px 7px !important;
+}
+
+.map-sample-status-pill {
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  border-radius: 9999px !important;
+  padding: 2px 8px !important;
+}
+
+.map-sample-time {
+  font-size: 10px !important;
+  color: #64748b !important;
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+}
+
+.map-sample-meta-row {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  margin-bottom: 10px !important;
+}
+
+.map-sample-params-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+  background: rgba(10, 18, 30, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 8px !important;
+  padding: 8px !important;
+  text-align: center !important;
+  margin-bottom: 10px !important;
+}
+
+.map-sample-param-item span {
+  display: block !important;
+  font-size: 9px !important;
+  color: #64748b !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+}
+
+.map-sample-param-item strong {
+  display: block !important;
+  font-size: 11.5px !important;
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  color: #f1f5f9 !important;
+  margin-top: 2px !important;
+}
+
+.map-sample-evidence-tag {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 10.5px !important;
+  color: #38bdf8 !important;
+  font-weight: 500 !important;
+}
+
+/* Lab Reports & Evidence Styling */
+.map-evidence-card {
+  background: rgba(5, 12, 22, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  margin-bottom: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.map-evidence-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.map-badge-s3 {
+  font-size: 9.5px !important;
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  color: #c084fc !important;
+  background: rgba(168, 85, 247, 0.15) !important;
+  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+  border-radius: 6px !important;
+  padding: 2px 7px !important;
+}
+
+.map-evidence-doc-box {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+}
+
+.map-evidence-btn {
+  background: linear-gradient(135deg, #9333ea, #7e22ce) !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: all 0.15s ease !important;
+}
+
+.map-evidence-btn:hover {
+  background: linear-gradient(135deg, #a855f7, #9333ea) !important;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35) !important;
+}
+
+.map-presigned-box {
+  background: rgba(6, 78, 59, 0.25) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  border-radius: 10px !important;
+  padding: 8px 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  animation: tabFadeIn 0.15s ease-out;
+}
+
+.map-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.map-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.map-badge-ward {
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #38bdf8 !important;
+  background: rgba(6, 182, 212, 0.15) !important;
+  border: 1px solid rgba(6, 182, 212, 0.35) !important;
+  border-radius: 6px !important;
+  padding: 2px 7px !important;
+  letter-spacing: 0.02em;
+}
+
+.map-badge-zone {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: #cbd5e1 !important;
+  background: rgba(30, 41, 59, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 9999px !important;
+  padding: 2px 9px !important;
+  white-space: nowrap;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-badge-status-alert {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #f87171 !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  border-radius: 9999px !important;
+  padding: 2px 9px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.map-badge-status-safe {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  border-radius: 9999px !important;
+  padding: 2px 9px !important;
+}
+
+.map-badge-status-stale {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #fbbf24 !important;
+  background: rgba(245, 158, 11, 0.15) !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  border-radius: 9999px !important;
+  padding: 2px 9px !important;
+}
+
+.map-card-close-btn {
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #94a3b8 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  transition: all 0.15s ease !important;
+  flex-shrink: 0;
+  padding: 0 !important;
+}
+
+.map-card-close-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+.map-card-title {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.01em;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  line-height: 1.35;
+}
+
+.map-card-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px 12px !important;
+  margin-bottom: 12px !important;
+}
+
+.map-card-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.map-card-label {
+  font-size: 9.5px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  color: #64748b !important;
+  letter-spacing: 0.04em !important;
+  margin-bottom: 2px;
+}
+
+.map-card-value {
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  color: #e2e8f0 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-card-value-mono {
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  font-size: 11.5px !important;
+  color: #f8fafc !important;
+}
+
+.map-card-value-alert {
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #fbbf24 !important;
+}
+
+.map-card-value-safe {
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #34d399 !important;
+}
+
+.map-metrics-box {
+  background: rgba(5, 12, 22, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  padding: 8px 10px !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 4px !important;
+  text-align: center;
+  margin-bottom: 12px !important;
+}
+
+.map-metric-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-metric-label {
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  color: #64748b !important;
+  letter-spacing: 0.05em !important;
+  margin-bottom: 2px;
+}
+
+.map-metric-val {
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.map-metric-val-cyan { color: #38bdf8 !important; }
+.map-metric-val-emerald { color: #34d399 !important; }
+.map-metric-val-neutral { color: #f1f5f9 !important; }
+
+.map-card-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding-top: 10px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.map-card-btn-primary {
+  flex: 1 !important;
+  background: linear-gradient(135deg, #06b6d4, #0284c7) !important;
+  color: #02121e !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  padding: 7px 12px !important;
+  border-radius: 10px !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35) !important;
+  cursor: pointer;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+}
+
+.map-card-btn-primary:hover {
+  background: linear-gradient(135deg, #22d3ee, #0ea5e9) !important;
+  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+.map-card-btn-secondary {
+  background: rgba(30, 41, 59, 0.8) !important;
+  color: #38bdf8 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 7px 12px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  cursor: pointer;
+  transition: all 0.15s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  white-space: nowrap !important;
+}
+
+.map-card-btn-secondary:hover {
+  background: #1e293b !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.map-card-btn-outline {
+  background: rgba(30, 41, 59, 0.7) !important;
+  color: #cbd5e1 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 7px 12px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  cursor: pointer;
+  transition: all 0.15s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  white-space: nowrap !important;
+}
+
+.map-card-btn-outline:hover {
+  background: #1e293b !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   1. LEAFLET BASE CANVAS & CONTAINER STYLING (ZERO TILE GRID SEAMS)
+   ========================================================================== */
+
+/* Eliminate dark subpixel grid seams between tiles by matching container tone */
+.leaflet-container {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  outline: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  background-color: #ede8df !important;
+}
+
+.map-explorer.map-mode-standard .leaflet-container,
+.map-explorer.map-mode-standard .leaflet-tile-pane {
+  background-color: #ede8df !important;
+}
+
+.map-explorer.map-mode-dark .leaflet-container,
+.map-explorer.map-mode-dark .leaflet-tile-pane {
+  background-color: #061525 !important;
+}
+
+.map-explorer.map-mode-satellite .leaflet-container,
+.map-explorer.map-mode-satellite .leaflet-tile-pane {
+  background-color: #08131f !important;
+}
+
+.leaflet-tile-pane {
+  background-color: transparent !important;
+}
+
+/* Eliminate 1px tile grid seams across Chromium and high-DPI displays */
+.leaflet-tile {
+  outline: 1px solid transparent;
+  image-rendering: -webkit-optimize-contrast;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transition: opacity 0.2s ease-in;
+}
+
+.leaflet-tile-container img {
+  box-shadow: 0 0 1px rgba(237, 232, 223, 0.5);
+}
+
+/* Fix Leaflet default icon white square box artifact */
+.leaflet-div-icon,
+.station-pin-marker,
+.station-cluster-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Remove default Leaflet zoom controls since we have custom controls */
+.leaflet-control-zoom {
+  display: none !important;
+}
+
+/* ==========================================================================
+   2. CUSTOM SCROLLBARS FOR FLOATING PANELS & DRAWERS
+   ========================================================================== */
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.25) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.25);
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.5);
+}
+
+/* ==========================================================================
+   3. ANIMATED PULSES, RADARS, & HYDROLOGICAL FLOW
+   ========================================================================== */
+
+/* Tigra Dam Pipeline Conduit Flow Animation */
+@keyframes flowDash {
+  to {
+    stroke-dashoffset: -36px;
+  }
+}
+
+.leaflet-conduit-flow {
+  stroke-dasharray: 9, 9 !important;
+  animation: flowDash 1.2s linear infinite !important;
+  filter: drop-shadow(0 0 6px rgba(0, 217, 255, 0.85));
+}
+
+/* Active Moving Water Supply Pipeline Flow Animation (Source -> Queried Target) */
+@keyframes waterSupplyFlow {
+  0% {
+    stroke-dashoffset: 0px;
+  }
+  100% {
+    stroke-dashoffset: -52px;
+  }
+}
+
+.leaflet-conduit-flow-active {
+  stroke-dasharray: 12, 14 !important;
+  animation: waterSupplyFlow 0.85s linear infinite !important;
+  filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.95)) drop-shadow(0 0 16px rgba(34, 211, 238, 0.7)) !important;
+}
+
+.map-flow-indicator-pill {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 450;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(7, 16, 29, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 9999px;
+  padding: 6px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(6, 182, 212, 0.15);
+  pointer-events: auto;
+  animation: pillFadeIn 0.25s ease-out;
+  max-width: calc(100% - 32px);
+  white-space: nowrap;
+}
+
+@keyframes pillFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.water-source-beacon,
+.water-target-beacon,
+.water-droplet-particle {
+  pointer-events: auto;
+}
+
+/* Swarnrekha Canal Drainage Axis Glow */
+.leaflet-canal-glow {
+  filter: drop-shadow(0 0 5px rgba(6, 182, 212, 0.6));
+}
+
+/* Radar expansion ring for active alerts */
+@keyframes radarRing {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(2.2);
+    opacity: 0.25;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+.animate-radar-ring {
+  animation: radarRing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Selected Ward Boundary Glow */
+@keyframes selectedWardGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(0, 217, 255, 0.75));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(0, 217, 255, 1));
+  }
+}
+
+.selected-ward-polygon {
+  animation: selectedWardGlow 2.4s ease-in-out infinite;
+}
+
+/* Smooth transition on ward polygon vectors */
+path.leaflet-interactive {
+  transition: stroke 0.22s ease, stroke-width 0.22s ease, fill-opacity 0.22s ease, filter 0.22s ease;
+}
+
+path.leaflet-interactive:hover {
+  stroke-width: 3.5px !important;
+  fill-opacity: 0.32 !important;
+  filter: drop-shadow(0 0 10px rgba(0, 217, 255, 0.7));
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   4. GLASSMORPHIC TOOLTIPS & POPUPS
+   ========================================================================== */
+
+/* Leaflet Ward Tooltip */
+.leaflet-ward-tooltip {
+  background: rgba(11, 25, 44, 0.96) !important;
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+  color: #fff !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(56, 189, 248, 0.2) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+/* Tooltip Arrow Pointers (match dark background instead of default white) */
+.leaflet-tooltip-top.leaflet-ward-tooltip:before {
+  border-top-color: rgba(11, 25, 44, 0.96) !important;
+}
+.leaflet-tooltip-bottom.leaflet-ward-tooltip:before {
+  border-bottom-color: rgba(11, 25, 44, 0.96) !important;
+}
+.leaflet-tooltip-left.leaflet-ward-tooltip:before {
+  border-left-color: rgba(11, 25, 44, 0.96) !important;
+}
+.leaflet-tooltip-right.leaflet-ward-tooltip:before {
+  border-right-color: rgba(11, 25, 44, 0.96) !important;
+}
+
+/* General Leaflet Tooltips */
+.leaflet-tooltip {
+  background: rgba(11, 25, 44, 0.96) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  color: #e2e8f0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(10px) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+/* General Leaflet Popups */
+.leaflet-popup-content-wrapper {
+  background: rgba(11, 25, 44, 0.98) !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+  color: #e2e8f0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 0 18px rgba(14, 165, 233, 0.15) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(11, 25, 44, 0.98) !important;
+}
+
+.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
+   5. STATION PINS & CLUSTER ICONS
+   ========================================================================== */
+
+.station-pin-marker {
+  transition: transform 0.18s ease;
+}
+
+.station-pin-marker:hover {
+  z-index: 1000 !important;
+}
+
+.station-cluster-icon > div {
+  box-shadow: 0 0 22px rgba(14, 165, 233, 0.45), inset 0 1px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+/* ==========================================================================
+   6. UI ANIMATIONS FOR POPUPS, DRAWERS, & BANNERS
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInFromTop2 {
+  from { transform: translate(-50%, -8px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@keyframes slideInFromBottom3 {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes zoomIn95 {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-in {
+  animation-duration: 200ms;
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fadeIn;
+}
+
+.slide-in-from-top-2 {
+  animation-name: slideInFromTop2;
+}
+
+.slide-in-from-bottom-3 {
+  animation-name: slideInFromBottom3;
+}
+
+.zoom-in-95 {
+  animation-name: zoomIn95;
+}
