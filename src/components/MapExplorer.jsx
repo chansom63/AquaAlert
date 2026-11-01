@@ -639,26 +639,7 @@ export const MapExplorer = ({
         gisGroup.addLayer(poly);
       });
     }
-
-    // 2. Hydrological Conduits Layer (Swarnrekha Axis)
-    if (gisLayers.conduits) {
-
-      // Swarnrekha Canal Axis
-      const swarnrekhaCoords = [
-        [26.180, 78.140],
-        [26.195, 78.165],
-        [26.215, 78.180],
-        [26.240, 78.188]
-      ];
-      const riverLine = L.polyline(swarnrekhaCoords, {
-        color: '#06b6d4',
-        weight: 2.5,
-        opacity: 0.6
-      });
-      riverLine.bindTooltip('Swarnrekha Canal Drainage Axis', { sticky: true });
-      gisGroup.addLayer(riverLine);
-    }
-  }, [gisLayers, wardDisplayMode, selectedZoneFilter, selectedWardNumber]);
+  }, [gisLayers.boundaries, wardDisplayMode, selectedZoneFilter, selectedWardNumber]);
 
   // --------------------------------------------------------------------------
   // DYNAMIC ANIMATED WATER SUPPLY PIPELINE (Tigra Reservoir -> Queried Target)
@@ -668,7 +649,7 @@ export const MapExplorer = ({
     const flowGroup = flowLayerGroupRef.current;
     flowGroup.clearLayers();
 
-    if (!queriedTarget || !queriedTarget.lat || !queriedTarget.lng) return;
+    if (!gisLayers.conduits || !queriedTarget || !queriedTarget.lat || !queriedTarget.lng) return;
 
     const sourceCoords = [26.2160, 78.0200]; // Tigra Dam Intake & Water Treatment Headworks
     const targetCoords = [queriedTarget.lat, queriedTarget.lng];
@@ -829,7 +810,7 @@ export const MapExplorer = ({
       if (animId) cancelAnimationFrame(animId);
       flowGroup.clearLayers();
     };
-  }, [queriedTarget]);
+  }, [queriedTarget, gisLayers.conduits]);
 
   // Update Water Station Markers on Leaflet Map
   useEffect(() => {
@@ -1069,7 +1050,7 @@ export const MapExplorer = ({
       </div>
 
       {/* 1B. ACTIVE WATER SUPPLY FLOW INDICATOR PILL */}
-      {queriedTarget && (
+      {gisLayers.conduits && queriedTarget && (
         <div className="map-flow-indicator-pill">
           <div className="flex items-center space-x-2">
             <span className="relative flex h-2 w-2">
