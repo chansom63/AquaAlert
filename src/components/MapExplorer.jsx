@@ -113,7 +113,12 @@ export const MapExplorer = ({
   initialSelectedWard = null,
   onSelectWard = null,
   className = '',
-  style = {}
+  style = {},
+  showStationCard = true,
+  highlightSources = null,
+  selectedHighlightId = null,
+  onSelectHighlight = null,
+  fitHighlights = false
 }) => {
   const { isStaff } = useAuth();
   const mapContainerRef = useRef(null);
@@ -936,6 +941,57 @@ export const MapExplorer = ({
     }
   }, [selectedSourceId, sources]);
 
+  // Optional highlighted markers (e.g. the admin Water Sources page's demo sources). They live on their own layer
+  // above the ward markers and never touch the ward / station state used by the rest of the map.
+  const highlightLayerRef = useRef(null);
+  const highlightFittedRef = useRef(null); // the map instance we last fitted (the map is rebuilt under StrictMode)
+  const highlightPrevSelectedRef = useRef(null);
+  const onSelectHighlightRef = useRef(onSelectHighlight);
+  onSelectHighlightRef.current = onSelectHighlight;
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return undefined;
+    if (highlightLayerRef.current) {
+      highlightLayerRef.current.remove();
+      highlightLayerRef.current = null;
+    }
+    const items = (highlightSources || []).filter(h => Number.isFinite(h.latitude) && Number.isFinite(h.longitude));
+    if (items.length === 0) return undefined;
+
+    const escapeHtml = (v) => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const group = L.layerGroup().addTo(map);
+    highlightLayerRef.current = group;
+    items.forEach(h => {
+      const selected = h.sourceId === selectedHighlightId;
+      const icon = L.divIcon({
+        className: '',
+        iconSize: [0, 0],
+        html: `<div class="map-highlight-pin tone-${escapeHtml(h.tone || 'ok')}${selected ? ' is-selected' : ''}"><i></i><b>${escapeHtml(h.sourceId)}</b></div>`
+      });
+      const marker = L.marker([h.latitude, h.longitude], { icon, zIndexOffset: selected ? 2000 : 1000, keyboard: false });
+      marker.bindTooltip(`${escapeHtml(h.sourceId)} – ${escapeHtml(h.name || '')}`, { direction: 'top', offset: [0, -16] });
+      marker.on('click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        if (onSelectHighlightRef.current) onSelectHighlightRef.current(h.sourceId);
+      });
+      group.addLayer(marker);
+    });
+
+    const chosen = items.find(h => h.sourceId === selectedHighlightId);
+    if (fitHighlights && highlightFittedRef.current !== map) {
+      map.fitBounds(L.latLngBounds(items.map(h => [h.latitude, h.longitude])), { padding: [90, 90], maxZoom: 12 });
+      highlightFittedRef.current = map;
+    } else if (chosen && highlightPrevSelectedRef.current !== selectedHighlightId) {
+      map.panTo([chosen.latitude, chosen.longitude], { animate: true });
+    }
+    highlightPrevSelectedRef.current = selectedHighlightId;
+    return () => {
+      group.remove();
+      if (highlightLayerRef.current === group) highlightLayerRef.current = null;
+    };
+  }, [highlightSources, selectedHighlightId, fitHighlights]);
+
   // Active station data object for bottom information card
   const activeStation = useMemo(() => {
     if (!activeStationId) return null;
@@ -1400,7 +1456,7 @@ export const MapExplorer = ({
       )}
 
       {/* 7. BOTTOM-LEFT FLOATING STATION INFORMATION CARD */}
-      {activeStation && (
+      {showStationCard && activeStation && (
         <div className="map-info-card">
 
           {/* Card Header */}

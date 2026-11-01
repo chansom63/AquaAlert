@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { FC } from 'react';
-import L from 'leaflet';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -17,6 +16,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { Alert, Source } from '../../types/water';
+import { MapExplorer } from '../MapExplorer';
 
 interface AdminDashboardViewProps {
   sources: Source[];
@@ -28,105 +28,13 @@ interface AdminDashboardViewProps {
 }
 
 export const AdminDashboardView: FC<AdminDashboardViewProps> = ({
+  sources,
   onOpenAlertDetail,
   onNavigateTo,
   onQuickAction,
 }) => {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
   const [lastCheckedTime, setLastCheckedTime] = useState('01 Nov 2026, 07:45 PM');
   const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
-
-  // Initialize Leaflet Map for "Water Sources (Map View)"
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
-
-    if (!mapInstanceRef.current) {
-      // Coordinates centered around region with river / topography
-      const map = L.map(mapContainerRef.current, {
-        center: [25.4484, 78.5685], // Jhansi - Orchha regional hub
-        zoom: 11,
-        zoomControl: false,
-        attributionControl: false,
-      });
-
-      // CartoDB Positron clean light basemap
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 18,
-        subdomains: 'abcd',
-      }).addTo(map);
-
-      // Add Zoom Control at bottom right
-      L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-      // Pins matching the screenshot:
-      // Red (Critical center), Orange (High), Yellow (Warning), Green (Safe)
-      const pinPoints = [
-        { lat: 25.452, lng: 78.575, status: 'critical', name: 'A-04 (Jhansi)' },
-        { lat: 25.485, lng: 78.540, status: 'high', name: 'B-02 (Orchha)' },
-        { lat: 25.498, lng: 78.590, status: 'high', name: 'C-01 (Datia)' },
-        { lat: 25.425, lng: 78.520, status: 'warning', name: 'D-03 (Lalitpur)' },
-        { lat: 25.410, lng: 78.620, status: 'warning', name: 'E-05 (Jhansi)' },
-        { lat: 25.470, lng: 78.490, status: 'safe', name: 'Source S-01' },
-        { lat: 25.510, lng: 78.530, status: 'safe', name: 'Source S-02' },
-        { lat: 25.430, lng: 78.580, status: 'safe', name: 'Source S-03' },
-        { lat: 25.460, lng: 78.650, status: 'safe', name: 'Source S-04' },
-      ];
-
-      pinPoints.forEach(pt => {
-        let pinColor = '#10b981'; // safe green
-        let pulseGlow = 'rgba(16, 185, 129, 0.4)';
-        let symbol = '✓';
-
-        if (pt.status === 'critical') {
-          pinColor = '#ef4444';
-          pulseGlow = 'rgba(239, 68, 68, 0.6)';
-          symbol = '!';
-        } else if (pt.status === 'high') {
-          pinColor = '#f97316';
-          pulseGlow = 'rgba(249, 115, 22, 0.5)';
-          symbol = '▲';
-        } else if (pt.status === 'warning') {
-          pinColor = '#f59e0b';
-          pulseGlow = 'rgba(245, 158, 11, 0.4)';
-          symbol = '●';
-        }
-
-        const icon = L.divIcon({
-          className: 'custom-map-pin',
-          html: `
-            <div style="position: relative; width: 28px; height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3));">
-              <div style="width: 24px; height: 24px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: ${pinColor}; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px ${pulseGlow};">
-                <span style="transform: rotate(45deg); color: #ffffff; font-size: 11px; font-weight: 900; line-height: 1;">${symbol}</span>
-              </div>
-            </div>
-          `,
-          iconSize: [28, 34],
-          iconAnchor: [14, 34],
-        });
-
-        const marker = L.marker([pt.lat, pt.lng], { icon });
-        marker.bindTooltip(`<strong>${pt.name}</strong><br/>Status: ${pt.status.toUpperCase()}`, {
-          direction: 'top',
-          offset: [0, -30],
-        });
-        marker.addTo(map);
-      });
-
-      mapInstanceRef.current = map;
-
-      setTimeout(() => {
-        map.invalidateSize();
-      }, 200);
-    }
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, []);
 
   const handleRefreshStatus = () => {
     setIsRefreshingStatus(true);
@@ -237,7 +145,7 @@ export const AdminDashboardView: FC<AdminDashboardViewProps> = ({
       {/* 2. MIDDLE ROW (Active Alerts & Incidents Table + Water Sources Map View) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Active Alerts & Incidents Table (~58% width / 7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 flex flex-col justify-between">
+        <div className="lg:col-span-12 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -386,7 +294,7 @@ export const AdminDashboardView: FC<AdminDashboardViewProps> = ({
         </div>
 
         {/* Water Sources Map View (~42% width / 5 cols) */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 flex flex-col">
+        <div className="lg:col-span-12 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 flex flex-col">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-blue-600" />
@@ -400,29 +308,9 @@ export const AdminDashboardView: FC<AdminDashboardViewProps> = ({
             </button>
           </div>
 
-          <div className="relative w-full h-[230px] rounded-xl overflow-hidden mt-2 border border-slate-100">
-            {/* The Map Div */}
-            <div ref={mapContainerRef} className="w-full h-full" />
-
-            {/* Floating Top-Right Legend Box matching screenshot */}
-            <div className="absolute top-2.5 right-2.5 z-[400] bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl px-3 py-2 shadow-md text-[11px] font-semibold text-slate-700 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span>
-                <span>Safe (118)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm"></span>
-                <span>Warning (18)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm"></span>
-                <span>High (7)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-600 shadow-sm"></span>
-                <span>Critical (5)</span>
-              </div>
-            </div>
+          {/* The same keyless Esri/GIS map the citizen page uses (GMC wards + live sources). Clicking a location does not open the station card or the detail drawer here. */}
+          <div className="mt-3">
+            <MapExplorer sources={sources} showStationCard={false} />
           </div>
         </div>
       </div>

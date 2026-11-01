@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { FC } from 'react';
-import L from 'leaflet';
+import type { Source } from '../../types/water';
+import { MapExplorer } from '../MapExplorer';
 import {
   AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight,
   Clock, Droplet, Eye, FlaskConical, MapPin, MoreHorizontal,
@@ -36,15 +37,22 @@ const STATUS_STYLES: Record<string, string> = {
   'Inactive':     'bg-slate-100 text-slate-500',
 };
 
-export const WaterSourcesView: FC = () => {
-  const mapRef      = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
+export const WaterSourcesView: FC<{ sources?: Source[] }> = ({ sources = [] }) => {
   const [selectedId, setSelectedId] = useState('A-04');
   const [search, setSearch]         = useState('');
   const [typeFilter, setTypeFilter] = useState('All Types');
   const [statusFilter, setStatusFilter] = useState('All Status');
 
   const selected = SOURCES.find(s => s.sourceId === selectedId) ?? SOURCES[0];
+
+  // The demo sources in the table, as highlighted pins on the shared map.
+  const highlightSources = useMemo(() => SOURCES.map(s => ({
+    sourceId: s.sourceId,
+    name: s.name,
+    latitude: s.lat,
+    longitude: s.lng,
+    tone: (s.status === 'Active' ? 'ok' : s.status === 'Under Review' ? 'warn' : 'off') as 'ok' | 'warn' | 'off',
+  })), []);
 
   const filtered = SOURCES.filter(s => {
     const q = search.toLowerCase();
@@ -54,27 +62,6 @@ export const WaterSourcesView: FC = () => {
       (statusFilter === 'All Status' || s.status === statusFilter)
     );
   });
-
-  /* Leaflet mini-map */
-  useEffect(() => {
-    if (!mapRef.current || mapInstance.current) return;
-    const map = L.map(mapRef.current, { center: [25.46, 78.57], zoom: 10, zoomControl: false, attributionControl: false });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 18, subdomains: 'abcd' }).addTo(map);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    SOURCES.forEach(s => {
-      const color = s.status === 'Active' ? '#10b981' : s.status === 'Under Review' ? '#f59e0b' : '#94a3b8';
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.25)"></div>`,
-        iconSize: [20, 20], iconAnchor: [10, 10],
-      });
-      L.marker([s.lat, s.lng], { icon }).bindTooltip(`${s.sourceId} – ${s.name}`, { direction: 'top', offset: [0, -12] }).addTo(map);
-    });
-    mapInstance.current = map;
-    setTimeout(() => map.invalidateSize(), 150);
-    return () => { map.remove(); mapInstance.current = null; };
-  }, []);
 
   return (
     <div className="space-y-4 font-sans">
@@ -194,26 +181,6 @@ export const WaterSourcesView: FC = () => {
 
         {/* RIGHT: Map + Selected Source Card */}
         <div className="lg:col-span-5 flex flex-col gap-3">
-          {/* Map Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
-            <div className="flex items-center justify-between pb-2">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-bold text-slate-900">Water Sources Map</span>
-              </div>
-              <button className="text-[11px] font-semibold text-blue-600 hover:underline">View Full Map →</button>
-            </div>
-            <div className="relative rounded-xl overflow-hidden border border-slate-100 h-[200px]">
-              <div ref={mapRef} className="w-full h-full" />
-              {/* Legend */}
-              <div className="absolute top-2 right-2 z-[400] bg-white/95 rounded-xl border border-slate-200 shadow px-3 py-2 text-[10px] font-semibold space-y-1">
-                {[['bg-emerald-500','Normal (118)'],['bg-amber-400','Under Review (12)'],['bg-rose-500','With Alert (7)'],['bg-slate-400','Inactive (11)']].map(([c,l]) => (
-                  <div key={l} className="flex items-center gap-1.5"><span className={`w-2.5 h-2.5 rounded-full ${c}`}></span><span className="text-slate-700">{l}</span></div>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {/* Selected Source Card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
             <div className="flex items-center justify-between mb-3">
@@ -256,6 +223,23 @@ export const WaterSourcesView: FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── MAP: the same keyless Esri/GIS map the citizen page uses (GMC wards + live sources) ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <div className="flex items-center gap-2 pb-3">
+          <MapPin className="w-4 h-4 text-blue-600" />
+          <span className="text-sm font-bold text-slate-900">Water Sources Map</span>
+          <span className="text-[11px] text-slate-500">Highlighted pins are the {SOURCES.length} sources in the table above; click one to select it.</span>
+        </div>
+        <MapExplorer
+          sources={sources}
+          showStationCard={false}
+          highlightSources={highlightSources}
+          selectedHighlightId={selectedId}
+          onSelectHighlight={setSelectedId}
+          fitHighlights
+        />
       </div>
     </div>
   );

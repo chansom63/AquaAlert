@@ -35,6 +35,7 @@ import { EvidenceS3View } from '../components/admin/EvidenceS3View';
 import SourceDetailDrawer from '../components/sources/SourceDetailDrawer';
 import AlertDetailDrawer from '../components/alerts/AlertDetailDrawer';
 import { useWaterData } from '../hooks/useWaterData';
+import '../styles/admin-dark.css';
 import LabReportsPanel from './admin/LabReportsPanel';
 import SubmitReadingPanel from './admin/SubmitReadingPanel';
 
@@ -78,7 +79,7 @@ const AdminPage: FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F3F6FA] text-slate-800 font-sans selection:bg-blue-500 selection:text-white">
+    <div className="admin-root admin-dark flex min-h-screen bg-[#F3F6FA] text-slate-800 font-sans selection:bg-blue-500 selection:text-white">
       {/* ========================================================================= */}
       {/* 1. LEFT SIDEBAR NAVIGATION (Dark Navy #0B1728)                             */}
       {/* ========================================================================= */}
@@ -394,7 +395,7 @@ const AdminPage: FC = () => {
           {activeNav === 'Alerts & Incidents' && <AlertsIncidentsView />}
 
           {/* ── WATER SOURCES ── */}
-          {activeNav === 'Water Sources' && <WaterSourcesView />}
+          {activeNav === 'Water Sources' && <WaterSourcesView sources={data.sources} />}
 
           {/* ── READINGS ── */}
           {activeNav === 'Readings' && <ReadingsView />}
@@ -431,7 +432,7 @@ const AdminPage: FC = () => {
       {/* Submit Reading Modal */}
       {activeModal === 'submit-reading' && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 animate-in fade-in-50 zoom-in-95">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 animate-in fade-in-50 zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">

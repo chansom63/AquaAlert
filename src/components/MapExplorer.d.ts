@@ -26,6 +26,14 @@ export interface MapExplorerProps {
   onSelectWard?: (wardNumber: number | null) => void;
   className?: string;
   style?: React.CSSProperties;
+  /** Show the bottom-left station information card when a location is selected. Default true. */
+  showStationCard?: boolean;
+  /** Extra highlighted pins drawn above the ward markers (e.g. demo sources that are not part of the 66 wards). */
+  highlightSources?: { sourceId: string; name?: string; latitude: number; longitude: number; tone?: 'ok' | 'warn' | 'off' }[] | null;
+  selectedHighlightId?: string | null;
+  onSelectHighlight?: (sourceId: string) => void;
+  /** Fit the map to the highlighted pins the first time they are shown. */
+  fitHighlights?: boolean;
 }
 
 export declare const MapExplorer: React.FC<MapExplorerProps>;

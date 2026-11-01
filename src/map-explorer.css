@@ -1182,3 +1182,25 @@ path.leaflet-interactive:hover {
 .zoom-in-95 {
   animation-name: zoomIn95;
 }
+
+/* ==========================================================================
+   Highlighted markers (optional `highlightSources` prop on MapExplorer)
+   ========================================================================== */
+.map-highlight-pin {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 6px; padding: 4px 11px 4px 7px;
+  border-radius: 999px; background: #0a1130; border: 2px solid #ffffff; color: #ffffff;
+  font: 700 11px/1 Inter, system-ui, sans-serif; letter-spacing: .02em; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(45, 140, 255, 0.35), 0 6px 16px rgba(0, 0, 0, 0.45);
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.map-highlight-pin i { width: 10px; height: 10px; border-radius: 50%; background: #34d399; box-shadow: 0 0 8px #34d399; flex: none; }
+.map-highlight-pin.tone-warn i { background: #f5a524; box-shadow: 0 0 8px #f5a524; }
+.map-highlight-pin.tone-off i { background: #94a3b8; box-shadow: 0 0 8px #94a3b8; }
+.map-highlight-pin:hover { transform: translate(-50%, -50%) scale(1.08); }
+.map-highlight-pin.is-selected {
+  background: #2d8cff; transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 0 0 0 6px rgba(45, 140, 255, 0.45), 0 0 26px rgba(45, 140, 255, 0.85), 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+.map-highlight-pin.is-selected i { background: #ffffff; box-shadow: 0 0 8px #ffffff; }
+@media (prefers-reduced-motion: reduce) { .map-highlight-pin { transition: none; } }
