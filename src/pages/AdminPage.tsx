@@ -31,6 +31,7 @@ import { ReportsView } from '../components/admin/ReportsView';
 import { ResponseActionsView } from '../components/admin/ResponseActionsView';
 import { RulesThresholdsView } from '../components/admin/RulesThresholdsView';
 import { SettingsView } from '../components/admin/SettingsView';
+import { EvidenceS3View } from '../components/admin/EvidenceS3View';
 import SourceDetailDrawer from '../components/sources/SourceDetailDrawer';
 import AlertDetailDrawer from '../components/alerts/AlertDetailDrawer';
 import { useWaterData } from '../hooks/useWaterData';
@@ -278,7 +279,7 @@ const AdminPage: FC = () => {
               {activeNav === 'Users & Roles'        && 'Manage system users, roles, and access permissions'}
               {activeNav === 'Response Actions'     && 'Track, manage, and close response actions for water quality incidents'}
               {activeNav === 'Rules & Thresholds'   && 'Configure water quality rules, threshold limits, and their versions for alert evaluation.'}
-              {activeNav === 'Evidence (S3)'        && 'Upload and manage certified laboratory evidence stored in S3'}
+              {activeNav === 'Evidence (S3)'        && 'Manage lab reports, field sheets, and supporting evidence for readings and incidents.'}
               {activeNav === 'Settings'             && 'Configure system preferences, integrations, security, and operational parameters.'}
             </p>
           </div>
@@ -406,9 +407,10 @@ const AdminPage: FC = () => {
 
           {/* ── EVIDENCE (S3) ── */}
           {activeNav === 'Evidence (S3)' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <LabReportsPanel sources={data.sources} busy={data.busy} onSubmit={data.uploadReport} />
-            </div>
+            <EvidenceS3View
+              sources={data.sources}
+              onUploadReport={data.uploadReport}
+            />
           )}
 
           {/* ── RESPONSE ACTIONS ── */}
