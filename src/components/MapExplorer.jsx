@@ -58,9 +58,7 @@ import {
   TrendingUp,
   ShieldCheck
 } from 'lucide-react';
-import { OverviewParametersView } from './parameters/OverviewParametersView';
-import { ChronologicalSamplesTable } from './readings/ChronologicalSamplesTable';
-import { LabReportsEvidenceView } from './evidence/LabReportsEvidenceView';
+
 
 // Tile provider configuration - 100% Zero-Credential, Keyless Public Mapping Services
 // Standard: Esri World Street Map (High-definition Google Maps-style street map, 100% keyless & watermark-free)
@@ -123,6 +121,7 @@ export const MapExplorer = ({
   const tileLayerGroupRef = useRef(null);
   const markersLayerGroupRef = useRef(null);
   const gisLayersGroupRef = useRef(null);
+  const flowLayerGroupRef = useRef(null);
 
   // Map Mode: 'standard' | 'satellite' (Standard is default; Satellite includes hybrid roads and labels)
   const [mapMode, setMapMode] = useState('standard');
@@ -143,16 +142,7 @@ export const MapExplorer = ({
   const [selectedZoneFilter, setSelectedZoneFilter] = useState('ALL'); // 'ALL' or zoneId (1..25)
   const [selectedWardNumber, setSelectedWardNumber] = useState(initialSelectedWard ? Number(initialSelectedWard) : null);
   const [activeWardInfo, setActiveWardInfo] = useState(null);
-  const [cardTab, setCardTab] = useState('Overview & Parameters');
-  const [chartParam, setChartParam] = useState('TDS');
-  const [issuedPresignedUrl, setIssuedPresignedUrl] = useState(false);
 
-  const CARD_NAV_TABS = [
-    'Overview & Parameters',
-    'Historical Trend Charts',
-    'Chronological Samples (1)',
-    'Lab Reports & Evidence'
-  ];
 
   useEffect(() => {
     if (initialSelectedWard !== null && initialSelectedWard !== undefined) {
@@ -304,6 +294,98 @@ export const MapExplorer = ({
     });
   }, [allSources, searchQuery, statusFilter, zoneFilter, wardDisplayMode, selectedWardNumber, selectedZoneFilter]);
 
+  // Resolve queried area target (Ward or Station)
+  const queriedTarget = useMemo(() => {
+    // 1. If active station selected
+    if (activeStationId) {
+      const station = allSources.find(s => s.sourceId === activeStationId);
+      if (station && station.lat && station.lng) {
+        return {
+          type: 'station',
+          name: station.name,
+          sourceName: station.waterSource || 'Tigra Reservoir Feeder Line',
+          lat: Number(station.lat),
+          lng: Number(station.lng),
+          wardNumber: station.wardNumber,
+          locality: station.locality
+        };
+      }
+    }
+
+    // 2. If there is a search query that matches a specific ward or station
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchedWard = GWALIOR_WARDS_66.find(w => 
+        w.name.toLowerCase().includes(q) || 
+        w.locality.toLowerCase().includes(q) ||
+        String(w.wardNumber) === q ||
+        `ward ${w.wardNumber}` === q
+      );
+      if (matchedWard && matchedWard.center) {
+        return {
+          type: 'ward',
+          name: matchedWard.name,
+          sourceName: matchedWard.waterSource,
+          lat: matchedWard.center.lat,
+          lng: matchedWard.center.lng,
+          wardNumber: matchedWard.wardNumber,
+          locality: matchedWard.locality
+        };
+      }
+
+      const matchedStation = allSources.find(s =>
+        s.name.toLowerCase().includes(q) ||
+        s.locality.toLowerCase().includes(q) ||
+        s.district.toLowerCase().includes(q) ||
+        s.sourceId.toLowerCase().includes(q)
+      );
+      if (matchedStation && matchedStation.lat && matchedStation.lng) {
+        return {
+          type: 'station',
+          name: matchedStation.name,
+          sourceName: matchedStation.waterSource || 'Tigra Piped Supply',
+          lat: Number(matchedStation.lat),
+          lng: Number(matchedStation.lng),
+          wardNumber: matchedStation.wardNumber,
+          locality: matchedStation.locality
+        };
+      }
+    }
+
+    // 3. If active ward or selected ward
+    const currentWardNum = selectedWardNumber || (activeWardInfo && activeWardInfo.wardNumber) || (initialSelectedWard ? Number(initialSelectedWard) : null);
+    if (currentWardNum) {
+      const ward = GWALIOR_WARDS_66.find(w => w.wardNumber === currentWardNum);
+      if (ward && ward.center) {
+        return {
+          type: 'ward',
+          name: ward.name,
+          sourceName: ward.waterSource,
+          lat: ward.center.lat,
+          lng: ward.center.lng,
+          wardNumber: ward.wardNumber,
+          locality: ward.locality
+        };
+      }
+    }
+
+    // 4. Fallback to central default ward (Ward 14 Maharaj Bada Central Plaza)
+    const defaultWard = GWALIOR_WARDS_66.find(w => w.wardNumber === 14);
+    if (defaultWard && defaultWard.center) {
+      return {
+        type: 'ward',
+        name: defaultWard.name,
+        sourceName: defaultWard.waterSource,
+        lat: defaultWard.center.lat,
+        lng: defaultWard.center.lng,
+        wardNumber: defaultWard.wardNumber,
+        locality: defaultWard.locality
+      };
+    }
+
+    return null;
+  }, [activeStationId, selectedWardNumber, activeWardInfo, initialSelectedWard, searchQuery, allSources]);
+
   // Aggregate stats across all 66 wards
   const totalCount = allSources.length;
   const alertCount = allSources.filter(s => s.publicStatus === 'MONITORED_ALERT').length;
@@ -327,10 +409,12 @@ export const MapExplorer = ({
       // Layer groups
       const tileGroup = L.layerGroup().addTo(map);
       const gisGroup = L.layerGroup().addTo(map);
+      const flowGroup = L.layerGroup().addTo(map);
       const markersGroup = L.layerGroup().addTo(map);
 
       tileLayerGroupRef.current = tileGroup;
       gisLayersGroupRef.current = gisGroup;
+      flowLayerGroupRef.current = flowGroup;
       markersLayerGroupRef.current = markersGroup;
       mapInstanceRef.current = map;
 
@@ -556,25 +640,8 @@ export const MapExplorer = ({
       });
     }
 
-    // 2. Hydrological Conduits Layer (Tigra Reservoir Transmission Line & Swarnrekha Axis)
+    // 2. Hydrological Conduits Layer (Swarnrekha Axis)
     if (gisLayers.conduits) {
-      // Tigra Dam Piped Feeder Conduit Line
-      const tigraFeederCoords = [
-        [26.216, 78.020], // Tigra Dam intake
-        [26.218, 78.080],
-        [26.215, 78.140],
-        [26.2140, 78.2015] // Gandhi Nagar WTP Thatipur
-      ];
-
-      const conduitLine = L.polyline(tigraFeederCoords, {
-        color: '#0284c7',
-        weight: 4,
-        dashArray: '8, 8',
-        className: 'leaflet-conduit-flow',
-        opacity: 0.85
-      });
-      conduitLine.bindTooltip('<strong>Tigra Dam Feeder Conduit</strong><br/>Surface water transmission grid', { sticky: true });
-      gisGroup.addLayer(conduitLine);
 
       // Swarnrekha Canal Axis
       const swarnrekhaCoords = [
@@ -592,6 +659,177 @@ export const MapExplorer = ({
       gisGroup.addLayer(riverLine);
     }
   }, [gisLayers, wardDisplayMode, selectedZoneFilter, selectedWardNumber]);
+
+  // --------------------------------------------------------------------------
+  // DYNAMIC ANIMATED WATER SUPPLY PIPELINE (Tigra Reservoir -> Queried Target)
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    if (!mapInstanceRef.current || !flowLayerGroupRef.current) return;
+    const flowGroup = flowLayerGroupRef.current;
+    flowGroup.clearLayers();
+
+    if (!queriedTarget || !queriedTarget.lat || !queriedTarget.lng) return;
+
+    const sourceCoords = [26.2160, 78.0200]; // Tigra Dam Intake & Water Treatment Headworks
+    const targetCoords = [queriedTarget.lat, queriedTarget.lng];
+
+    // Compute realistic municipal piped conduit corridor
+    const route = [
+      sourceCoords,
+      [26.2185, 78.0750], // Tigra Transmission Main
+      [26.2155, 78.1320], // Gol Pahariya / Lashkar Gateway WTP
+    ];
+
+    if (queriedTarget.lat > 26.230) {
+      route.push([26.2280, 78.1550]);
+      if (queriedTarget.lng > 78.180) {
+        route.push([26.2380, 78.1780]);
+      }
+    } else if (queriedTarget.lat < 26.195) {
+      route.push([26.2050, 78.1480]);
+      route.push([26.1920, 78.1580]);
+    } else if (queriedTarget.lng > 78.185) {
+      route.push([26.2120, 78.1650]);
+      route.push([26.2140, 78.1880]);
+    } else {
+      route.push([26.2110, 78.1580]);
+      route.push([26.2135, 78.1660]);
+    }
+    route.push(targetCoords);
+
+    // 1. Base pipeline trench
+    const pipeBase = L.polyline(route, {
+      color: '#075985',
+      weight: 6,
+      opacity: 0.5,
+      lineCap: 'round',
+      lineJoin: 'round'
+    });
+    flowGroup.addLayer(pipeBase);
+
+    // 2. High-contrast moving flow line with continuous dashed animation
+    const movingLine = L.polyline(route, {
+      color: '#00f0ff',
+      weight: 4,
+      dashArray: '12, 14',
+      className: 'leaflet-conduit-flow-active',
+      opacity: 0.95
+    });
+    movingLine.bindTooltip(`
+      <div style="font-family: 'Inter', system-ui; font-size: 11px; padding: 2px;">
+        <div style="display: flex; align-items: center; gap: 4px; color: #38bdf8; font-weight: 700; margin-bottom: 2px;">
+          <span>💧 Active Supply Pipeline</span>
+        </div>
+        <div style="color: #cbd5e1; font-size: 10px;">Source: Tigra Dam Reservoir</div>
+        <div style="color: #cbd5e1; font-size: 10px;">Destination: ${queriedTarget.name}</div>
+        <div style="color: #34d399; font-size: 10px; font-weight: 600; margin-top: 2px;">● Continuous Treated Flow Active</div>
+      </div>
+    `, { sticky: true });
+    flowGroup.addLayer(movingLine);
+
+    // 3. Water Source Pulsing Beacon at Tigra Dam
+    const sourceIcon = L.divIcon({
+      className: 'water-source-beacon',
+      html: `
+        <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; inset: -4px; border-radius: 9999px; background: rgba(6, 182, 212, 0.4); animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="position: absolute; inset: 0; border-radius: 9999px; background: rgba(2, 132, 199, 0.5); border: 1.5px solid #38bdf8;"></div>
+          <div style="position: relative; width: 24px; height: 24px; border-radius: 9999px; background: #031525; border: 2px solid #22d3ee; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 12px rgba(6, 182, 212, 0.8);">
+            <span style="font-size: 13px; line-height: 1;">💧</span>
+          </div>
+        </div>
+      `,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
+    });
+    const sourceMarker = L.marker(sourceCoords, { icon: sourceIcon });
+    sourceMarker.bindTooltip('<strong>Water Source: Tigra Dam Reservoir</strong><br/>Surface Water Headworks (226m ASL)', {
+      permanent: false,
+      direction: 'top',
+      offset: [0, -18]
+    });
+    flowGroup.addLayer(sourceMarker);
+
+    // 4. Queried Area Target Pulse Beacon
+    const targetIcon = L.divIcon({
+      className: 'water-target-beacon',
+      html: `
+        <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; inset: -3px; border-radius: 9999px; background: rgba(16, 185, 129, 0.35); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="position: relative; width: 22px; height: 22px; border-radius: 9999px; background: #06241a; border: 2px solid #34d399; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);">
+            <span style="font-size: 10px; color: #34d399; font-weight: bold;">📍</span>
+          </div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+    const targetMarker = L.marker(targetCoords, { icon: targetIcon });
+    targetMarker.bindTooltip(`<strong>Queried Area: ${queriedTarget.name}</strong><br/>Receiving Piped Supply`, {
+      direction: 'top',
+      offset: [0, -16]
+    });
+    flowGroup.addLayer(targetMarker);
+
+    // 5. Streaming Water Droplets Animation (requestAnimationFrame)
+    const segments = [];
+    let totalDist = 0;
+    for (let i = 0; i < route.length - 1; i++) {
+      const p1 = route[i];
+      const p2 = route[i + 1];
+      const d = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+      segments.push({ p1, p2, dist: d, cumulative: totalDist });
+      totalDist += d;
+    }
+
+    const interpolatePos = (t) => {
+      const targetDist = ((t % 1) + 1) % 1 * totalDist;
+      for (const seg of segments) {
+        if (targetDist >= seg.cumulative && targetDist <= seg.cumulative + seg.dist) {
+          const segT = seg.dist === 0 ? 0 : (targetDist - seg.cumulative) / seg.dist;
+          return [
+            seg.p1[0] + (seg.p2[0] - seg.p1[0]) * segT,
+            seg.p1[1] + (seg.p2[1] - seg.p1[1]) * segT
+          ];
+        }
+      }
+      return route[route.length - 1];
+    };
+
+    // 5. Single Leading Water Flow Pulse travelling Source -> Destination
+    const streamPulseIcon = L.divIcon({
+      className: 'water-single-pulse',
+      html: `
+        <div style="position: relative; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">
+          <span style="position: absolute; inset: -4px; border-radius: 9999px; background: rgba(34, 211, 238, 0.5); animation: ping 0.9s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>
+          <div style="position: relative; width: 12px; height: 12px; border-radius: 9999px; background: #ffffff; border: 2.5px solid #00f5ff; box-shadow: 0 0 12px #00f5ff, 0 0 20px #0284c7;"></div>
+        </div>
+      `,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
+    const pulseMarker = L.marker(sourceCoords, { icon: streamPulseIcon, interactive: false });
+    flowGroup.addLayer(pulseMarker);
+
+    let animId;
+    const startTime = performance.now();
+    const duration = 2600; // 2.6s smooth continuous cycle
+
+    const animatePulse = (now) => {
+      const elapsed = now - startTime;
+      const progress = (elapsed % duration) / duration;
+      const pos = interpolatePos(progress);
+      pulseMarker.setLatLng(pos);
+      animId = requestAnimationFrame(animatePulse);
+    };
+
+    animId = requestAnimationFrame(animatePulse);
+
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+      flowGroup.clearLayers();
+    };
+  }, [queriedTarget]);
 
   // Update Water Station Markers on Leaflet Map
   useEffect(() => {
@@ -829,6 +1067,40 @@ export const MapExplorer = ({
         </div>
 
       </div>
+
+      {/* 1B. ACTIVE WATER SUPPLY FLOW INDICATOR PILL */}
+      {queriedTarget && (
+        <div className="map-flow-indicator-pill">
+          <div className="flex items-center space-x-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+            </span>
+            <span className="text-[10px] uppercase tracking-wider font-mono font-bold text-cyan-300">
+              Supply Line:
+            </span>
+            <span className="text-xs font-semibold text-white truncate max-w-[200px] sm:max-w-xs">
+              Tigra Dam &rarr; {queriedTarget.name}
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              if (mapInstanceRef.current && queriedTarget) {
+                const bounds = L.latLngBounds([
+                  [26.2160, 78.0200],
+                  [queriedTarget.lat, queriedTarget.lng]
+                ]);
+                mapInstanceRef.current.fitBounds(bounds, { padding: [70, 70], maxZoom: 14 });
+              }
+            }}
+            className="text-[10px] text-cyan-300 hover:text-white bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 px-2 py-0.5 rounded-full transition ml-1 cursor-pointer font-mono font-semibold"
+            title="Fit map view to display full water supply line from Tigra Dam"
+          >
+            Show Full Line
+          </button>
+        </div>
+      )}
 
       {/* 2. TOP-RIGHT FLOATING MAP MODE SELECTOR */}
       <div className="absolute top-3 right-3 z-[500] pointer-events-auto flex items-center space-x-1.5">
@@ -1228,264 +1500,7 @@ export const MapExplorer = ({
         </div>
       )}
 
-      {/* 7B. BOTTOM-LEFT FLOATING WARD INFORMATION & ISOLATION CARD */}
-      {activeWardInfo && !activeStation && (
-        <div className="map-info-card">
 
-          {/* Card Header */}
-          <div className="map-card-header">
-            <div>
-              <div className="map-card-badges">
-                <span className="map-badge-ward">
-                  WARD {activeWardInfo.wardNumber < 10 ? `0${activeWardInfo.wardNumber}` : activeWardInfo.wardNumber}
-                </span>
-                <span className="map-badge-zone">
-                  {activeWardInfo.zoneName}
-                </span>
-                {activeWardInfo.status === 'ATTENTION' ? (
-                  <span className="map-badge-status-alert">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
-                    <span>ADVISORY</span>
-                  </span>
-                ) : (
-                  <span className="map-badge-status-safe">
-                    SAFE
-                  </span>
-                )}
-              </div>
-
-              <h4 className="map-card-title">
-                {activeWardInfo.name}
-              </h4>
-            </div>
-
-            <button
-              onClick={() => setActiveWardInfo(null)}
-              className="map-card-close-btn"
-              title="Close card"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Within this card: TAB NAVBAR matching user screenshot */}
-          <nav className="map-card-navbar">
-            {CARD_NAV_TABS.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setCardTab(tab)}
-                className={`map-card-nav-tab ${cardTab === tab ? 'active' : ''}`}
-              >
-                <span>{tab}</span>
-              </button>
-            ))}
-          </nav>
-
-          {/* TAB 1: Overview & Parameters */}
-          {cardTab === 'Overview & Parameters' && (
-            <div className="map-card-tab-pane space-y-3">
-              <OverviewParametersView
-                stationRef={`source-gwl-${activeWardInfo.wardNumber < 10 ? `00${activeWardInfo.wardNumber}` : `0${activeWardInfo.wardNumber}`}`}
-                sampleCollected="Sat, 24 Oct 2026 07:30:00 GMT"
-                serverIngested="2026-10-24T07:31:12Z"
-                method="FIELD_SCREENING"
-                statusBadge={activeWardInfo.status === 'ATTENTION' ? 'FLAGGED_ANOMALY' : 'MONITORING_NORMAL'}
-                isAnomaly={activeWardInfo.status === 'ATTENTION' || parseFloat(activeWardInfo.tds) > 500}
-                parameters={{
-                  pH: { value: parseFloat(activeWardInfo.pH) || 7.2, unit: 'pH' },
-                  tds: { value: parseFloat(activeWardInfo.tds) || 620, unit: 'mg/L' },
-                  turbidity: { value: parseFloat(activeWardInfo.turbidity) || 0.85, unit: 'NTU' },
-                  fluoride: { value: 0.7, unit: 'mg/L' },
-                  nitrate: { value: 18, unit: 'mg/L' },
-                  freeChlorine: { value: parseFloat(activeWardInfo.chlorine) || 0.45, unit: 'mg/L' },
-                }}
-                onOpenCharts={() => setCardTab('Historical Trend Charts')}
-                onCloseDrawer={() => setActiveWardInfo(null)}
-                showFooter={false}
-              />
-
-              {/* Clutter-Free Isolation Buttons */}
-              <div className="map-card-actions pt-2">
-                {wardDisplayMode !== 'selected' ? (
-                  <button
-                    onClick={() => {
-                      setWardDisplayMode('selected');
-                      setSelectedWardNumber(activeWardInfo.wardNumber);
-                      if (mapInstanceRef.current) {
-                        const bounds = L.latLngBounds(activeWardInfo.bounds);
-                        mapInstanceRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
-                      }
-                    }}
-                    className="map-card-btn-primary"
-                  >
-                    <span>Isolate Ward {activeWardInfo.wardNumber} Only</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setWardDisplayMode('all');
-                      if (mapInstanceRef.current) {
-                        mapInstanceRef.current.setView(defaultCenter, 13, { animate: true });
-                      }
-                    }}
-                    className="map-card-btn-primary"
-                  >
-                    <span>Show All 66 Wards</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => {
-                    setWardDisplayMode('zone');
-                    setSelectedZoneFilter(activeWardInfo.zoneId);
-                    const zoneWards = GWALIOR_WARDS_66.filter(w => w.zoneId === activeWardInfo.zoneId);
-                    if (zoneWards.length > 0 && mapInstanceRef.current) {
-                      const allBounds = zoneWards.flatMap(w => w.bounds);
-                      mapInstanceRef.current.fitBounds(L.latLngBounds(allBounds), { padding: [50, 50] });
-                    }
-                  }}
-                  className="map-card-btn-secondary"
-                  title="View all wards in this zone"
-                >
-                  <span>Zone Wards</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    const srcNum = activeWardInfo.wardNumber < 10 ? `00${activeWardInfo.wardNumber}` : `0${activeWardInfo.wardNumber}`;
-                    handleOpenSourceDrawer(`source-gwl-${srcNum}`);
-                  }}
-                  className="map-card-btn-outline"
-                  title="Inspect sensor telemetry history"
-                >
-                  <span>History</span>
-                  <ExternalLink className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: Historical Trend Charts */}
-          {cardTab === 'Historical Trend Charts' && (
-            <div className="map-card-tab-pane">
-              {/* Parameter Selector Pills */}
-              <div className="map-chart-pill-row">
-                {['TDS', 'Chlorine', 'Turbidity', 'pH'].map(param => (
-                  <button
-                    key={param}
-                    type="button"
-                    onClick={() => setChartParam(param)}
-                    className={`map-chart-pill ${chartParam === param ? 'active' : ''}`}
-                  >
-                    <span>{param}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Historical Trend SVG Chart */}
-              <div className="map-chart-container">
-                <div className="map-chart-header">
-                  <div>
-                    <span className="map-chart-param-title">
-                      {chartParam === 'TDS' && 'Total Dissolved Solids (TDS)'}
-                      {chartParam === 'Chlorine' && 'Free Residual Chlorine'}
-                      {chartParam === 'Turbidity' && 'NTU Nephelometric Turbidity'}
-                      {chartParam === 'pH' && 'Hydrogen Ion Balance (pH)'}
-                    </span>
-                    <span className="map-chart-standard-ref">
-                      {chartParam === 'TDS' && 'BIS IS 10500 Acceptable: < 500 mg/L'}
-                      {chartParam === 'Chlorine' && 'BIS IS 10500 Acceptable: 0.2–1.0 mg/L'}
-                      {chartParam === 'Turbidity' && 'BIS IS 10500 Acceptable: < 1.0 NTU'}
-                      {chartParam === 'pH' && 'BIS IS 10500 Acceptable: 6.5–8.5'}
-                    </span>
-                  </div>
-                  <span className="map-chart-current-val">
-                    {chartParam === 'TDS' && activeWardInfo.tds}
-                    {chartParam === 'Chlorine' && activeWardInfo.chlorine}
-                    {chartParam === 'Turbidity' && activeWardInfo.turbidity}
-                    {chartParam === 'pH' && activeWardInfo.pH}
-                  </span>
-                </div>
-
-                {/* Interactive SVG Chart */}
-                <div className="map-chart-svg-wrap">
-                  <svg viewBox="0 0 420 100" className="w-full h-24 overflow-visible" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.4" />
-                        <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
-                    {/* Grid lines */}
-                    <line x1="0" y1="20" x2="420" y2="20" stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
-                    <line x1="0" y1="50" x2="420" y2="50" stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
-                    <line x1="0" y1="80" x2="420" y2="80" stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
-                    {/* Reference threshold line */}
-                    <line x1="0" y1="45" x2="420" y2="45" stroke="#f59e0b" strokeWidth="1.2" strokeDasharray="4 4" opacity="0.75" />
-                    <text x="320" y="40" fill="#fbbf24" fontSize="8.5" fontFamily="monospace">BIS Limit</text>
-                    {/* Area fill */}
-                    <path
-                      d="M 15 75 Q 80 70, 110 65 T 210 55 T 310 40 T 405 32 L 405 95 L 15 95 Z"
-                      fill="url(#chartGrad)"
-                    />
-                    {/* Trend line */}
-                    <path
-                      d="M 15 75 Q 80 70, 110 65 T 210 55 T 310 40 T 405 32"
-                      fill="none"
-                      stroke="#38bdf8"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                    />
-                    {/* Data Points */}
-                    {[[15, 75], [110, 65], [210, 55], [310, 40]].map(([cx, cy], i) => (
-                      <circle key={i} cx={cx} cy={cy} r="3.5" fill="#0f172a" stroke="#38bdf8" strokeWidth="2" />
-                    ))}
-                    {/* Latest glowing point */}
-                    <circle cx="405" cy="32" r="5.5" fill="#38bdf8" className="animate-pulse" />
-                    <circle cx="405" cy="32" r="2.5" fill="#ffffff" />
-                  </svg>
-                  <div className="map-chart-x-axis">
-                    <span>Oct 05</span>
-                    <span>Oct 12</span>
-                    <span>Oct 19</span>
-                    <span>Oct 26</span>
-                    <span className="text-sky-300 font-bold">Latest (Oct 31)</span>
-                  </div>
-                </div>
-
-                <div className="map-chart-footer">
-                  <Info className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
-                  <span>Telemetry continuous time-series. Accurately renders field points without zero-filling intervals.</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: Chronological Samples (1) */}
-          {cardTab === 'Chronological Samples (1)' && (
-            <div className="map-card-tab-pane">
-              <ChronologicalSamplesTable
-                wardNumber={activeWardInfo.wardNumber}
-                sourceId={`source-gwl-${activeWardInfo.wardNumber < 10 ? `00${activeWardInfo.wardNumber}` : `0${activeWardInfo.wardNumber}`}`}
-                sourceName={activeWardInfo.name}
-              />
-            </div>
-          )}
-
-          {/* TAB 4: Lab Reports & Evidence */}
-          {cardTab === 'Lab Reports & Evidence' && (
-            <div className="map-card-tab-pane">
-              <LabReportsEvidenceView
-                wardNumber={activeWardInfo.wardNumber}
-                sourceId={`source-gwl-${activeWardInfo.wardNumber < 10 ? `00${activeWardInfo.wardNumber}` : `0${activeWardInfo.wardNumber}`}`}
-                sourceName={activeWardInfo.name}
-              />
-            </div>
-          )}
-
-        </div>
-      )}
 
       {/* 8. DYNAMIC ATTRIBUTION BAR & KEYLESS LEGAL COMPLIANCE */}
       <div className="absolute bottom-1.5 left-3 z-[400] pointer-events-auto flex items-center space-x-2 text-[10px] text-slate-400 font-mono bg-slate-950/80 px-2.5 py-1 rounded-xl backdrop-blur-md border border-slate-800/50 shadow-sm max-w-[calc(100%-5rem)] truncate">

@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PortalLayout from '../components/layout/PortalLayout';
 import AlertsPanel from '../components/portal/AlertsPanel';
 import OverviewDashboard from '../components/portal/OverviewDashboard';
 import SourcesPanel from '../components/portal/SourcesPanel';
 import SourceDetailDrawer from '../components/sources/SourceDetailDrawer';
+import AlertDetailDrawer from '../components/alerts/AlertDetailDrawer';
 import { useWaterData } from '../hooks/useWaterData';
 import LabReportsPanel from './admin/LabReportsPanel';
 import OperationsPanel from './admin/OperationsPanel';
@@ -15,7 +17,32 @@ const ADMIN_NAV = ['Overview', 'Sources', 'Alerts & actions', 'Submit reading', 
 const AdminPage: FC = () => {
   const [page, setPage] = useState('Overview');
   const [drawerSourceId, setDrawerSourceId] = useState<string | null>(null);
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const data = useWaterData();
+
+  const alertParam = searchParams.get('alert');
+  useEffect(() => {
+    if (alertParam) {
+      setSelectedAlertId(alertParam);
+    }
+  }, [alertParam]);
+
+  const handleCloseAlertDrawer = () => {
+    setSelectedAlertId(null);
+    if (searchParams.has('alert')) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('alert');
+      setSearchParams(nextParams, { replace: true });
+    }
+  };
+
+  const handleSelectAlert = (alertId: string) => {
+    setSelectedAlertId(alertId);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('alert', alertId);
+    setSearchParams(nextParams, { replace: true });
+  };
 
   return (
     <PortalLayout
@@ -45,9 +72,8 @@ const AdminPage: FC = () => {
             data.setSelected(sourceId);
             setDrawerSourceId(sourceId);
           }}
-          onSelectAlert={sourceId => {
-            data.setSelected(sourceId);
-            setDrawerSourceId(sourceId);
+          onSelectAlert={alertId => {
+            handleSelectAlert(alertId);
           }}
         />
       )}
@@ -79,6 +105,9 @@ const AdminPage: FC = () => {
             data.setSelected(sourceId);
             setDrawerSourceId(sourceId);
           }}
+          onSelectAlert={alert => {
+            handleSelectAlert(alert.alertId);
+          }}
           onSubmitAction={data.submitAction}
         />
       )}
@@ -97,6 +126,22 @@ const AdminPage: FC = () => {
             setPage('Submit reading');
             if (srcId) data.setSelected(srcId);
           }}
+        />
+      )}
+
+      {/* Alert Detail Drawer matching user specifications */}
+      {selectedAlertId && (
+        <AlertDetailDrawer
+          alertId={selectedAlertId}
+          alerts={data.alerts}
+          sources={data.sources}
+          onClose={handleCloseAlertDrawer}
+          onOpenSource={sourceId => {
+            handleCloseAlertDrawer();
+            data.setSelected(sourceId);
+            setDrawerSourceId(sourceId);
+          }}
+          isStaff={true}
         />
       )}
     </PortalLayout>

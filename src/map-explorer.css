@@ -953,6 +953,61 @@
   filter: drop-shadow(0 0 6px rgba(0, 217, 255, 0.85));
 }
 
+/* Active Moving Water Supply Pipeline Flow Animation (Source -> Queried Target) */
+@keyframes waterSupplyFlow {
+  0% {
+    stroke-dashoffset: 0px;
+  }
+  100% {
+    stroke-dashoffset: -52px;
+  }
+}
+
+.leaflet-conduit-flow-active {
+  stroke-dasharray: 12, 14 !important;
+  animation: waterSupplyFlow 0.85s linear infinite !important;
+  filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.95)) drop-shadow(0 0 16px rgba(34, 211, 238, 0.7)) !important;
+}
+
+.map-flow-indicator-pill {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 450;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(7, 16, 29, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 9999px;
+  padding: 6px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(6, 182, 212, 0.15);
+  pointer-events: auto;
+  animation: pillFadeIn 0.25s ease-out;
+  max-width: calc(100% - 32px);
+  white-space: nowrap;
+}
+
+@keyframes pillFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.water-source-beacon,
+.water-target-beacon,
+.water-droplet-particle {
+  pointer-events: auto;
+}
+
 /* Swarnrekha Canal Drainage Axis Glow */
 .leaflet-canal-glow {
   filter: drop-shadow(0 0 5px rgba(6, 182, 212, 0.6));

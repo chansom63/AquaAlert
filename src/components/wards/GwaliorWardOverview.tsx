@@ -3,7 +3,6 @@ import type { FC } from 'react';
 import { GMC_ZONES_25, GWALIOR_WARDS_66 } from '../../data/gwaliorWardsData.js';
 import type { Source } from '../../types/water';
 import { MapExplorer } from '../MapExplorer';
-import WardDrawerTabs from './WardDrawerTabs';
 import { OverviewParametersView } from '../parameters/OverviewParametersView';
 import { HistoricalParameterChart } from '../charts/HistoricalParameterChart';
 import { ChronologicalSamplesTable } from '../readings/ChronologicalSamplesTable';
@@ -219,8 +218,6 @@ const GwaliorWardOverview: FC<{ sources: Source[] }> = ({ sources }) => {
           </div>
         )}
       </div>
-
-      <WardDrawerTabs sources={sources} wardNumber={ward.wardNumber} />
     </section>
   );
 };

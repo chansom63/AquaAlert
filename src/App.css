@@ -5147,3 +5147,79 @@
   box-shadow: 0 20px 50px rgba(2, 8, 19, 0.75);
   border: 1px solid rgba(114, 207, 223, 0.32);
 }
+
+/* ==========================================================================
+   ALERT SEVERITY CARDS & ACTION BUTTONS
+   ========================================================================== */
+
+.portal-panel-full {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.portal-columns:has(> :only-child),
+.portal-columns-single {
+  display: block !important;
+  width: 100% !important;
+}
+
+.alert-card-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: rgba(10, 20, 36, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  gap: 16px;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+@media (min-width: 640px) {
+  .alert-card-item {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.alert-card-item:hover {
+  background: rgba(14, 28, 50, 0.95);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+  transform: translateY(-2px);
+}
+
+.alert-card-action-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #cbd5e1 !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 6px 14px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+  transition: all 0.18s ease !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+  outline: none !important;
+}
+
+.alert-card-action-btn:hover,
+.alert-card-item:hover .alert-card-action-btn {
+  background: rgba(6, 182, 212, 0.16) !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.3) !important;
+  transform: translateX(2px);
+}

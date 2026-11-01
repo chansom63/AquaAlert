@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import ComplaintSection from '../components/complaints/ComplaintSection';
 import PortalLayout from '../components/layout/PortalLayout';
 import AlertsPanel from '../components/portal/AlertsPanel';
@@ -7,6 +8,7 @@ import InteractiveMapPanel from '../components/portal/InteractiveMapPanel';
 import OverviewDashboard from '../components/portal/OverviewDashboard';
 import SourcesPanel from '../components/portal/SourcesPanel';
 import SourceDetailDrawer from '../components/sources/SourceDetailDrawer';
+import AlertDetailDrawer from '../components/alerts/AlertDetailDrawer';
 import GwaliorWardOverview from '../components/wards/GwaliorWardOverview';
 import { useWaterData } from '../hooks/useWaterData';
 
@@ -15,7 +17,32 @@ const CITIZEN_NAV = ['Overview', 'Interactive Map', 'Sources', 'Alerts', 'Report
 const CitizenPage: FC = () => {
   const [page, setPage] = useState('Overview');
   const [drawerSourceId, setDrawerSourceId] = useState<string | null>(null);
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const data = useWaterData();
+
+  const alertParam = searchParams.get('alert');
+  useEffect(() => {
+    if (alertParam) {
+      setSelectedAlertId(alertParam);
+    }
+  }, [alertParam]);
+
+  const handleCloseAlertDrawer = () => {
+    setSelectedAlertId(null);
+    if (searchParams.has('alert')) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('alert');
+      setSearchParams(nextParams, { replace: true });
+    }
+  };
+
+  const handleSelectAlert = (alertId: string) => {
+    setSelectedAlertId(alertId);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('alert', alertId);
+    setSearchParams(nextParams, { replace: true });
+  };
 
   return (
     <PortalLayout
@@ -47,9 +74,8 @@ const CitizenPage: FC = () => {
               data.setSelected(sourceId);
               setDrawerSourceId(sourceId);
             }}
-            onSelectAlert={sourceId => {
-              data.setSelected(sourceId);
-              setDrawerSourceId(sourceId);
+            onSelectAlert={alertId => {
+              handleSelectAlert(alertId);
             }}
           />
         </>
@@ -92,6 +118,9 @@ const CitizenPage: FC = () => {
             data.setSelected(sourceId);
             setDrawerSourceId(sourceId);
           }}
+          onSelectAlert={alert => {
+            handleSelectAlert(alert.alertId);
+          }}
         />
       )}
       {page === 'Reports' && <ComplaintSection reports={data.complaints} onSubmit={data.submitComplaint} />}
@@ -101,6 +130,22 @@ const CitizenPage: FC = () => {
         <SourceDetailDrawer
           sourceId={drawerSourceId}
           onClose={() => setDrawerSourceId(null)}
+        />
+      )}
+
+      {/* Alert Detail Drawer matching user specifications */}
+      {selectedAlertId && (
+        <AlertDetailDrawer
+          alertId={selectedAlertId}
+          alerts={data.alerts}
+          sources={data.sources}
+          onClose={handleCloseAlertDrawer}
+          onOpenSource={sourceId => {
+            handleCloseAlertDrawer();
+            data.setSelected(sourceId);
+            setDrawerSourceId(sourceId);
+          }}
+          isStaff={false}
         />
       )}
     </PortalLayout>
