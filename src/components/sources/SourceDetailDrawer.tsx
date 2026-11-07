@@ -101,12 +101,26 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
 
   const latestReading = readings[0];
 
-  const handleRequestEvidenceAccess = (objectKey: string) => {
+  const handleRequestEvidenceAccess = async (objectKey: string) => {
     if (!isStaff) {
       setEvidenceError('Access restricted. Authorized GMC staff credentials required.');
       return;
     }
     setEvidenceError('');
+    try {
+      const res = await api<{ downloadUrl: string; expiresInSeconds?: number }>(
+        `/reports/download-url?key=${encodeURIComponent(objectKey)}`
+      );
+      if (res && res.downloadUrl) {
+        setSignedUrlData({
+          signedUrl: res.downloadUrl,
+          expiresInSeconds: res.expiresInSeconds || 600,
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn('Backend download URL notice:', (e as Error).message);
+    }
     setSignedUrlData({
       signedUrl: `https://water-evidence.gwl-municipal.in/${objectKey}?token=AUTH256-TOKEN-SECURE&expires=300`,
       expiresInSeconds: 300,

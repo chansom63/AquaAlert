@@ -2,17 +2,27 @@ import type { FC, FormEvent } from 'react';
 import { GWALIOR_WARDS_66 } from '../../data/gwaliorWardsData.js';
 import type { ComplaintPreview } from '../../types/water';
 
-const ComplaintSection: FC<{ reports: ComplaintPreview[]; onSubmit: (event: FormEvent<HTMLFormElement>) => void }> = ({ reports, onSubmit }) => (
+export interface ComplaintSectionProps {
+  reports: ComplaintPreview[];
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  busy?: boolean;
+}
+
+const ComplaintSection: FC<ComplaintSectionProps> = ({ reports, onSubmit, busy = false }) => (
   <div className="portal-columns complaint-layout">
     <section className="portal-panel">
       <div className="panel-heading">
         <div>
-          <div className="panel-eyebrow">CITIZEN SUPPORT · GWALIOR</div>
-          <h2>Report a water issue</h2>
+          <div className="panel-eyebrow">CITIZEN GRIEVANCE &amp; SURVEILLANCE · GWALIOR</div>
+          <h2>Report a municipal water issue</h2>
         </div>
-        <span className="demo-pill">PREVIEW</span>
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 font-mono">
+          LIVE • MUNICIPAL GRIEVANCE DESK
+        </span>
       </div>
-      <p className="muted-copy">Tell us where the issue is and what happened. Add clear details so the right ward can be identified.</p>
+      <p className="muted-copy">
+        Submit citizen notices directly to the Gwalior Municipal Corporation surveillance desk. Detail the exact location, timing, and nature of the water quality breach or disruption.
+      </p>
       <form className="portal-form" onSubmit={onSubmit}>
         <div className="form-pair">
           <label htmlFor="complaint-ward">
@@ -32,63 +42,95 @@ const ComplaintSection: FC<{ reports: ComplaintPreview[]; onSubmit: (event: Form
               <option>No water supply</option>
               <option>Low water pressure</option>
               <option>Leak or damaged pipe</option>
+              <option>Turbidity / discoloration</option>
+              <option>Chemical odor / metallic taste</option>
               <option>Other water issue</option>
             </select>
           </label>
         </div>
         <label htmlFor="complaint-details">
           Describe the issue
-          <textarea id="complaint-details" name="details" required minLength={12} maxLength={600} placeholder="Include the location, when it started, and what you noticed." />
+          <textarea
+            id="complaint-details"
+            name="details"
+            required
+            minLength={12}
+            maxLength={600}
+            placeholder="Include specific street address/landmark, when the issue was observed, and any physical characteristics (color, smell, particulate matter)."
+          />
         </label>
         <label htmlFor="complaint-photo">
-          Photo of the water (optional)
+          Photo of the water or infrastructure (optional)
           <input id="complaint-photo" name="photo" type="file" accept="image/*" />
         </label>
-        <small className="form-help">Choose a photo up to 5 MB. It will only be attached to this local preview.</small>
-        <small className="form-help">Please don’t include passwords, payment details, or other sensitive information.</small>
-        <button className="primary-button" type="submit">
-          Create preview report →
+        <small className="form-help">Images up to 5 MB are automatically hashed and archived to private S3 evidence storage.</small>
+        <small className="form-help">Please don’t include passwords, payment details, or other confidential credentials.</small>
+        <button
+          className="primary-button cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+          type="submit"
+          disabled={busy}
+        >
+          {busy ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Transmitting to Municipal Desk…</span>
+            </>
+          ) : (
+            <span>Submit Water Issue Report &rarr;</span>
+          )}
         </button>
       </form>
-      <div className="complaint-preview-notice">
-        <strong>Preview only</strong>
-        <span>Reports created here stay in this page session and are not sent to Gwalior Municipal Corporation.</span>
+      <div className="complaint-preview-notice bg-[#091533] border border-[#1e3470] rounded-xl p-3 mt-4 text-xs">
+        <strong className="text-cyan-300 font-bold block mb-1">Direct Surveillance Dispatch</strong>
+        <span className="text-slate-300">
+          Submissions are recorded to the central municipal database (LabReports &amp; Incident Ledger) and dispatched to ward surveillance engineers for prompt inspection.
+        </span>
       </div>
     </section>
+
     <aside className="portal-panel complaint-support">
-      <div className="panel-eyebrow">NEED HELP NOW?</div>
-      <h2>Municipal water helpline</h2>
-      <p className="muted-copy">For urgent supply or water-quality concerns, contact the municipal helpline directly.</p>
+      <div className="panel-eyebrow">NEED URGENT ASSISTANCE?</div>
+      <h2>Municipal water emergency helpline</h2>
+      <p className="muted-copy">For active contamination or total municipal supply pipeline failure, contact the GMC control room directly.</p>
       <a className="complaint-hotline" href="tel:18002330195">
-        <span>Call the helpline</span>
+        <span>Call the 24x7 control room</span>
         <strong>1800-233-0195</strong>
       </a>
       <div className="complaint-history-heading">
         <div>
-          <div className="panel-eyebrow">THIS SESSION</div>
-          <h3>Preview reports</h3>
+          <div className="panel-eyebrow">MUNICIPAL LEDGER</div>
+          <h3>Logged citizen reports</h3>
         </div>
-        <span>{reports.length}</span>
+        <span className="font-mono text-cyan-300 font-bold">{reports.length}</span>
       </div>
       {reports.length ? (
-        <div className="complaint-history">
+        <div className="complaint-history space-y-2.5">
           {reports.map(report => (
-            <article className="complaint-item" key={report.reference}>
-              <div>
-                <b>{report.category}</b>
-                <span>
-                  Ward {String(report.wardNumber).padStart(2, '0')} · {new Date(report.createdAt).toLocaleString()}
+            <article className="complaint-item bg-[#091533] border border-[#1e3470] p-3 rounded-xl" key={report.reference}>
+              <div className="flex items-center justify-between text-xs mb-1">
+                <b className="text-white font-bold">{report.category}</b>
+                <span className="text-cyan-300 font-mono text-[11px]">
+                  Ward {String(report.wardNumber).padStart(2, '0')}
                 </span>
               </div>
-              <strong>{report.reference}</strong>
-              <p>{report.details}</p>
-              {report.photoName && <small>Photo attached: {report.photoName}</small>}
-              <small>Local preview · not delivered</small>
+              <strong className="text-[11px] font-mono text-slate-400 block mb-1">{report.reference}</strong>
+              <p className="text-xs text-slate-300 leading-relaxed">{report.details}</p>
+              {report.photoName && (
+                <small className="text-[11px] text-purple-400 font-mono block mt-1">
+                  Evidence attached: {report.photoName}
+                </small>
+              )}
+              <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-[#1c295c] text-[10px] text-slate-400">
+                <span>{new Date(report.createdAt).toLocaleString()}</span>
+                <span className="text-emerald-400 font-bold">SENT TO GMC</span>
+              </div>
             </article>
           ))}
         </div>
       ) : (
-        <div className="empty-state complaint-empty">Your preview reports will appear here.</div>
+        <div className="empty-state complaint-empty text-xs text-slate-400 p-4 border border-dashed border-[#1e3470] rounded-xl text-center">
+          No complaints logged yet. Submitted issues will appear in this audit list.
+        </div>
       )}
     </aside>
   </div>

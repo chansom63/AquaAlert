@@ -125,7 +125,13 @@ const CitizenPage: FC = () => {
           }}
         />
       )}
-      {page === 'Reports' && <ComplaintSection reports={data.complaints} onSubmit={data.submitComplaint} />}
+      {page === 'Reports' && (
+        <ComplaintSection
+          reports={data.complaints}
+          onSubmit={data.submitComplaint}
+          busy={data.busy}
+        />
+      )}
 
       {/* Slide-over Detail Drawer matching user specifications */}
       {drawerSourceId && (

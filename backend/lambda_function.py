@@ -494,35 +494,49 @@ def handle_get_report_by_id(report_id):
 
 def handle_post_report(body):
     source_id = body.get("sourceId")
-    s3_key = body.get("s3Key")
-    if not source_id or not s3_key:
+    if not source_id:
         return make_response(400, {
             "error": {
                 "code": "VALIDATION_ERROR",
-                "message": "sourceId and s3Key (pointer to S3 object) are required."
+                "message": "sourceId is required."
             }
         })
 
     now_iso = datetime.now(timezone.utc).isoformat()
-    report_id = body.get("reportId") or f"REP-LAB-{int(datetime.now().timestamp())}-{uuid.uuid4().hex[:4].upper()}"
+    report_type = body.get("reportType", "Lab Report")
+    prefix = "complaints" if "complaint" in report_type.lower() else "lab-reports"
+    report_id = body.get("reportId") or f"REP-{int(datetime.now().timestamp())}-{uuid.uuid4().hex[:4].upper()}"
+    s3_key = body.get("s3Key") or f"reports/{prefix}/{report_id}.json"
 
     s3_bucket = body.get("s3Bucket") or EVIDENCE_BUCKET
     s3_uri = body.get("s3Uri") or f"s3://{s3_bucket}/{s3_key}"
     filename = body.get("filename") or os.path.basename(s3_key)
 
+    is_lab = "lab" in report_type.lower()
     report_item = {
         "reportId": report_id,
         "sourceId": source_id,
         "sourceName": body.get("sourceName", source_id),
-        "title": body.get("title", f"Laboratory Water Quality Analysis - {source_id}"),
-        "reportType": body.get("reportType", "Lab Report"),
+        "title": body.get("title", f"{report_type} - {source_id}"),
+        "reportType": report_type,
+        "category": body.get("category", ""),
+        "wardNumber": int(body.get("wardNumber", 0)) if str(body.get("wardNumber", "")).isdigit() else 0,
         "uploadedAt": body.get("uploadedAt", now_iso),
-        "uploadedBy": body.get("uploadedBy", "Accredited Lab Chemist"),
-        "sampleId": body.get("sampleId", f"GWL-LAB-{uuid.uuid4().hex[:4].upper()}"),
-        "labName": body.get("labName", "PHED Central Water Analytical Testing Laboratory"),
-        "nablCertNumber": body.get("nablCertNumber", "TC-8491"),
-        "verificationStatus": body.get("verificationStatus", "LAB_VERIFIED"),
-        "notes": body.get("notes", ""),
+        "uploadedBy": body.get("uploadedBy", "Accredited Lab Chemist" if is_lab else "Citizen Portal"),
+        "sampleId": body.get("sampleId", f"GWL-{uuid.uuid4().hex[:4].upper()}"),
+        "labName": body.get("labName", "PHED Central Water Analytical Testing Laboratory" if is_lab else "Municipal Citizen Helpdesk"),
+        "nablCertNumber": body.get("nablCertNumber", "TC-8491" if is_lab else "N/A"),
+        "verificationStatus": body.get("verificationStatus", "LAB_VERIFIED" if is_lab else "PENDING_REVIEW"),
+        "notes": body.get("notes") or body.get("details", ""),
+        "s3Bucket": s3_bucket,
+        "s3Key": s3_key,
+        "s3Uri": s3_uri,
+        "filename": filename,
+        "contentType": body.get("contentType", "application/pdf" if is_lab else "application/json"),
+        "fileSizeBytes": int(body.get("fileSizeBytes", 0)),
+        "fileSizeFormatted": body.get("fileSizeFormatted", "1.2 MB"),
+        "sha256Checksum": body.get("sha256Checksum", "")
+    }
         "s3Bucket": s3_bucket,
         "s3Key": s3_key,
         "s3Uri": s3_uri,

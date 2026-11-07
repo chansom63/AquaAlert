@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FC } from 'react';
 import { api } from '../../api/client';
+import { recordsFrom } from '../../api/adminRecords';
 import { GMC_ZONES_25, GWALIOR_WARDS_66 } from '../../data/gwaliorWardsData.js';
 import type { Reading, Source } from '../../types/water';
 import { MapExplorer } from '../MapExplorer';
@@ -26,9 +27,11 @@ const GwaliorWardOverview: FC<{ sources: Source[] }> = ({ sources }) => {
   useEffect(() => {
     let active = true;
     setWardReadingsLoading(true);
-    api<Reading[]>(`/sources/${encodeURIComponent(currentSourceId)}/readings`)
-      .then(items => {
-        if (active && Array.isArray(items)) {
+    api<unknown>(`/sources/${encodeURIComponent(currentSourceId)}/readings`)
+      .then(res => {
+        if (!active) return;
+        const items = recordsFrom(res) as unknown as Reading[];
+        if (items.length > 0) {
           setWardReadings(items);
         }
       })

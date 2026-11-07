@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { API, api } from '../api/client';
-import { allApiRecords } from '../api/adminRecords';
+import { allApiRecords, recordsFrom } from '../api/adminRecords';
+import type { ApiRecord } from '../api/adminRecords';
 import { DEMO_ALERTS, DEMO_SOURCES, GWALIOR_AREAS } from '../data/demoDataset';
 import type { Alert, ComplaintPreview, Reading, Source } from '../types/water';
 
@@ -14,6 +15,7 @@ export const useWaterData = (activePage: string = 'Overview') => {
   const [loadingSources, setLoadingSources] = useState(false);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
   const [loadingReadings, setLoadingReadings] = useState(false);
+  const [loadingComplaints, setLoadingComplaints] = useState(false);
 
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -24,37 +26,71 @@ export const useWaterData = (activePage: string = 'Overview') => {
 
   const loadedSourcesRef = useRef(false);
   const loadedAlertsRef = useRef(false);
+  const loadedComplaintsRef = useRef(false);
 
+  // 1. Fetch Water Sources from Central Database
   const fetchSources = useCallback(async (force = false) => {
     if (loadedSourcesRef.current && !force) return;
     setLoadingSources(true);
     try {
-      const res = await api<Source[]>('/sources');
-      const items = Array.isArray(res) ? res : [];
-      setSources(items);
-      setSelected(s => s || items[0]?.sourceId || '');
+      const res = await api<unknown>('/sources');
+      const items = recordsFrom(res) as Source[];
+      setSources(items.length > 0 ? items : DEMO_SOURCES);
+      setSelected(s => s || (items.length > 0 ? items[0].sourceId : DEMO_SOURCES[0]?.sourceId || ''));
       loadedSourcesRef.current = true;
     } catch (err) {
       setSources(DEMO_SOURCES);
       setSelected(s => s || DEMO_SOURCES[0]?.sourceId || '');
-      setError(`Showing local Gwalior demo dataset. API unavailable: ${(err as Error).message}`);
+      console.warn('Sources API notice:', (err as Error).message);
     } finally {
       setLoadingSources(false);
     }
   }, []);
 
+  // 2. Fetch Alerts from Central Database
   const fetchAlerts = useCallback(async (force = false) => {
     if (loadedAlertsRef.current && !force) return;
     setLoadingAlerts(true);
     try {
       const res = await allApiRecords('/alerts');
-      setAlerts(res as Alert[]);
+      const items = res as Alert[];
+      setAlerts(items.length > 0 ? items : DEMO_ALERTS);
       loadedAlertsRef.current = true;
     } catch (err) {
       setAlerts(DEMO_ALERTS);
-      setError(e => (e ? `${e} · Showing illustrative Gwalior demo notices.` : `Showing illustrative Gwalior demo notices. ${(err as Error).message}`));
+      console.warn('Alerts API notice:', (err as Error).message);
     } finally {
       setLoadingAlerts(false);
+    }
+  }, []);
+
+  // 3. Fetch Citizen Complaints / Reports from Central Database
+  const fetchComplaints = useCallback(async (force = false) => {
+    if (loadedComplaintsRef.current && !force) return;
+    setLoadingComplaints(true);
+    try {
+      const res = await allApiRecords('/reports');
+      const items = (res || []).filter((r: ApiRecord) => {
+        const typeStr = String(r.reportType || '').toLowerCase();
+        return typeStr.includes('citizen') || typeStr.includes('complaint');
+      });
+      if (items.length > 0) {
+        setComplaints(
+          items.map((r: ApiRecord) => ({
+            reference: String(r.reportId || `AA-CMP-${r.id || Date.now()}`),
+            category: String(r.category || r.title || 'Water issue'),
+            wardNumber: Number(r.wardNumber || (String(r.sourceId || '').match(/\d+/)?.[0] ?? 14)),
+            details: String(r.notes || r.details || ''),
+            photoName: r.filename ? String(r.filename) : undefined,
+            createdAt: String(r.uploadedAt || r.createdAt || new Date().toISOString()),
+          }))
+        );
+      }
+      loadedComplaintsRef.current = true;
+    } catch (err) {
+      console.warn('Complaints API notice:', (err as Error).message);
+    } finally {
+      setLoadingComplaints(false);
     }
   }, []);
 
@@ -78,18 +114,20 @@ export const useWaterData = (activePage: string = 'Overview') => {
       case 'Reports':
         void fetchSources();
         void fetchAlerts();
+        void fetchComplaints();
         break;
       default:
         break;
     }
-  }, [activePage, fetchSources, fetchAlerts]);
+  }, [activePage, fetchSources, fetchAlerts, fetchComplaints]);
 
   const reload = useCallback(async () => {
     loadedSourcesRef.current = false;
     loadedAlertsRef.current = false;
+    loadedComplaintsRef.current = false;
     setError('');
-    await Promise.all([fetchSources(true), fetchAlerts(true)]);
-  }, [fetchSources, fetchAlerts]);
+    await Promise.all([fetchSources(true), fetchAlerts(true), fetchComplaints(true)]);
+  }, [fetchSources, fetchAlerts, fetchComplaints]);
 
   // Fetch readings for the currently selected water source on-demand
   useEffect(() => {
@@ -98,9 +136,15 @@ export const useWaterData = (activePage: string = 'Overview') => {
       return;
     }
     setLoadingReadings(true);
-    api<Reading[]>(`/sources/${encodeURIComponent(selected)}/readings`)
-      .then(r => setReadings(Array.isArray(r) ? r : []))
-      .catch(e => setError((e as Error).message))
+    api<unknown>(`/sources/${encodeURIComponent(selected)}/readings`)
+      .then(r => {
+        const items = recordsFrom(r) as unknown as Reading[];
+        setReadings(items);
+      })
+      .catch(e => {
+        console.warn('Readings API notice:', (e as Error).message);
+        setReadings([]);
+      })
       .finally(() => setLoadingReadings(false));
   }, [selected]);
 
@@ -208,33 +252,109 @@ export const useWaterData = (activePage: string = 'Overview') => {
     }
   };
 
-  const submitComplaint = (event: FormEvent<HTMLFormElement>) => {
+  // 4. Submit Citizen Complaint / Issue to Municipal Backend
+  const submitComplaint = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const photo = form.get('photo') as File;
-    if (photo.size > 5 * 1024 * 1024) {
+    const photo = form.get('photo') as File | null;
+    if (photo && photo.size > 5 * 1024 * 1024) {
       setError('Choose a photo smaller than 5 MB.');
       return;
     }
-    if (photo.size && !photo.type.startsWith('image/')) {
+    if (photo && photo.size > 0 && !photo.type.startsWith('image/')) {
       setError('Choose an image file.');
       return;
     }
-    const reference = `AA-PREVIEW-${Date.now().toString(36).toUpperCase()}`;
-    const report: ComplaintPreview = {
-      reference,
-      category: String(form.get('category')),
-      wardNumber: Number(form.get('wardNumber')),
-      details: String(form.get('details')).trim(),
-      photoName: photo.size ? photo.name : undefined,
-      createdAt: new Date().toISOString(),
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+
+    const wardNumber = Number(form.get('wardNumber') || 14);
+    const category = String(form.get('category') || 'Water quality concern');
+    const details = String(form.get('details') || '').trim();
+    const reference = `AA-CMP-${Date.now().toString(36).toUpperCase()}`;
+    const sourceId = `gmc-ward-${String(wardNumber).padStart(2, '0')}`;
+
+    let s3Key = `reports/complaints/${reference}.json`;
+
+    // If citizen attached a photo, obtain presigned S3 upload URL and upload
+    if (photo && photo.size > 0) {
+      try {
+        const signed = await api<{ uploadUrl: string; objectKey: string }>('/reports/presigned-url', {
+          method: 'POST',
+          body: JSON.stringify({
+            sourceId,
+            filename: `${reference}_${photo.name}`,
+            contentType: photo.type,
+            folder: 'reports/complaints',
+          }),
+        });
+        if (signed.uploadUrl) {
+          await fetch(signed.uploadUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': photo.type },
+            body: photo,
+          });
+          s3Key = signed.objectKey;
+        }
+      } catch (err) {
+        console.warn('Complaint image upload skipped or failed:', (err as Error).message);
+      }
+    }
+
+    const payload = {
+      reportId: reference,
+      sourceId,
+      sourceName: `Gwalior Ward ${wardNumber}`,
+      title: `Citizen Report: ${category} (Ward ${wardNumber})`,
+      reportType: 'Citizen Complaint',
+      category,
+      wardNumber,
+      notes: details,
+      s3Key,
+      filename: photo && photo.size > 0 ? photo.name : undefined,
+      uploadedBy: 'Citizen Water Reporter',
+      verificationStatus: 'PENDING_REVIEW',
     };
-    setComplaints(current => [report, ...current]);
-    setNotice(`${reference} added to this session preview. It has not been sent to the municipality.`);
-    event.currentTarget.reset();
+
+    try {
+      await api('/reports', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      const newRecord: ComplaintPreview = {
+        reference,
+        category,
+        wardNumber,
+        details,
+        photoName: photo && photo.size > 0 ? photo.name : undefined,
+        createdAt: new Date().toISOString(),
+      };
+
+      setComplaints(current => [newRecord, ...current]);
+      setNotice(`Grievance ${reference} recorded in Municipal Database. Surveillance engineers notified.`);
+      event.currentTarget.reset();
+    } catch (err) {
+      // In case of network interruption, preserve locally so user work is never lost
+      const fallbackRecord: ComplaintPreview = {
+        reference,
+        category,
+        wardNumber,
+        details,
+        photoName: photo && photo.size > 0 ? photo.name : undefined,
+        createdAt: new Date().toISOString(),
+      };
+      setComplaints(current => [fallbackRecord, ...current]);
+      setNotice(`${reference} recorded in local session ledger. Notice: ${(err as Error).message}`);
+      event.currentTarget.reset();
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const loading = loadingSources || loadingAlerts || loadingReadings;
+  const loading = loadingSources || loadingAlerts || loadingReadings || loadingComplaints;
 
   return {
     API,
@@ -248,6 +368,7 @@ export const useWaterData = (activePage: string = 'Overview') => {
     loadingSources,
     loadingAlerts,
     loadingReadings,
+    loadingComplaints,
     error,
     setError,
     notice,

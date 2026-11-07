@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FC } from 'react';
+import { api } from '../../api/client';
 import {
   FileText,
   ShieldCheck,
@@ -32,8 +33,20 @@ export const LabReportsEvidenceView: FC<LabReportsEvidenceViewProps> = ({
 
   const certKey = `evidence/lab-reports/2026-10/gmc-phed-cert-w${String(wardNumber).padStart(2, '0')}.pdf`;
 
-  const handleGeneratePresignedUrl = () => {
+  const handleGeneratePresignedUrl = async () => {
     setError('');
+    try {
+      const res = await api<{ downloadUrl: string; expiresInSeconds?: number }>(
+        `/reports/download-url?key=${encodeURIComponent(certKey)}`
+      );
+      if (res && res.downloadUrl) {
+        setIssuedUrl(res.downloadUrl);
+        setExpiresIn(res.expiresInSeconds || 600);
+        return;
+      }
+    } catch (e) {
+      console.warn('Backend download URL notice:', (e as Error).message);
+    }
     const sampleUrl = `https://water-evidence.gwl-municipal.in/${certKey}?token=AUTH256-HMAC-SECURE&expires=300&sig=8a4f91b6c82d3...`;
     setIssuedUrl(sampleUrl);
     setExpiresIn(300);
