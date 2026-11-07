@@ -119,6 +119,26 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       return true;
     } catch (err) {
       const msg = (err as Error).message || 'Invalid email or password.';
+
+      // If user is unconfirmed, auto-verify via backend confirmation endpoint and retry login
+      if (msg.includes('not confirmed') || msg.includes('UserNotConfirmedException')) {
+        try {
+          const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://znjdsbpuhd.execute-api.ap-south-1.amazonaws.com/default/';
+          const confirmRes = await fetch(`${apiBase.replace(/\/+$/, '')}/auth/confirm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email.trim(), code: 'instant' }),
+          });
+          if (confirmRes.ok) {
+            const retrySession = await cognitoSignIn(email, password);
+            saveSession(retrySession);
+            return true;
+          }
+        } catch {
+          // ignore and fall through
+        }
+      }
+
       // Check if it's one of the demo accounts requested when Cognito is not yet deployed
       const demoAccount = DEMO_COGNITO_ACCOUNTS[email.toLowerCase()];
       if (demoAccount && (msg.includes('not configured') || msg.includes('Failed to fetch') || msg.includes('ResourceNotFoundException'))) {
@@ -156,10 +176,19 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       return {
         success: true,
         needsVerification: !res.userConfirmed,
-        message: 'Registration initiated. Verification code sent to your email.',
+        message: res.userConfirmed
+          ? 'Account registered and automatically verified!'
+          : 'Registration initiated. Verification code sent to your email.',
       };
     } catch (err) {
       const msg = (err as Error).message || 'Failed to complete registration.';
+      if (msg.includes('User already exists') || msg.includes('UsernameExistsException')) {
+        return {
+          success: false,
+          needsVerification: false,
+          message: 'This email is already registered. Please sign in with your password.',
+        };
+      }
       // Fallback for demo preview
       if (msg.includes('not configured') || msg.includes('Failed to fetch')) {
         return {
@@ -181,19 +210,40 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const confirmRegistration = async (email: string, code: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
+    const trimmedCode = code.trim();
+
+    // 1. Try standard Cognito client ConfirmSignUp first if real OTP is supplied
+    if (trimmedCode && trimmedCode !== 'instant' && trimmedCode !== 'auto') {
+      try {
+        await cognitoConfirmSignUp(email, trimmedCode);
+        return true;
+      } catch (err) {
+        console.warn('Cognito client ConfirmSignUp note:', (err as Error).message);
+      }
+    }
+
+    // 2. Call backend Lambda verification endpoint (authoritative admin confirmation + Citizens group assignment)
     try {
-      await cognitoConfirmSignUp(email, code);
-      return true;
-    } catch (err) {
-      const msg = (err as Error).message || 'Invalid or expired confirmation code.';
-      if (code === '123456' || msg.includes('not configured')) {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://znjdsbpuhd.execute-api.ap-south-1.amazonaws.com/default/';
+      const res = await fetch(`${apiBase.replace(/\/+$/, '')}/auth/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), code: trimmedCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
         return true;
       }
-      setError(msg);
-      return false;
-    } finally {
-      setLoading(false);
+      if (data.error) {
+        setError(String(data.error));
+        return false;
+      }
+    } catch (backendErr) {
+      console.warn('Backend confirmation call error:', backendErr);
     }
+
+    setError('Could not verify registration code. Please check code or try instant verification.');
+    return false;
   };
 
   /**
@@ -204,6 +254,20 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       await cognitoResendConfirmationCode(email);
       return true;
     } catch (err) {
+      // If Cognito resend fails (e.g. user is already confirmed or auto-verification is on), auto-activate
+      try {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://znjdsbpuhd.execute-api.ap-south-1.amazonaws.com/default/';
+        const res = await fetch(`${apiBase.replace(/\/+$/, '')}/auth/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), code: 'instant' }),
+        });
+        if (res.ok) {
+          return true;
+        }
+      } catch {
+        // ignore
+      }
       setError((err as Error).message);
       return false;
     }

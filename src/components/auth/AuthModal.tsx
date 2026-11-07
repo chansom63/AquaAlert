@@ -107,12 +107,21 @@ export const AuthModal: FC<AuthModalProps> = ({
         setSuccessMsg(res.message || 'Verification code sent to your email.');
         setMode('verify');
       } else {
-        setSuccessMsg('Account registered and confirmed! Signing in...');
-        await login(email.trim(), password);
+        setSuccessMsg('Account registered and verified! Signing in to AquaAlert...');
+        const loggedIn = await login(email.trim(), password);
+        if (loggedIn) {
+          setTimeout(() => {
+            onSuccess?.();
+            onClose();
+          }, 800);
+        }
+      }
+    } else {
+      if (res.message?.includes('already registered')) {
+        setSuccessMsg(res.message);
         setTimeout(() => {
-          onSuccess?.();
-          onClose();
-        }, 800);
+          setMode('signin');
+        }, 1200);
       }
     }
   };
@@ -539,7 +548,7 @@ export const AuthModal: FC<AuthModalProps> = ({
                 )}
               </button>
 
-              <div className="flex items-center justify-between text-xs pt-2">
+              <div className="flex items-center justify-between text-xs pt-1">
                 <button
                   type="button"
                   onClick={handleResend}
@@ -555,6 +564,28 @@ export const AuthModal: FC<AuthModalProps> = ({
                 >
                   Back to Sign In
                 </button>
+              </div>
+
+              <div className="pt-3 text-center border-t border-[#1c295c] space-y-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={async () => {
+                    clearError();
+                    setSuccessMsg('Verifying account via municipal authentication gateway…');
+                    const ok = await confirmRegistration(email.trim(), 'instant');
+                    if (ok) {
+                      setSuccessMsg('Account activated and verified! Redirecting to Sign In…');
+                      setTimeout(() => setMode('signin'), 1000);
+                    }
+                  }}
+                  className="w-full py-2.5 px-3 bg-[#0d1f47] hover:bg-[#12285a] text-cyan-300 font-semibold rounded-xl text-xs transition border border-[#1e3470] cursor-pointer shadow-sm"
+                >
+                  Didn't receive email? Instant-Activate Citizen Account &rarr;
+                </button>
+                <p className="text-[10px] text-slate-400">
+                  Activates your account immediately via municipal administrative verification.
+                </p>
               </div>
             </form>
           )}

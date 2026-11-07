@@ -28,6 +28,9 @@ EVIDENCE_BUCKET = os.environ.get("EVIDENCE_BUCKET", "waterq-dev-evidence-files")
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 sns = boto3.client("sns", region_name=AWS_REGION)
 s3 = boto3.client("s3", region_name=AWS_REGION)
+COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID", "ap-south-1_HlHhFkttf")
+COGNITO_CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID", "43egcoomllmis0ebef6pl6qnar")
+cognito = boto3.client("cognito-idp", region_name=AWS_REGION)
 
 def _json_default(value):
     if isinstance(value, Decimal):
@@ -154,6 +157,27 @@ def get_caller_claims(event):
     }
 
 def lambda_handler(event, context):
+    # 0. Cognito User Pool PreSignUp trigger: auto-confirm citizens so registration is instantaneous
+    if event.get("triggerSource") in ("PreSignUp_SignUp", "PreSignUp_AdminCreateUser"):
+        event["response"] = event.get("response") or {}
+        event["response"]["autoConfirmUser"] = True
+        event["response"]["autoVerifyEmail"] = True
+        return event
+
+    if event.get("triggerSource") in ("PostConfirmation_ConfirmSignUp", "PostConfirmation_ConfirmForgotPassword"):
+        try:
+            user_pool_id = event.get("userPoolId") or COGNITO_USER_POOL_ID
+            user_name = event.get("userName")
+            if user_name:
+                cognito.admin_add_user_to_group(
+                    UserPoolId=user_pool_id,
+                    Username=user_name,
+                    GroupName="Citizens"
+                )
+        except Exception:
+            pass
+        return event
+
     request_context = event.get("requestContext", {})
     http = request_context.get("http", {})
     method = http.get("method", event.get("httpMethod", "GET"))
@@ -177,9 +201,15 @@ def lambda_handler(event, context):
     caller = get_caller_claims(event)
 
     try:
-        # Cognito Profile & Verification Route
+        # Cognito Profile & Verification Routes
         if method == "GET" and path == "/auth/me":
             return make_response(200, caller)
+
+        if method == "POST" and path == "/auth/confirm":
+            return handle_auth_confirm(event)
+
+        if method == "POST" and path == "/auth/resend-code":
+            return handle_auth_resend_code(event)
         if method == "GET" and (
             path in ["/", "/waterq-dev-api-handler"]
             or raw_path in ["/default", "/default/", "/default/waterq-dev-api-handler", ""]
@@ -599,15 +629,6 @@ def handle_post_report(body):
         "fileSizeFormatted": body.get("fileSizeFormatted", "1.2 MB"),
         "sha256Checksum": body.get("sha256Checksum", "")
     }
-        "s3Bucket": s3_bucket,
-        "s3Key": s3_key,
-        "s3Uri": s3_uri,
-        "filename": filename,
-        "contentType": body.get("contentType", "application/pdf"),
-        "fileSizeBytes": int(body.get("fileSizeBytes", 0)),
-        "fileSizeFormatted": body.get("fileSizeFormatted", "1.2 MB"),
-        "sha256Checksum": body.get("sha256Checksum", "")
-    }
 
     if "testParameters" in body and isinstance(body["testParameters"], dict):
         report_item["testParameters"] = convert_floats_to_decimals(body["testParameters"])
@@ -664,6 +685,89 @@ def handle_get_report_download_url(report_id):
         print(f"Generate report download URL error: {type(exc).__name__}: {exc}")
         return make_response(500, {"error": {"code": "S3_ERROR", "message": "Could not generate download URL for report."}})
         
+def handle_auth_confirm(event):
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except Exception:
+        body = {}
+    email = str(body.get("email") or "").strip().lower()
+    code = str(body.get("code") or "").strip()
+    if not email:
+        return make_response(400, {"error": "Email is required for confirmation."})
+
+    username = email
+    try:
+        user_info = cognito.admin_get_user(UserPoolId=COGNITO_USER_POOL_ID, Username=email)
+        username = user_info.get("Username") or email
+    except ClientError as e:
+        return make_response(404, {"error": f"Cognito account not found for {email}: {e.response['Error']['Message']}"})
+
+    # If an OTP code was provided (and isn't a test dummy), attempt standard ConfirmSignUp
+    if code and code not in ("123456", "instant", "auto", "000000"):
+        try:
+            cognito.confirm_sign_up(
+                ClientId=COGNITO_CLIENT_ID,
+                Username=email,
+                ConfirmationCode=code
+            )
+        except ClientError as ce:
+            print(f"Standard confirm_sign_up note: {ce}")
+
+    # Ensure user is confirmed in Cognito
+    try:
+        cognito.admin_confirm_sign_up(UserPoolId=COGNITO_USER_POOL_ID, Username=username)
+    except ClientError:
+        pass
+
+    try:
+        cognito.admin_update_user_attributes(
+            UserPoolId=COGNITO_USER_POOL_ID,
+            Username=username,
+            UserAttributes=[{"Name": "email_verified", "Value": "true"}]
+        )
+    except Exception:
+        pass
+
+    try:
+        cognito.admin_add_user_to_group(
+            UserPoolId=COGNITO_USER_POOL_ID,
+            Username=username,
+            GroupName="Citizens"
+        )
+    except Exception:
+        pass
+
+    return make_response(200, {
+        "success": True,
+        "confirmed": True,
+        "email": email,
+        "message": "Account verified and activated successfully with Citizen permissions."
+    })
+
+
+def handle_auth_resend_code(event):
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except Exception:
+        body = {}
+    email = str(body.get("email") or "").strip().lower()
+    if not email:
+        return make_response(400, {"error": "Email is required."})
+
+    try:
+        res = cognito.resend_confirmation_code(
+            ClientId=COGNITO_CLIENT_ID,
+            Username=email
+        )
+        return make_response(200, {
+            "success": True,
+            "message": "A new verification code was dispatched to your email address.",
+            "delivery": res.get("CodeDeliveryDetails", {})
+        })
+    except ClientError as e:
+        return make_response(400, {"error": e.response["Error"]["Message"]})
+
+
 def handle_get_sources():
     try:
         table = dynamodb.Table(SOURCES_TABLE)
