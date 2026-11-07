@@ -40,6 +40,7 @@ import { useAdminTablesData } from '../hooks/useAdminTablesData';
 import { humanize, displayDate } from '../api/adminRecords';
 import { api } from '../api/client';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../components/common/SubmissionSuccessModal';
+import TabErrorBoundary from '../components/common/TabErrorBoundary';
 import '../styles/admin-dark.css';
 import LabReportsPanel from './admin/LabReportsPanel';
 import SubmitReadingPanel from './admin/SubmitReadingPanel';
@@ -821,22 +822,24 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
 
           {/* ── RULES & THRESHOLDS ── */}
           {activeNav === 'Rules & Thresholds' && (
-            <RulesThresholdsView
-              alerts={adminTables.alerts}
-              readings={adminTables.readings}
-              sources={adminTables.sources}
-              rules={adminTables.rules}
-              thresholds={adminTables.thresholds}
-              loading={adminTables.loadingRules || adminTables.loadingThresholds}
-              onNavigateToTab={handleNavChange}
-              onRefresh={adminTables.reloadAll}
-              onSaveRule={(rule) => adminTables.updateRule(rule.ruleId, rule)}
-              onCreateRule={adminTables.createRule}
-              onDeleteRule={adminTables.deleteRule}
-              onSaveThreshold={(threshold) => adminTables.updateThreshold(threshold.id, threshold)}
-              onCreateThreshold={adminTables.createThreshold}
-              onDeleteThreshold={adminTables.deleteThreshold}
-            />
+            <TabErrorBoundary tabName="Rules & Thresholds" onReset={adminTables.reloadAll}>
+              <RulesThresholdsView
+                alerts={adminTables.alerts}
+                readings={adminTables.readings}
+                sources={adminTables.sources}
+                rules={adminTables.rules}
+                thresholds={adminTables.thresholds}
+                loading={adminTables.loadingRules || adminTables.loadingThresholds}
+                onNavigateToTab={handleNavChange}
+                onRefresh={adminTables.reloadAll}
+                onSaveRule={(rule) => adminTables.updateRule(rule.ruleId, rule)}
+                onCreateRule={adminTables.createRule}
+                onDeleteRule={adminTables.deleteRule}
+                onSaveThreshold={(threshold) => adminTables.updateThreshold(threshold.id, threshold)}
+                onCreateThreshold={adminTables.createThreshold}
+                onDeleteThreshold={adminTables.deleteThreshold}
+              />
+            </TabErrorBoundary>
           )}
 
           {/* ── SETTINGS ── */}

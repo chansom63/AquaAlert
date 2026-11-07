@@ -688,6 +688,66 @@ const CATEGORY_BADGES: Record<string, string> = {
 
 // ── COMPONENT IMPLEMENTATION ──────────────────────────────────────────────────
 
+export const normalizeRuleItem = (raw: RuleItem | (Partial<RuleItem> & Record<string, unknown>)): RuleItem => {
+  const r = raw as Partial<RuleItem> & Record<string, unknown>;
+  const ruleId = String(r.ruleId || '');
+  const version = String(r.version || 'v1.0');
+  const effectiveFrom = String(r.effectiveFrom || '2026-10-24T00:00:00Z');
+  return {
+    ruleId,
+    parameter: String(r.parameter || ''),
+    parameterName: String(r.parameterName || r.parameter || ''),
+    condition: String(r.condition || ''),
+    operator: (r.operator || '>') as RuleItem['operator'],
+    threshold: String(r.threshold || ''),
+    numericThreshold: typeof r.numericThreshold === 'number' ? r.numericThreshold : parseFloat(String(r.threshold || '0')) || 0,
+    unit: String(r.unit || ''),
+    severity: (r.severity || 'Critical') as RuleItem['severity'],
+    version,
+    status: (r.status || 'Active') as RuleItem['status'],
+    effectiveFrom,
+    standardRef: String(r.standardRef || 'BIS IS 10500:2012'),
+    standardClause: String(r.standardClause || 'Table 1'),
+    category: (r.category || 'Chemical') as RuleItem['category'],
+    publicWording: String(r.publicWording || `${r.parameter || 'Water quality'} has breached the statutory threshold limit.`),
+    rationale: String(r.rationale || 'Potability specification breached according to Bureau of Indian Standards.'),
+    history: Array.isArray(r.history) && r.history.length > 0
+      ? (r.history as RuleItem['history'])
+      : [
+          {
+            version,
+            desc: 'Baseline calibration aligned with BIS IS 10500:2012 specifications.',
+            date: effectiveFrom.slice(0, 10),
+          },
+        ],
+  };
+};
+
+export const normalizeThresholdStandard = (raw: ThresholdStandard | (Partial<ThresholdStandard> & Record<string, unknown>)): ThresholdStandard => {
+  const t = raw as Partial<ThresholdStandard> & Record<string, unknown>;
+  const id = String(t.id || t.parameterId || 'TH-UNKNOWN');
+  return {
+    id,
+    parameter: String(t.parameter || id),
+    chemicalFormula: String(t.chemicalFormula || ''),
+    category: (t.category || 'Chemical') as ThresholdStandard['category'],
+    acceptableLimit: String(t.acceptableLimit || '—'),
+    permissibleLimit: String(t.permissibleLimit || '—'),
+    unit: String(t.unit || 'mg/L'),
+    standardReference: String(t.standardReference || 'BIS IS 10500:2012'),
+    clause: String(t.clause || 'Table 1'),
+    sensorMethod: String(t.sensorMethod || 'Standard Laboratory Assay'),
+    healthImpact: String(t.healthImpact || 'Contaminant breach above statutory tolerance threshold.'),
+    surveillanceFrequency: String(t.surveillanceFrequency || 'Daily Telemetry'),
+    enforcingRuleIds: Array.isArray(t.enforcingRuleIds) ? (t.enforcingRuleIds as string[]) : [],
+    enforcementStatus: (t.enforcementStatus || 'Mandatory Legal Limit') as ThresholdStandard['enforcementStatus'],
+    desirableMin: typeof t.desirableMin === 'number' ? t.desirableMin : undefined,
+    desirableMax: typeof t.desirableMax === 'number' ? t.desirableMax : undefined,
+    permissibleMax: typeof t.permissibleMax === 'number' ? t.permissibleMax : undefined,
+    description: String(t.description || ''),
+  };
+};
+
 export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   alerts = [],
   readings = [],
@@ -708,7 +768,9 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   const [activeTab, setActiveTab] = useState<'rules' | 'standards' | 'split'>(initialTab);
 
   // Rules Table State
-  const [rules, setRules] = useState<RuleItem[]>(() => (propRules && propRules.length > 0 ? propRules : INITIAL_RULES));
+  const [rules, setRules] = useState<RuleItem[]>(() =>
+    (propRules && propRules.length > 0 ? propRules.map(normalizeRuleItem) : INITIAL_RULES.map(normalizeRuleItem))
+  );
   const [selectedRuleId, setSelectedRuleId] = useState<string>('R-PH-001');
   const [ruleSearch, setRuleSearch] = useState('');
   const [ruleParamFilter, setRuleParamFilter] = useState('All Parameters');
@@ -717,7 +779,9 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   const [ruleCategoryFilter, setRuleCategoryFilter] = useState('All Categories');
 
   // Thresholds Table State
-  const [thresholds, setThresholds] = useState<ThresholdStandard[]>(() => (propThresholds && propThresholds.length > 0 ? propThresholds : STATUTORY_THRESHOLDS));
+  const [thresholds, setThresholds] = useState<ThresholdStandard[]>(() =>
+    (propThresholds && propThresholds.length > 0 ? propThresholds.map(normalizeThresholdStandard) : STATUTORY_THRESHOLDS.map(normalizeThresholdStandard))
+  );
   const [selectedThresholdId, setSelectedThresholdId] = useState<string>('TH-PH');
   const [thresholdSearch, setThresholdSearch] = useState('');
   const [thresholdCategoryFilter, setThresholdCategoryFilter] = useState('All Categories');
@@ -726,13 +790,13 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   // Sync with live DynamoDB data when loaded
   useEffect(() => {
     if (propRules && propRules.length > 0) {
-      setRules(propRules);
+      setRules(propRules.map(normalizeRuleItem));
     }
   }, [propRules]);
 
   useEffect(() => {
     if (propThresholds && propThresholds.length > 0) {
-      setThresholds(propThresholds);
+      setThresholds(propThresholds.map(normalizeThresholdStandard));
     }
   }, [propThresholds]);
 
@@ -747,13 +811,17 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
-  // Selected records
+  // Selected records with guaranteed fallback objects
   const selectedRule = useMemo(() => {
-    return rules.find(r => r.ruleId === selectedRuleId) ?? rules[0];
+    return rules.find(r => r.ruleId === selectedRuleId) || rules[0] || INITIAL_RULES[0];
   }, [rules, selectedRuleId]);
 
   const selectedThreshold = useMemo(() => {
-    return thresholds.find(t => t.id === selectedThresholdId) ?? thresholds[0];
+    return (
+      thresholds.find(t => t.id === selectedThresholdId || (t as any).parameterId === selectedThresholdId) ||
+      thresholds[0] ||
+      STATUTORY_THRESHOLDS[0]
+    );
   }, [thresholds, selectedThresholdId]);
 
   // Toast feedback helper
@@ -932,7 +1000,8 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
 
   // Jump from rule to its statutory threshold
   const handleJumpToStandard = (paramName: string) => {
-    const found = thresholds.find(t => t.parameter.toLowerCase().includes(paramName.toLowerCase()));
+    const target = (paramName || '').toLowerCase();
+    const found = thresholds.find(t => (t.parameter || '').toLowerCase().includes(target));
     if (found) {
       setSelectedThresholdId(found.id);
       setActiveTab('standards');
@@ -944,13 +1013,19 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   const filteredRules = useMemo(() => {
     const q = ruleSearch.toLowerCase().trim();
     return rules.filter(r => {
+      const ruleId = (r.ruleId || '').toLowerCase();
+      const param = (r.parameter || '').toLowerCase();
+      const paramName = (r.parameterName || '').toLowerCase();
+      const wording = (r.publicWording || '').toLowerCase();
+      const standardRef = (r.standardRef || '').toLowerCase();
+
       const matchSearch =
         !q ||
-        r.ruleId.toLowerCase().includes(q) ||
-        r.parameter.toLowerCase().includes(q) ||
-        r.parameterName.toLowerCase().includes(q) ||
-        r.publicWording.toLowerCase().includes(q) ||
-        r.standardRef.toLowerCase().includes(q);
+        ruleId.includes(q) ||
+        param.includes(q) ||
+        paramName.includes(q) ||
+        wording.includes(q) ||
+        standardRef.includes(q);
       const matchParam = ruleParamFilter === 'All Parameters' || r.parameter === ruleParamFilter;
       const matchSev = ruleSeverityFilter === 'All Severities' || r.severity === ruleSeverityFilter;
       const matchStatus = ruleStatusFilter === 'All Statuses' || r.status === ruleStatusFilter;
@@ -963,13 +1038,19 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   const filteredThresholds = useMemo(() => {
     const q = thresholdSearch.toLowerCase().trim();
     return thresholds.filter(t => {
+      const param = (t.parameter || '').toLowerCase();
+      const formula = (t.chemicalFormula || '').toLowerCase();
+      const health = (t.healthImpact || '').toLowerCase();
+      const clause = (t.clause || '').toLowerCase();
+      const method = (t.sensorMethod || '').toLowerCase();
+
       const matchSearch =
         !q ||
-        t.parameter.toLowerCase().includes(q) ||
-        (t.chemicalFormula && t.chemicalFormula.toLowerCase().includes(q)) ||
-        t.healthImpact.toLowerCase().includes(q) ||
-        t.clause.toLowerCase().includes(q) ||
-        t.sensorMethod.toLowerCase().includes(q);
+        param.includes(q) ||
+        formula.includes(q) ||
+        health.includes(q) ||
+        clause.includes(q) ||
+        method.includes(q);
       const matchCat = thresholdCategoryFilter === 'All Categories' || t.category === thresholdCategoryFilter;
       const matchStatus = thresholdStatusFilter === 'All Enforcements' || t.enforcementStatus === thresholdStatusFilter;
       return matchSearch && matchCat && matchStatus;
@@ -1589,7 +1670,7 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
                 <div className="space-y-1.5 pt-2 border-t border-[#1c295c]">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Rule Change Audit Trail</span>
                   <div className="space-y-1">
-                    {selectedRule.history.map((h, i) => (
+                    {(selectedRule?.history || []).map((h, i) => (
                       <div key={i} className="text-[11px] text-slate-400 flex items-start gap-1.5">
                         <Clock className="w-3 h-3 text-cyan-400 mt-0.5 shrink-0" />
                         <div>
@@ -1729,12 +1810,13 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#16224f]">
-                    {filteredThresholds.map(thresh => {
-                      const isSelected = selectedThresholdId === thresh.id;
+                    {filteredThresholds.map((thresh, idx) => {
+                      const threshId = thresh.id || (thresh as any).parameterId || `thresh-${idx}`;
+                      const isSelected = selectedThresholdId === threshId || selectedThresholdId === thresh.id || selectedThresholdId === (thresh as any).parameterId;
                       return (
                         <tr
-                          key={thresh.id}
-                          onClick={() => setSelectedThresholdId(thresh.id)}
+                          key={threshId}
+                          onClick={() => setSelectedThresholdId(threshId)}
                           className={`cursor-pointer transition ${
                             isSelected
                               ? 'bg-[#152c66] border-l-4 border-l-cyan-400 text-white font-semibold'
@@ -1778,9 +1860,9 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
 
                           {/* Enforcing Rule Links */}
                           <td className="py-2.5 px-3">
-                            {thresh.enforcingRuleIds.length > 0 ? (
+                            {(thresh.enforcingRuleIds || []).length > 0 ? (
                               <div className="flex flex-wrap gap-1">
-                                {thresh.enforcingRuleIds.map(ruleId => (
+                                {(thresh.enforcingRuleIds || []).map(ruleId => (
                                   <button
                                     key={ruleId}
                                     onClick={(e) => {
@@ -1927,9 +2009,9 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">
                     Linked Operational Rules Engine
                   </span>
-                  {selectedThreshold.enforcingRuleIds.length > 0 ? (
+                  {(selectedThreshold?.enforcingRuleIds || []).length > 0 ? (
                     <div className="space-y-1.5">
-                      {selectedThreshold.enforcingRuleIds.map(ruleId => {
+                      {(selectedThreshold?.enforcingRuleIds || []).map(ruleId => {
                         const ruleObj = rules.find(r => r.ruleId === ruleId);
                         return (
                           <div
@@ -1977,7 +2059,7 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
                   <span>Delete</span>
                 </button>
 
-                {selectedThreshold.enforcingRuleIds.length > 0 ? (
+                {(selectedThreshold?.enforcingRuleIds || []).length > 0 ? (
                   <button
                     type="button"
                     onClick={() => handleJumpToRule(selectedThreshold.enforcingRuleIds[0])}

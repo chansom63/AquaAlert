@@ -145,7 +145,41 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     try {
       const res = await allApiRecords('/rules').catch(() => allApiRecords('/rules-thresholds'));
       if (res && res.length > 0) {
-        setRules(res as unknown as RuleItem[]);
+        const normalized = (res as Record<string, unknown>[]).map(r => {
+          const ruleId = String(r.ruleId || '');
+          const version = String(r.version || 'v1.0');
+          const effectiveFrom = String(r.effectiveFrom || '2026-10-24T00:00:00Z');
+          return {
+            ...r,
+            ruleId,
+            parameter: String(r.parameter || ''),
+            parameterName: String(r.parameterName || r.parameter || ''),
+            condition: String(r.condition || ''),
+            operator: (r.operator || '>') as RuleItem['operator'],
+            threshold: String(r.threshold || ''),
+            numericThreshold: typeof r.numericThreshold === 'number' ? r.numericThreshold : parseFloat(String(r.threshold || '0')) || 0,
+            unit: String(r.unit || ''),
+            severity: (r.severity || 'Critical') as RuleItem['severity'],
+            version,
+            status: (r.status || 'Active') as RuleItem['status'],
+            effectiveFrom,
+            standardRef: String(r.standardRef || 'BIS IS 10500:2012'),
+            standardClause: String(r.standardClause || 'Table 1'),
+            category: (r.category || 'Chemical') as RuleItem['category'],
+            publicWording: String(r.publicWording || `${r.parameter || 'Water quality'} has breached the statutory threshold limit.`),
+            rationale: String(r.rationale || 'Potability specification breached according to Bureau of Indian Standards.'),
+            history: Array.isArray(r.history) && r.history.length > 0
+              ? (r.history as RuleItem['history'])
+              : [
+                  {
+                    version,
+                    desc: 'Baseline calibration aligned with BIS IS 10500:2012 specifications.',
+                    date: effectiveFrom.slice(0, 10),
+                  },
+                ],
+          };
+        });
+        setRules(normalized as unknown as RuleItem[]);
       }
       loadedRulesRef.current = true;
     } catch (err) {
@@ -161,7 +195,29 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     try {
       const res = await allApiRecords('/thresholds').catch(() => allApiRecords('/standards'));
       if (res && res.length > 0) {
-        setThresholds(res as unknown as ThresholdStandard[]);
+        const normalized = (res as Record<string, unknown>[]).map(t => {
+          const id = String(t.id || t.parameterId || '');
+          return {
+            ...t,
+            id,
+            parameterId: id,
+            parameter: String(t.parameter || id),
+            chemicalFormula: String(t.chemicalFormula || ''),
+            category: (t.category || 'Chemical') as ThresholdStandard['category'],
+            acceptableLimit: String(t.acceptableLimit || '—'),
+            permissibleLimit: String(t.permissibleLimit || '—'),
+            unit: String(t.unit || 'mg/L'),
+            standardReference: String(t.standardReference || 'BIS IS 10500:2012'),
+            clause: String(t.clause || 'Table 1'),
+            sensorMethod: String(t.sensorMethod || 'Standard Laboratory Assay'),
+            healthImpact: String(t.healthImpact || 'Contaminant breach above statutory tolerance threshold.'),
+            surveillanceFrequency: String(t.surveillanceFrequency || 'Daily Telemetry'),
+            enforcingRuleIds: Array.isArray(t.enforcingRuleIds) ? (t.enforcingRuleIds as string[]) : [],
+            enforcementStatus: (t.enforcementStatus || 'Mandatory Legal Limit') as ThresholdStandard['enforcementStatus'],
+            description: String(t.description || ''),
+          };
+        });
+        setThresholds(normalized as unknown as ThresholdStandard[]);
       }
       loadedThresholdsRef.current = true;
     } catch (err) {
