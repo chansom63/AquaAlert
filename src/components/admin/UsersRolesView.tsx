@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
+import { useAuth } from '../../features/auth/AuthContext';
 import {
   Check,
   CheckCircle2, ChevronLeft, ChevronRight, Download, Edit3,
@@ -49,7 +50,38 @@ const ROLES = [
 type TabType = 'users' | 'roles' | 'permissions';
 
 export const UsersRolesView: FC = () => {
+  const { user } = useAuth();
   const [users, setUsers] = useState<UserRow[]>(INITIAL_USERS);
+
+  useEffect(() => {
+    if (user) {
+      setUsers(prev => {
+        const exists = prev.some(u => u.email.toLowerCase() === user.email.toLowerCase());
+        if (exists) return prev;
+        const currentCognitoUser: UserRow = {
+          userId: `COG-${(user.sub || 'ADMIN').slice(0, 6).toUpperCase()}`,
+          name: user.name,
+          email: user.email,
+          role:
+            user.role === 'ADMIN'
+              ? 'Administrator'
+              : user.role === 'ANALYST'
+              ? 'Lab Analyst'
+              : user.role === 'OPERATOR'
+              ? 'Field Operator'
+              : 'Viewer',
+          status: 'Active',
+          lastLogin: 'Active Session Now (Cognito JWT)',
+          createdAt: new Date().toLocaleDateString(),
+          permissions:
+            user.role === 'ADMIN'
+              ? ['Full system access', 'User management', 'All read/write', 'Rules & Thresholds CRUD']
+              : ['View readings', 'View alerts'],
+        };
+        return [currentCognitoUser, ...prev];
+      });
+    }
+  }, [user]);
   const [activeTab, setActiveTab] = useState<TabType>('users');
   const [selectedId, setSelectedId] = useState('USR-0002');
   const [roleFilter, setRoleFilter] = useState('All Roles');

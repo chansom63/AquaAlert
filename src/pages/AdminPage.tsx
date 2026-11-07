@@ -41,6 +41,8 @@ import { humanize, displayDate } from '../api/adminRecords';
 import { api } from '../api/client';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../components/common/SubmissionSuccessModal';
 import TabErrorBoundary from '../components/common/TabErrorBoundary';
+import { useAuth } from '../features/auth/AuthContext';
+import { AuthModal } from '../components/auth/AuthModal';
 import '../styles/admin-dark.css';
 import LabReportsPanel from './admin/LabReportsPanel';
 import SubmitReadingPanel from './admin/SubmitReadingPanel';
@@ -74,6 +76,8 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<'submit-reading' | 'record-action' | 'rules' | 'upload-evidence' | null>(null);
   const [submissionModalData, setSubmissionModalData] = useState<{
     title: string;
@@ -631,51 +635,71 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               )}
             </div>
 
-            {/* User Profile Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-full border border-slate-200 hover:border-slate-300 bg-white transition shadow-xs cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center">
-                  <User className="w-4 h-4" />
-                </div>
-                <div className="text-left leading-tight hidden sm:block">
-                  <div className="text-xs font-bold text-slate-900">Admin User</div>
-                  <div className="text-[11px] text-slate-500">Administrator</div>
-                </div>
-              </button>
-
-              {/* User Menu Popover */}
-              {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl border border-slate-200 shadow-xl p-2 z-50">
-                  <div className="px-3 py-2 border-b border-slate-100">
-                    <div className="text-xs font-bold text-slate-900">Admin User</div>
-                    <div className="text-[10px] text-slate-500">admin@waterquality.gov.in</div>
+            {/* User Profile / Cognito Auth Dropdown */}
+            {isAuthenticated && user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2.5 pl-1 pr-2.5 py-1 rounded-full border border-slate-200 hover:border-slate-300 bg-white transition shadow-xs cursor-pointer"
+                >
+                  <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs ${
+                    user.role === 'ADMIN'
+                      ? 'bg-rose-50 border-rose-200 text-rose-700'
+                      : user.role === 'ANALYST'
+                      ? 'bg-purple-50 border-purple-200 text-purple-700'
+                      : 'bg-blue-50 border-blue-200 text-blue-700'
+                  }`}>
+                    {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <button
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      navigate('/user');
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded-xl flex items-center justify-between transition mt-1"
-                  >
-                    <span>Citizen Portal</span>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      navigate('/');
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-xl flex items-center justify-between transition"
-                  >
-                    <span>Exit Admin</span>
-                    <LogOut className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
+                  <div className="text-left leading-tight hidden sm:block">
+                    <div className="text-xs font-bold text-slate-900 truncate max-w-[140px]">{user.name}</div>
+                    <div className="text-[10px] text-slate-500 font-mono font-semibold uppercase">{user.role} &bull; COGNITO</div>
+                  </div>
+                </button>
+
+                {/* User Menu Popover */}
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-slate-200 shadow-xl p-2 z-50 animate-in fade-in-50 duration-150">
+                    <div className="px-3 py-2 border-b border-slate-100">
+                      <div className="text-xs font-bold text-slate-900">{user.name}</div>
+                      <div className="text-[10px] text-slate-500 truncate">{user.email}</div>
+                      <div className="text-[10px] font-mono text-cyan-600 font-bold mt-1">
+                        Group: {user.groups.join(', ') || user.role}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        navigate('/user');
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded-xl flex items-center justify-between transition mt-1"
+                    >
+                      <span>Citizen Portal View</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        logout();
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-xl flex items-center justify-between transition mt-1 font-semibold cursor-pointer"
+                    >
+                      <span>Sign Out (Cognito)</span>
+                      <LogOut className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 border border-blue-400/40 shadow-sm shadow-blue-500/20 cursor-pointer transition flex items-center gap-1.5"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Admin Sign In</span>
+              </button>
+            )}
           </div>
         </header>
 
@@ -709,6 +733,62 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
             </div>
           )}
           {adminTables.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{adminTables.error}</div>}
+
+          {/* RBAC Gatekeeper Banner */}
+          {!isAuthenticated && (
+            <div className="p-4 rounded-2xl bg-[#091533] border border-blue-500/50 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-400/40 text-cyan-300 flex items-center justify-center shrink-0">
+                  <User className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm">AWS Cognito Administrator Authentication</h4>
+                  <p className="text-slate-300 text-[11px]">
+                    Viewing public surveillance telemetry. Sign in with Cognito Administrator credentials to execute privileged mutations (CRUD on rules, thresholds, and sources).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shrink-0 shadow-md shadow-blue-500/30"
+              >
+                Sign In / Switch to Admin &rarr;
+              </button>
+            </div>
+          )}
+
+          {isAuthenticated && !isAdmin && (
+            <div className="p-4 rounded-2xl bg-amber-950/70 border border-amber-600/60 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-amber-200 text-sm">Citizen Role Detected ({user?.email})</h4>
+                  <p className="text-amber-300/80 text-[11px]">
+                    You are signed in as a Citizen. Administrative actions and system configuration are restricted to users in the 'Admins' group.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setAuthModalOpen(true)}
+                  className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-xl text-xs transition cursor-pointer"
+                >
+                  Switch Account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/user')}
+                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs border border-slate-700 transition cursor-pointer"
+                >
+                  Citizen Portal &rarr;
+                </button>
+              </div>
+            </div>
+          )}
           {/* Main Dashboard Screen (Matching user screenshot) */}
           {activeNav === 'Admin Dashboard' && (
             <AdminDashboardView
@@ -1108,6 +1188,13 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
           details={submissionModalData.details}
         />
       )}
+
+      {/* AWS Cognito Authentication & Registration Modal */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        initialMode="signin"
+      />
     </div>
   );
 };

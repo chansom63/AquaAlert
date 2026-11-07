@@ -10,6 +10,19 @@ export const api = async <T,>(path: string, options?: RequestInit): Promise<T> =
   if (options?.body) {
     headers['Content-Type'] = 'application/json';
   }
+
+  // Attach AWS Cognito JWT token if session exists
+  try {
+    const rawSession = localStorage.getItem('aquaalert_cognito_session');
+    if (rawSession) {
+      const session = JSON.parse(rawSession);
+      if (session.idToken && !headers['Authorization'] && !headers['authorization']) {
+        headers['Authorization'] = `Bearer ${session.idToken}`;
+      }
+    }
+  } catch {
+    // Ignore parse or storage errors
+  }
   if (options?.headers) {
     if (options.headers instanceof Headers) {
       options.headers.forEach((val, key) => {

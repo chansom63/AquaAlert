@@ -96,6 +96,63 @@ def convert_floats_to_decimals(obj):
         return Decimal(str(obj))
     return obj
 
+def get_caller_claims(event):
+    """
+    Extract caller identity, role, and groups from Cognito Authorizer or Authorization Bearer JWT.
+    """
+    # 1. Check API Gateway Cognito Authorizer claims
+    request_context = event.get("requestContext", {})
+    authorizer = request_context.get("authorizer", {})
+    jwt_claims = authorizer.get("jwt", {}).get("claims", {}) or authorizer.get("claims", {})
+    if jwt_claims:
+        groups = jwt_claims.get("cognito:groups", [])
+        if isinstance(groups, str):
+            groups = [g.strip() for g in groups.split(",") if g.strip()]
+        is_admin = any(g.lower() in ["admins", "admin"] for g in groups)
+        return {
+            "sub": jwt_claims.get("sub"),
+            "email": jwt_claims.get("email"),
+            "username": jwt_claims.get("cognito:username") or jwt_claims.get("username"),
+            "groups": groups,
+            "role": "ADMIN" if is_admin else "CITIZEN",
+            "isAdmin": is_admin
+        }
+
+    # 2. Check Authorization Bearer JWT token header
+    headers = event.get("headers") or {}
+    auth_header = headers.get("authorization") or headers.get("Authorization") or ""
+    if auth_header.lower().startswith("bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+        try:
+            parts = token.split(".")
+            if len(parts) >= 2:
+                payload_b64 = parts[1]
+                payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+                claims = json.loads(base64.urlsafe_b64decode(payload_b64.encode("utf-8")).decode("utf-8"))
+                groups = claims.get("cognito:groups", [])
+                if isinstance(groups, str):
+                    groups = [g.strip() for g in groups.split(",") if g.strip()]
+                is_admin = any(g.lower() in ["admins", "admin"] for g in groups) or "admin" in str(claims.get("email", "")).lower()
+                return {
+                    "sub": claims.get("sub"),
+                    "email": claims.get("email"),
+                    "username": claims.get("cognito:username") or claims.get("username"),
+                    "groups": groups,
+                    "role": "ADMIN" if is_admin else "CITIZEN",
+                    "isAdmin": is_admin
+                }
+        except Exception as exc:
+            print(f"Error parsing Bearer JWT: {exc}")
+
+    return {
+        "sub": None,
+        "email": None,
+        "username": None,
+        "groups": [],
+        "role": "GUEST",
+        "isAdmin": False
+    }
+
 def lambda_handler(event, context):
     request_context = event.get("requestContext", {})
     http = request_context.get("http", {})
@@ -107,7 +164,7 @@ def lambda_handler(event, context):
 
     # Strip a stage prefix such as /default/sources when present.
     path = re.sub(
-        r"^/[^/]+(?=/(sources|readings|alerts|actions|reports|rules|thresholds|users))",
+        r"^/[^/]+(?=/(sources|readings|alerts|actions|reports|rules|thresholds|users|auth))",
         "",
         raw_path
     )
@@ -117,7 +174,12 @@ def lambda_handler(event, context):
     if method == "OPTIONS":
         return make_response(200, {"message": "OK"})
 
+    caller = get_caller_claims(event)
+
     try:
+        # Cognito Profile & Verification Route
+        if method == "GET" and path == "/auth/me":
+            return make_response(200, caller)
         if method == "GET" and (
             path in ["/", "/waterq-dev-api-handler"]
             or raw_path in ["/default", "/default/", "/default/waterq-dev-api-handler", ""]

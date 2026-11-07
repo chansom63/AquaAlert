@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import type { FC, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API } from '../../api/client';
+import { useAuth } from '../../features/auth/AuthContext';
+import { AuthModal } from '../auth/AuthModal';
 import WaterAtmosphere from '../atmosphere/WaterAtmosphere';
 import CommonFooter from './CommonFooter';
 
@@ -38,6 +41,9 @@ const PortalLayout: FC<PortalLayoutProps> = ({
   children,
 }) => {
   const navigate = useNavigate();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'register'>('signin');
+  const { user, isAuthenticated, logout } = useAuth();
   return (
     <main className={`portal-shell ${admin ? 'admin-portal' : 'public-portal'}`}>
       {!admin && <WaterAtmosphere />}
@@ -58,6 +64,58 @@ const PortalLayout: FC<PortalLayoutProps> = ({
           ) : (
             <span className="demo-pill">DEMO DATA</span>
           )}
+          {/* Cognito Auth Account Status Pill */}
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 text-xs text-white">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  user.role === 'ADMIN'
+                    ? 'bg-rose-400'
+                    : user.role === 'ANALYST'
+                    ? 'bg-purple-400'
+                    : user.role === 'OPERATOR'
+                    ? 'bg-amber-400'
+                    : 'bg-emerald-400'
+                }`}
+              />
+              <span className="font-semibold text-slate-200 max-w-[130px] truncate">
+                {user.name || user.email}
+              </span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
+                  user.role === 'ADMIN'
+                    ? 'bg-rose-950 text-rose-300 border border-rose-800/60'
+                    : user.role === 'ANALYST'
+                    ? 'bg-purple-950 text-purple-300 border border-purple-800/60'
+                    : user.role === 'OPERATOR'
+                    ? 'bg-amber-950 text-amber-300 border border-amber-800/60'
+                    : 'bg-emerald-950 text-emerald-300 border border-emerald-800/60'
+                }`}
+              >
+                {user.role}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                className="text-[11px] text-slate-400 hover:text-rose-300 hover:underline cursor-pointer ml-1"
+                title="Sign out"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setAuthModalMode('signin');
+                setAuthModalOpen(true);
+              }}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 border border-blue-400/40 shadow-sm shadow-blue-500/20 cursor-pointer transition flex items-center gap-1.5"
+            >
+              <span>Sign In / Register</span>
+            </button>
+          )}
+
           <button className="back-link" onClick={() => navigate('/upload-document')}>
             Upload Reports ↗
           </button>
@@ -124,6 +182,12 @@ const PortalLayout: FC<PortalLayoutProps> = ({
         {children}
         <CommonFooter />
       </div>
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        initialMode={authModalMode}
+      />
     </main>
   );
 };
