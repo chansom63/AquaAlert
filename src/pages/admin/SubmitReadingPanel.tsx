@@ -96,8 +96,12 @@ const SubmitReadingPanel: FC<Props> = ({ sources, busy, onSubmit }) => {
           <p className="form-help text-[11px] text-slate-500">
             Readings are evaluated against BIS IS 10500 standards (pH 6.5–8.5, turbidity &le; 1 NTU, TDS &le; 500 mg/L). Anomalies trigger immediate screening alerts.
           </p>
-          <button className="primary-button cursor-pointer" type="submit" disabled={busy}>
-            {busy ? 'Recording telemetry…' : 'Submit Reading to Database →'}
+          <button
+            className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/30 transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 border border-blue-400/40"
+            type="submit"
+            disabled={busy}
+          >
+            <span>{busy ? 'Recording telemetry…' : 'Submit Reading to Database →'}</span>
           </button>
         </form>
       </section>

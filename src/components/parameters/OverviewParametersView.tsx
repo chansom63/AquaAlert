@@ -134,10 +134,10 @@ export const OverviewParametersView: FC<OverviewParametersViewProps> = ({
         <button
           type="button"
           onClick={onOpenCharts}
-          className="text-sky-400 hover:text-white font-bold flex items-center space-x-1 cursor-pointer bg-transparent border-0"
+          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg flex items-center space-x-1 cursor-pointer border border-blue-400/30 shadow-xs text-xs"
         >
           <span>Open Charts</span>
-          <ChevronRight className="w-3.5 h-3.5" />
+          <ChevronRight className="w-3.5 h-3.5 text-white" />
         </button>
       </div>
 
@@ -145,14 +145,14 @@ export const OverviewParametersView: FC<OverviewParametersViewProps> = ({
       {showFooter && (
         <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
           <div className="text-xs text-slate-400 font-mono">
-            Station Ref: <span className="text-sky-300">{stationRef}</span>
+            Station Ref: <span className="text-cyan-300 font-bold">{stationRef}</span>
           </div>
 
           {onCloseDrawer && (
             <button
               type="button"
               onClick={onCloseDrawer}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg text-xs transition cursor-pointer border-0"
+              className="px-4 py-2 bg-[#162758] hover:bg-[#1f377a] text-slate-100 font-semibold rounded-xl text-xs transition cursor-pointer border border-[#23428d]"
             >
               Close Drawer
             </button>

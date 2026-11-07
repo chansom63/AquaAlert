@@ -195,7 +195,7 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+            className="p-2 rounded-xl bg-[#162758] text-slate-200 hover:text-white hover:bg-[#1f377a] transition-colors border border-[#23428d] cursor-pointer"
             aria-label="Close incident drawer"
           >
             <X className="w-5 h-5" />
@@ -333,10 +333,10 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
                     type="button"
                     onClick={handleRetryNotification}
                     disabled={retrying}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-cyan-300 border border-slate-700 cursor-pointer transition font-medium"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs text-white border border-blue-400/40 cursor-pointer transition font-bold shadow-xs"
                   >
-                    <RotateCcw className={`w-3.5 h-3.5 ${retrying ? 'animate-spin' : ''}`} />
-                    <span>{retrying ? 'Retrying dispatch…' : '↻ Retry notification'}</span>
+                    <RotateCcw className={`w-3.5 h-3.5 text-white ${retrying ? 'animate-spin' : ''}`} />
+                    <span className="text-white font-bold">{retrying ? 'Retrying dispatch…' : '↻ Retry notification'}</span>
                   </button>
                 </div>
               </div>
@@ -398,15 +398,46 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
                       onClose();
                       onOpenSource(source.sourceId);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-950 hover:bg-sky-900 text-sky-300 border border-sky-800/60 text-xs font-semibold transition"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white border border-blue-400/40 text-xs font-bold transition shadow-md shadow-blue-500/25 cursor-pointer"
                   >
                     <span>View Water Source Station</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <ExternalLink className="w-3.5 h-3.5 text-white" />
                   </button>
                 </div>
               )}
             </div>
 
+        </div>
+
+        {/* Drawer Footer Actions */}
+        <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+          <div className="text-xs text-slate-400 font-mono">
+            Incident: <span className="text-cyan-300 font-bold">{detail.alertId}</span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {source && onOpenSource && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenSource(source.sourceId);
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition flex items-center space-x-1.5 shadow-md shadow-blue-500/30 cursor-pointer border border-blue-400/40"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>View Source Station</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-[#162758] hover:bg-[#1f377a] text-slate-100 font-semibold rounded-xl text-xs transition cursor-pointer border border-[#23428d]"
+            >
+              Close Drawer
+            </button>
+          </div>
         </div>
       </div>
     </div>

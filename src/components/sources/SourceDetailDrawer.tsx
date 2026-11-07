@@ -172,7 +172,7 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
                 type="button"
                 onClick={() => source && onPrintReport(source)}
                 title="Generate PDF Surveillance Certificate"
-                className="p-2 text-slate-400 hover:text-sky-300 hover:bg-slate-800 rounded-lg transition cursor-pointer bg-transparent border-0"
+                className="p-2 text-slate-300 hover:text-white bg-[#162758] hover:bg-[#1f377a] rounded-lg transition cursor-pointer border border-[#23428d]"
               >
                 <Printer className="w-4 h-4" />
               </button>
@@ -181,7 +181,7 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer bg-transparent border-0"
+              className="p-2 text-slate-300 hover:text-white bg-[#162758] hover:bg-[#1f377a] rounded-lg transition cursor-pointer border border-[#23428d]"
             >
               <X className="w-5 h-5" />
             </button>
@@ -274,10 +274,10 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
                     key={param}
                     type="button"
                     onClick={() => setSelectedChartParam(param)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition cursor-pointer border-0 ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition cursor-pointer border ${
                       selectedChartParam === param
-                        ? 'bg-sky-500 text-slate-950 shadow-md shadow-sky-500/20 font-bold'
-                        : 'bg-slate-800 text-slate-300 hover:text-white'
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold border-blue-400/40'
+                        : 'bg-[#122045] text-slate-300 hover:text-white border-[#1c3066]'
                     }`}
                   >
                     {param}
@@ -391,10 +391,10 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
                     <button
                       type="button"
                       onClick={() => handleRequestEvidenceAccess('evidence/lab-reports/2026-10/gmc-ph-cert-491.pdf')}
-                      className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg text-xs transition flex items-center space-x-2 cursor-pointer border-0"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition flex items-center space-x-2 cursor-pointer border border-purple-400/30 shadow-md shadow-purple-600/25"
                     >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>{isStaff ? 'Issue Pre-Signed Download URL' : 'Request Access (Staff Only)'}</span>
+                      <Download className="w-3.5 h-3.5 text-white" />
+                      <span className="text-white font-bold">{isStaff ? 'Issue Pre-Signed Download URL' : 'Request Access (Staff Only)'}</span>
                     </button>
                   </div>
                 ) : (
@@ -429,7 +429,7 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
         {/* Drawer Footer Actions */}
         <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
           <div className="text-xs text-slate-400 font-mono">
-            Station Ref: <span className="text-sky-300">{source?.sourceId || sourceId}</span>
+            Station Ref: <span className="text-cyan-300 font-bold">{source?.sourceId || sourceId}</span>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -440,17 +440,17 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
                   onClose();
                   onOpenSubmitReading(source?.sourceId);
                 }}
-                className="px-4 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-lg text-xs transition flex items-center space-x-1.5 shadow-md shadow-sky-500/20 cursor-pointer border-0"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition flex items-center space-x-2 shadow-lg shadow-blue-600/30 cursor-pointer border border-blue-400/40"
               >
-                <Send className="w-3.5 h-3.5" />
-                <span>Submit Field Reading</span>
+                <Send className="w-3.5 h-3.5 text-white" />
+                <span className="text-white font-bold">Submit Field Reading</span>
               </button>
             )}
 
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg text-xs transition cursor-pointer border-0"
+              className="px-4 py-2.5 bg-[#162758] hover:bg-[#1f377a] text-slate-100 font-semibold rounded-xl text-xs transition cursor-pointer border border-[#23428d]"
             >
               Close Drawer
             </button>

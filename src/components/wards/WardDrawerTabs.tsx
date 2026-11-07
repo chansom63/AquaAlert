@@ -115,10 +115,10 @@ const WardDrawerTabs: FC<{ sources: Source[]; wardNumber: number }> = ({ sources
                       key={param}
                       type="button"
                       onClick={() => setChartParam(param)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition cursor-pointer border-0 ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition cursor-pointer border ${
                         chartParam === param
-                          ? 'bg-sky-500 text-slate-950 shadow-md shadow-sky-500/20 font-bold'
-                          : 'bg-slate-800 text-slate-300 hover:text-white'
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold border-blue-400/40'
+                          : 'bg-[#122045] text-slate-300 hover:text-white border-[#1c3066]'
                       }`}
                     >
                       {param}

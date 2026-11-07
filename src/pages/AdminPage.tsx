@@ -944,14 +944,14 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
                 <button
                   type="button"
                   onClick={() => setActiveModal(null)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition"
+                  className="px-4 py-2.5 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer border border-[#1e3470]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={adminBusy}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-md shadow-blue-500/30 transition flex items-center gap-1.5 cursor-pointer border border-blue-400/40"
                 >
                   {adminBusy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>{adminBusy ? 'Saving to Database…' : 'Commit Action'}</span>

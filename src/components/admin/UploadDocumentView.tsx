@@ -1084,7 +1084,7 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsPreviewModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                className="px-4 py-2.5 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer border border-[#1e3470]"
               >
                 Close
               </button>
@@ -1092,7 +1092,7 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
                 href={resolveSamplePdfUrl(selected)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-blue-500/30 border border-blue-400/40"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Open / Download PDF</span>
