@@ -29,9 +29,9 @@ export interface AlertDetailRecord {
   sourceId: string;
   severity: string;
   state: string;
-  publicationStatus: 'PUBLISHED' | 'DRAFT' | 'INTERNAL_ONLY';
-  advisoryStatus: 'ADVISORY_APPROVED' | 'PENDING_REVIEW' | 'NONE';
-  notificationStatus: 'SENT_TO_SNS' | 'DELIVERED' | 'FAILED' | 'PENDING' | 'RETRY_PENDING';
+  publicationStatus: string;
+  advisoryStatus: string;
+  notificationStatus: string;
   notificationAttempts: number;
   notificationErrorCategory?: string;
   isDemo?: boolean;
@@ -41,7 +41,7 @@ export interface AlertDetailRecord {
   updatedAt: string;
   repeatCount: number;
   readingId: string;
-  threshold: AlertThresholdInfo;
+  threshold?: AlertThresholdInfo;
   timeline: AlertAuditAction[];
 }
 
@@ -87,10 +87,10 @@ export const INITIAL_ALERT_DETAILS: Record<string, AlertDetailRecord> = {
         actionType: 'NOTIFICATION_DISPATCH',
         fromState: 'OPEN',
         toState: 'OPEN',
-        summary: 'AWS SNS SMS/Email notification dispatched to on-call zonal sanitarians and municipal executive.',
+        summary: 'Emergency SMS/Email advisory dispatched to on-call zonal sanitarians and municipal executive.',
         reason: 'Priority escalation rule fired: CRITICAL severity incident.',
         actorRole: 'SYSTEM',
-        actorName: 'AWS SNS Topic [gmc-water-incidents-critical]',
+        actorName: 'Automated Dispatcher [gmc-water-incidents-critical]',
         createdAt: '2026-10-31T08:16:12Z',
       },
       {

@@ -11,6 +11,7 @@ type PortalLayoutProps = {
   description: string;
   nav: string[];
   page: string;
+  loading?: boolean;
   onPageChange: (page: string) => void;
   onRefresh: () => void;
   error: string;
@@ -27,6 +28,7 @@ const PortalLayout: FC<PortalLayoutProps> = ({
   description,
   nav,
   page,
+  loading = false,
   onPageChange,
   onRefresh,
   error,
@@ -44,7 +46,21 @@ const PortalLayout: FC<PortalLayoutProps> = ({
           <span className="wordmark-mark">A</span>AquaAlert <span className="portal-role">{admin ? 'STAFF' : 'PUBLIC'}</span>
         </button>
         <div className="portal-top-right">
-          <span className="demo-pill">DEMO DATA</span>
+          {loading ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-mono animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
+              <span>Fetching {page}…</span>
+            </span>
+          ) : API ? (
+            <span className="live-pill" style={{ background: '#059669', color: '#fff', padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 600 }}>
+              ● LIVE DATABASE
+            </span>
+          ) : (
+            <span className="demo-pill">DEMO DATA</span>
+          )}
+          <button className="back-link" onClick={() => navigate('/upload-document')}>
+            Upload Reports ↗
+          </button>
           <button className="back-link" onClick={() => navigate('/')}>
             ← Home
           </button>

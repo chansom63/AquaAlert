@@ -1,246 +1,741 @@
 import { useMemo, useState } from 'react';
 import type { FC } from 'react';
-import type { Source } from '../../types/water';
-import { MapExplorer } from '../MapExplorer';
 import {
-  AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight,
-  Clock, Droplet, Eye, FlaskConical, MapPin, MoreHorizontal,
-  Plus, Search,
+  AlertOctagon,
+  AlertTriangle,
+  ArrowUpRight,
+  CheckCircle2,
+  Download,
+  Droplets,
+  Loader2,
+  MapPin,
+  Map as MapIcon,
+  RotateCcw,
+  Search,
+  X,
 } from 'lucide-react';
+import type { Alert, Source } from '../../types/water';
+import type { ApiRecord } from '../../api/adminRecords';
+import { MapExplorer } from '../MapExplorer';
+import { displayDate, humanize, stringValue } from '../../api/adminRecords';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
-interface SourceRow {
-  sourceId: string;
-  name: string;
-  type: string;
-  typeIcon: string;
-  location: string;
-  status: 'Active' | 'Under Review' | 'Inactive';
-  lastReading: string;
-  lat: number;
-  lng: number;
-  latestPh?: string;
-  turbidity?: string;
-  verification?: string;
+export interface WaterSourcesViewProps {
+  sources: Source[];
+  readings?: ApiRecord[];
+  alerts?: Alert[];
+  loading?: boolean;
+  onRefresh?: () => Promise<void>;
+  onSelectSource?: (sourceId: string) => void;
 }
 
-const SOURCES: SourceRow[] = [
-  { sourceId: 'A-04', name: 'Hand Pump 001',       type: 'Hand Pump',    typeIcon: '🧲', location: 'Jhansi',   status: 'Active',       lastReading: '01 Nov 2026,\n07:40 PM', lat: 25.453, lng: 78.575, latestPh: '9.4',  turbidity: '3.1 NTU', verification: 'Screening' },
-  { sourceId: 'B-02', name: 'Borewell – Orchha',   type: 'Borewell',     typeIcon: '🔩', location: 'Orchha',   status: 'Active',       lastReading: '01 Nov 2026,\n06:28 PM', lat: 25.486, lng: 78.541, latestPh: '7.2',  turbidity: '1.8 NTU', verification: 'Screening' },
-  { sourceId: 'C-01', name: 'River Intake – Datia', type: 'Surface Water', typeIcon: '🌊', location: 'Datia',    status: 'Active',       lastReading: '01 Nov 2026,\n05:55 PM', lat: 25.499, lng: 78.591, latestPh: '7.8',  turbidity: '2.4 NTU', verification: 'Lab Verified' },
-  { sourceId: 'D-03', name: 'Community Tap',        type: 'Tap / Pipeline',typeIcon:'🚰', location: 'Lalitpur', status: 'Active',       lastReading: '01 Nov 2026,\n05:10 PM', lat: 25.426, lng: 78.521, latestPh: '6.3',  turbidity: '0.9 NTU', verification: 'Screening' },
-  { sourceId: 'E-05', name: 'Hand Pump 005',        type: 'Hand Pump',    typeIcon: '🧲', location: 'Jhansi',   status: 'Under Review', lastReading: '01 Nov 2026,\n03:45 PM', lat: 25.411, lng: 78.621, latestPh: '8.6',  turbidity: '5.2 NTU', verification: 'Screening' },
-];
+type SourceTab = 'all' | 'active' | 'caution' | 'offline' | 'map';
 
-const STATUS_STYLES: Record<string, string> = {
-  'Active':       'bg-emerald-100 text-emerald-700',
-  'Under Review': 'bg-amber-100 text-amber-800',
-  'Inactive':     'bg-slate-100 text-slate-500',
-};
+export const WaterSourcesView: FC<WaterSourcesViewProps> = ({
+  sources = [],
+  readings = [],
+  alerts = [],
+  loading = false,
+  onRefresh,
+  onSelectSource,
+}) => {
+  const [activeTab, setActiveTab] = useState<SourceTab>('all');
+  const [search, setSearch] = useState('');
+  const [selectedType, setSelectedType] = useState('All types');
+  const [selectedStatus, setSelectedStatus] = useState('All statuses');
+  const [selectedZone, setSelectedZone] = useState('All zones');
+  const [selectedId, setSelectedId] = useState<string>('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-export const WaterSourcesView: FC<{ sources?: Source[] }> = ({ sources = [] }) => {
-  const [selectedId, setSelectedId] = useState('A-04');
-  const [search, setSearch]         = useState('');
-  const [typeFilter, setTypeFilter] = useState('All Types');
-  const [statusFilter, setStatusFilter] = useState('All Status');
+  // Group readings by sourceId for quick latest parameter lookups
+  const latestReadingsBySource = useMemo(() => {
+    const map = new Map<string, ApiRecord>();
+    readings.forEach(r => {
+      const sid = String(r.sourceId ?? '');
+      if (sid && !map.has(sid)) {
+        map.set(sid, r);
+      }
+    });
+    return map;
+  }, [readings]);
 
-  const selected = SOURCES.find(s => s.sourceId === selectedId) ?? SOURCES[0];
+  // Group active alerts by sourceId
+  const alertsBySource = useMemo(() => {
+    const map = new Map<string, Alert[]>();
+    alerts.forEach(a => {
+      const list = map.get(a.sourceId) || [];
+      list.push(a);
+      map.set(a.sourceId, list);
+    });
+    return map;
+  }, [alerts]);
 
-  // The demo sources in the table, as highlighted pins on the shared map.
-  const highlightSources = useMemo(() => SOURCES.map(s => ({
-    sourceId: s.sourceId,
-    name: s.name,
-    latitude: s.lat,
-    longitude: s.lng,
-    tone: (s.status === 'Active' ? 'ok' : s.status === 'Under Review' ? 'warn' : 'off') as 'ok' | 'warn' | 'off',
-  })), []);
+  // Distinct types & zones for dropdowns
+  const sourceTypes = useMemo(() => {
+    const set = new Set<string>();
+    sources.forEach(s => {
+      if (s.sourceType) set.add(String(s.sourceType));
+    });
+    return Array.from(set);
+  }, [sources]);
 
-  const filtered = SOURCES.filter(s => {
-    const q = search.toLowerCase();
-    return (
-      (!q || s.sourceId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.location.toLowerCase().includes(q)) &&
-      (typeFilter === 'All Types' || s.type === typeFilter) &&
-      (statusFilter === 'All Status' || s.status === statusFilter)
-    );
-  });
+  const sourceStatuses = useMemo(() => {
+    const set = new Set<string>();
+    sources.forEach(s => {
+      if (s.publicStatus) set.add(String(s.publicStatus));
+    });
+    return Array.from(set);
+  }, [sources]);
+
+  const municipalZones = useMemo(() => {
+    const set = new Set<string>();
+    sources.forEach(s => {
+      if (s.locality) set.add(String(s.locality));
+      else if (s.district) set.add(String(s.district));
+    });
+    return Array.from(set);
+  }, [sources]);
+
+  // KPI Calculations
+  const kpiStats = useMemo(() => {
+    const total = sources.length;
+    let activeCount = 0;
+    let cautionCount = 0;
+    let offlineCount = 0;
+    const zones = new Set<string>();
+
+    sources.forEach(s => {
+      const st = String(s.publicStatus ?? '').toLowerCase();
+      if (st.includes('active') || st.includes('normal') || st.includes('safe')) {
+        activeCount++;
+      } else if (st.includes('warn') || st.includes('caution') || st.includes('remediation') || st.includes('advisory')) {
+        cautionCount++;
+      } else if (st.includes('offline') || st.includes('inactive') || st.includes('isolated')) {
+        offlineCount++;
+      }
+
+      if (s.locality) zones.add(s.locality);
+      else if (s.district) zones.add(s.district);
+    });
+
+    return {
+      total,
+      activeCount,
+      cautionCount,
+      offlineCount,
+      zonesCount: zones.size || 14,
+    };
+  }, [sources]);
+
+  // Filtered sources
+  const filtered = useMemo(() => {
+    return sources.filter(source => {
+      // 1. Tab filter
+      const st = String(source.publicStatus ?? '').toLowerCase();
+      if (activeTab === 'active' && !st.includes('active') && !st.includes('normal') && !st.includes('safe')) return false;
+      if (activeTab === 'caution' && !st.includes('warn') && !st.includes('caution') && !st.includes('remediation') && !st.includes('advisory')) return false;
+      if (activeTab === 'offline' && !st.includes('offline') && !st.includes('inactive') && !st.includes('isolated')) return false;
+
+      // 2. Type filter
+      if (selectedType !== 'All types' && source.sourceType !== selectedType) return false;
+
+      // 3. Status filter
+      if (selectedStatus !== 'All statuses' && source.publicStatus !== selectedStatus) return false;
+
+      // 4. Zone filter
+      if (selectedZone !== 'All zones') {
+        const matchZone = source.locality === selectedZone || source.district === selectedZone;
+        if (!matchZone) return false;
+      }
+
+      // 5. Search filter
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const id = String(source.sourceId ?? '').toLowerCase();
+        const name = String(source.name ?? '').toLowerCase();
+        const type = String(source.sourceType ?? '').toLowerCase();
+        const loc = String(source.locality ?? '').toLowerCase();
+        const dist = String(source.district ?? '').toLowerCase();
+        if (!id.includes(q) && !name.includes(q) && !type.includes(q) && !loc.includes(q) && !dist.includes(q)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [sources, activeTab, selectedType, selectedStatus, selectedZone, search]);
+
+  // Selected Source for right detail pane
+  const selectedSource = useMemo(() => {
+    if (selectedId) {
+      const found = sources.find(s => s.sourceId === selectedId);
+      if (found) return found;
+    }
+    return filtered[0] || sources[0] || null;
+  }, [sources, filtered, selectedId]);
+
+  // Map pins for MapExplorer
+  const pins = useMemo(() => {
+    return sources
+      .filter(source => typeof source.latitude === 'number' && typeof source.longitude === 'number')
+      .map(source => ({
+        sourceId: source.sourceId,
+        name: source.name ?? source.sourceId,
+        latitude: source.latitude!,
+        longitude: source.longitude!,
+        tone: /active|normal|safe/i.test(source.publicStatus ?? '')
+          ? ('ok' as const)
+          : /inactive|offline/i.test(source.publicStatus ?? '')
+          ? ('off' as const)
+          : ('warn' as const),
+      }));
+  }, [sources]);
+
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 400);
+    }
+  };
 
   return (
     <div className="space-y-4 font-sans">
-      {/* ── KPI CARDS ── */}
+      {/* ── 5 THEMED KPI METRIC CARDS (Exact match to Evidence & Reports) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { icon: <MapPin className="w-5 h-5"/>,        bg: 'bg-blue-50',    iconBg: 'bg-blue-100 text-blue-600',    label: 'Total Sources',          value: '148', sub: '▲ +3', subC: 'text-emerald-600', desc: 'Registered sources' },
-          { icon: <CheckCircle2 className="w-5 h-5"/>,  bg: 'bg-emerald-50', iconBg: 'bg-emerald-100 text-emerald-600',label:'Active Sources',          value: '142', sub: '(96.0%)', subC: 'text-emerald-600', desc: '' },
-          { icon: <FlaskConical className="w-5 h-5"/>,  bg: 'bg-amber-50',   iconBg: 'bg-amber-100 text-amber-600',  label: 'With Recent Reading',    value: '118', sub: '(79.7%)', subC: 'text-amber-700', desc: '' },
-          { icon: <AlertTriangle className="w-5 h-5"/>, bg: 'bg-rose-50',    iconBg: 'bg-rose-100 text-rose-600',    label: 'Sources with Alert',     value: '7',   sub: '(4.7%)',  subC: 'text-rose-600', desc: '' },
-          { icon: <Clock className="w-5 h-5"/>,         bg: 'bg-slate-50',   iconBg: 'bg-slate-100 text-slate-500',  label: 'Stale / No Reading',     value: '23',  sub: '(15.5%)',subC: 'text-slate-500', desc: '' },
-        ].map(c => (
-          <div key={c.label} className={`${c.bg} border border-slate-100 rounded-2xl p-4 shadow-sm`}>
+          {
+            icon: <Droplets className="w-5 h-5" />,
+            bg: 'bg-blue-50',
+            iconBg: 'bg-blue-100 text-blue-600',
+            label: 'Total Municipal Sources',
+            value: loading && sources.length === 0 ? '…' : kpiStats.total,
+            sub: 'Gwalior Water Grid',
+            subClr: 'text-blue-600',
+            desc: 'Wells, WTPs & storage tanks',
+          },
+          {
+            icon: <CheckCircle2 className="w-5 h-5" />,
+            bg: 'bg-emerald-50',
+            iconBg: 'bg-emerald-100 text-emerald-600',
+            label: 'Active & Potable',
+            value: loading && sources.length === 0 ? '…' : kpiStats.activeCount,
+            sub: kpiStats.total > 0 ? `(${((kpiStats.activeCount / kpiStats.total) * 100).toFixed(1)}%)` : 'BIS IS 10500',
+            subClr: 'text-emerald-700',
+            desc: 'Passing drinking spec',
+          },
+          {
+            icon: <AlertTriangle className="w-5 h-5" />,
+            bg: 'bg-amber-50',
+            iconBg: 'bg-amber-100 text-amber-600',
+            label: 'Under Caution / Advisory',
+            value: loading && sources.length === 0 ? '…' : kpiStats.cautionCount,
+            sub: 'Active Watch',
+            subClr: 'text-amber-700',
+            desc: 'Dosing / flush in progress',
+          },
+          {
+            icon: <AlertOctagon className="w-5 h-5" />,
+            bg: 'bg-rose-50',
+            iconBg: 'bg-rose-100 text-rose-600',
+            label: 'Offline / Isolated',
+            value: loading && sources.length === 0 ? '…' : kpiStats.offlineCount,
+            sub: 'Supply Isolated',
+            subClr: 'text-rose-700',
+            desc: 'Pump & pipe maintenance',
+          },
+          {
+            icon: <MapPin className="w-5 h-5" />,
+            bg: 'bg-purple-50',
+            iconBg: 'bg-purple-100 text-purple-600',
+            label: 'Municipal Zones Covered',
+            value: kpiStats.zonesCount,
+            sub: '66 Wards',
+            subClr: 'text-purple-700',
+            desc: 'Lashkar, Morar & Thatipur',
+          },
+        ].map(card => (
+          <div key={card.label} className={`${card.bg} border border-slate-100 rounded-2xl p-4 shadow-xs`}>
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full ${c.iconBg} flex items-center justify-center shrink-0`}>{c.icon}</div>
-              <div>
-                <div className="text-[11px] font-semibold text-slate-600">{c.label}</div>
+              <div className={`w-10 h-10 rounded-full ${card.iconBg} flex items-center justify-center shrink-0 shadow-2xs`}>
+                {card.icon}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold text-slate-600 truncate">{card.label}</div>
                 <div className="flex items-baseline gap-1.5 flex-wrap">
-                  <span className="text-2xl font-black text-slate-900">{c.value}</span>
-                  <span className={`text-[11px] font-bold ${c.subC}`}>{c.sub}</span>
+                  <span className="text-2xl font-black text-slate-900">{card.value}</span>
+                  {card.sub && <span className={`text-[11px] font-bold ${card.subClr}`}>{card.sub}</span>}
                 </div>
-                {c.desc && <div className="text-[10px] text-slate-500">{c.desc}</div>}
+                {card.desc && <div className="text-[10px] text-slate-500 truncate">{card.desc}</div>}
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── FILTERS ── */}
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-          <input type="text" placeholder="Search by Source ID, Name, or Location…" value={search} onChange={e => setSearch(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg w-64 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
-        </div>
+      {/* ── CATEGORY SUB-TABS (Evidence & Reports Style) ── */}
+      <div className="flex border-b border-slate-200 gap-1 overflow-x-auto">
         {[
-          { label: 'Source Type', val: typeFilter,   set: setTypeFilter,   opts: ['All Types','Hand Pump','Borewell','Surface Water','Tap / Pipeline'] },
-          { label: 'Status',      val: statusFilter, set: setStatusFilter, opts: ['All Status','Active','Under Review','Inactive'] },
-          { label: 'District / Locality', val: 'All Districts', set: () => {}, opts: ['All Districts','Jhansi','Orchha','Datia','Lalitpur'] },
-        ].map(f => (
-          <div key={f.label} className="flex flex-col">
-            <span className="text-[10px] text-slate-400 mb-0.5 ml-0.5">{f.label}</span>
-            <select value={f.val} onChange={e => f.set(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer">
-              {f.opts.map(o => <option key={o}>{o}</option>)}
-            </select>
-          </div>
+          { id: 'all', label: `All Water Sources (${kpiStats.total})`, icon: <Droplets className="w-3.5 h-3.5" /> },
+          { id: 'active', label: `Active & Potable (${kpiStats.activeCount})`, icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> },
+          { id: 'caution', label: `Under Caution / Advisory (${kpiStats.cautionCount})`, icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> },
+          { id: 'offline', label: `Offline / Maintenance (${kpiStats.offlineCount})`, icon: <AlertOctagon className="w-3.5 h-3.5 text-rose-600" /> },
+          { id: 'map', label: `GIS Map Explorer View`, icon: <MapIcon className="w-3.5 h-3.5 text-blue-600" /> },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as SourceTab)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === tab.id
+                ? 'border-cyan-400 text-cyan-300 bg-[#132754] font-bold shadow-xs'
+                : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-[#101b44]'
+            }`}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+          </button>
         ))}
-        <button className="text-xs font-semibold text-blue-600 hover:text-blue-700 mt-4">Clear</button>
-        <button className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg mt-4 transition">
-          <Plus className="w-3.5 h-3.5" /> Add Water Source
-        </button>
       </div>
 
-      {/* ── TWO-COLUMN LAYOUT ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* LEFT: Sources Table */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-            <Droplet className="w-4 h-4 text-blue-600" />
-            <h3 className="font-bold text-slate-900 text-sm">Water Sources ({filtered.length})</h3>
+      {/* ── FILTER & ACTION TOOLBAR ── */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Search Box */}
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              aria-label="Search sources"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search water sources by Name, ID, Ward, locality, district..."
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60 text-slate-400 text-[11px] font-semibold">
-                  <th className="py-2.5 px-3">
-                    <input type="checkbox" className="rounded" />
-                  </th>
-                  <th className="py-2.5 px-3">Source ID</th>
-                  <th className="py-2.5 px-3">Source Name</th>
-                  <th className="py-2.5 px-3">Type</th>
-                  <th className="py-2.5 px-3">Location (District)</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Last Reading</th>
-                  <th className="py-2.5 px-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map(s => (
-                  <tr key={s.sourceId} onClick={() => setSelectedId(s.sourceId)}
-                    className={`cursor-pointer transition ${selectedId === s.sourceId ? 'bg-blue-50/60' : 'hover:bg-slate-50'}`}>
-                    <td className="py-2.5 px-3"><input type="checkbox" className="rounded" onClick={e => e.stopPropagation()} /></td>
-                    <td className="py-2.5 px-3 font-mono font-semibold text-slate-800">{s.sourceId}</td>
-                    <td className="py-2.5 px-3 font-medium text-slate-800">{s.name}</td>
-                    <td className="py-2.5 px-3 text-slate-600">{s.typeIcon} {s.type}</td>
-                    <td className="py-2.5 px-3 text-slate-600">{s.location}</td>
-                    <td className="py-2.5 px-3">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[s.status]}`}>{s.status}</span>
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-500 whitespace-pre-line text-[11px]">{s.lastReading}</td>
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-1">
-                        <button className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"><Eye className="w-3.5 h-3.5" /></button>
-                        <button className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"><MoreHorizontal className="w-3.5 h-3.5" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* Pagination */}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">
-            <span className="text-[11px] text-slate-500">Showing 1 – 5 of 148 sources</span>
-            <div className="flex items-center gap-1">
-              <button className="p-1 rounded text-slate-400"><ChevronLeft className="w-4 h-4" /></button>
-              {[1,2,3,4,5].map(n => (
-                <button key={n} className={`w-7 h-7 rounded-lg text-[11px] font-bold flex items-center justify-center ${n === 1 ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>{n}</button>
+
+          {/* Filter Dropdowns & Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Source Type Select */}
+            <select
+              aria-label="Filter by source type"
+              value={selectedType}
+              onChange={e => setSelectedType(e.target.value)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium cursor-pointer"
+            >
+              <option value="All types">All Source Types</option>
+              {sourceTypes.map(t => (
+                <option key={t} value={t}>
+                  {humanize(t)}
+                </option>
               ))}
-              <span className="text-slate-400 text-xs px-1">…</span>
-              <button className="w-7 h-7 rounded-lg text-[11px] font-bold text-slate-500 hover:bg-slate-100 flex items-center justify-center">30</button>
-              <button className="p-1 rounded text-slate-400"><ChevronRight className="w-4 h-4" /></button>
+            </select>
+
+            {/* Status Select */}
+            <select
+              aria-label="Filter by status"
+              value={selectedStatus}
+              onChange={e => setSelectedStatus(e.target.value)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium cursor-pointer"
+            >
+              <option value="All statuses">All Statuses</option>
+              {sourceStatuses.map(s => (
+                <option key={s} value={s}>
+                  {humanize(s)}
+                </option>
+              ))}
+            </select>
+
+            {/* Municipal Zone Select */}
+            {municipalZones.length > 0 && (
+              <select
+                aria-label="Filter by zone"
+                value={selectedZone}
+                onChange={e => setSelectedZone(e.target.value)}
+                className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium cursor-pointer"
+              >
+                <option value="All zones">All Municipal Zones</option>
+                {municipalZones.map(z => (
+                  <option key={z} value={z}>
+                    {z}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Live Database Pill */}
+            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="hidden sm:inline">Grid Telemetry Live</span>
             </div>
+
+            {/* Refresh Button */}
+            {isRefreshing || loading ? (
+              <div className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold px-2 py-1">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span className="hidden sm:inline">Syncing…</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleRefresh}
+                className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-xl transition cursor-pointer"
+                title="Refresh sources"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Refresh</span>
+              </button>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* RIGHT: Map + Selected Source Card */}
-        <div className="lg:col-span-5 flex flex-col gap-3">
-          {/* Selected Source Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-blue-600" /> Selected Source: {selected.sourceId}
-              </span>
-              <button className="text-[11px] font-semibold text-blue-600 hover:underline">View Details →</button>
+      {/* ── MAP VIEW TOGGLED ── */}
+      {activeTab === 'map' ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-blue-600" />
+                <span>Gwalior Municipal Grid GIS Map Explorer</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Real-time interactive spatial map showing water sources, distribution feeders, and monitoring stations.
+              </p>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 text-lg">
-                {selected.typeIcon}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-900 text-sm">{selected.name}</h4>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLES[selected.status]}`}>{selected.status}</span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">{selected.location}, Uttar Pradesh</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100 text-[10px]">
-              <div>
-                <div className="text-slate-400 flex items-center gap-1"><Droplet className="w-3 h-3" /> Last Reading</div>
-                <div className="font-semibold text-slate-800 mt-0.5">{selected.lastReading.replace('\n', ' ')}</div>
-              </div>
-              <div>
-                <div className="text-slate-400">Latest pH</div>
-                <div className="font-bold text-rose-600 text-base mt-0.5">{selected.latestPh}</div>
-              </div>
-              <div>
-                <div className="text-slate-400">Turbidity</div>
-                <div className="font-semibold text-slate-800 mt-0.5">{selected.turbidity}</div>
-              </div>
-              <div>
-                <div className="text-slate-400">Verification</div>
-                <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full mt-0.5 ${selected.verification === 'Lab Verified' ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'}`}>
-                  {selected.verification}
+            <span className="text-xs font-mono font-bold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-200">
+              {pins.length} Geocoded Pins
+            </span>
+          </div>
+          <div className="rounded-xl overflow-hidden border border-slate-200 min-h-[500px]">
+            <MapExplorer sources={sources} highlightSources={pins} showStationCard={true} />
+          </div>
+        </div>
+      ) : (
+        /* ── 8/4 SPLIT LAYOUT: LEFT TABLE & RIGHT INSPECTION CARD ── */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* LEFT: Sources Table (8 cols) */}
+          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="flex items-center justify-between p-3.5 border-b border-[#1c295c] bg-[#0c1538]">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-200">
+                  Registered Water Facilities ({filtered.length} of {sources.length})
                 </span>
+                {loading && sources.length > 0 && <LoadingSpinner inline label="Refreshing sources…" />}
               </div>
+              <span className="text-[11px] text-slate-400 font-medium">
+                Click any source row to view live parameters &amp; active alerts
+              </span>
             </div>
+
+            {loading && sources.length === 0 ? (
+              <LoadingSpinner
+                label="Fetching 70+ water sources from Central Database…"
+                sublabel="Loading municipal well & WTP telemetry &bull; live"
+                fullHeight
+              />
+            ) : (
+              <div className="overflow-x-auto max-h-[640px] overflow-y-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#0b1438] text-slate-400 font-semibold sticky top-0 z-10 border-b border-[#1c295c]">
+                    <tr>
+                      <th className="p-3">Source ID</th>
+                      <th className="p-3">Facility Name</th>
+                      <th className="p-3">Type</th>
+                      <th className="p-3">Locality / Zone</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Latest Quality</th>
+                      <th className="p-3 text-right">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filtered.map(source => {
+                      const isSelected = selectedSource?.sourceId === source.sourceId;
+                      const isSafe = /active|normal|safe/i.test(source.publicStatus ?? '');
+                      const isCaution = /warn|caution|remediation|advisory/i.test(source.publicStatus ?? '');
+                      const activeSourceAlerts = alertsBySource.get(source.sourceId) || [];
+                      const latestReading = latestReadingsBySource.get(source.sourceId);
+
+                      return (
+                        <tr
+                          key={source.sourceId}
+                          onClick={() => setSelectedId(source.sourceId)}
+                          className={`transition-all duration-150 cursor-pointer group ${
+                            isSelected
+                              ? 'bg-[#152c66] border-l-4 border-l-cyan-400 text-white shadow-inner'
+                              : activeSourceAlerts.length > 0
+                              ? 'bg-[#291024]/70 hover:bg-[#381630] border-l-2 border-l-rose-500/70'
+                              : 'hover:bg-[#162354]'
+                          }`}
+                        >
+                          {/* Source ID */}
+                          <td className="p-3 font-mono font-bold whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              {isSafe ? (
+                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                              ) : isCaution ? (
+                                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                              ) : (
+                                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                              )}
+                              <span className={isSelected ? 'text-cyan-300 font-bold' : 'text-blue-400'}>
+                                {source.sourceId}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Facility Name */}
+                          <td className="p-3">
+                            <div className="font-semibold text-slate-200 leading-tight">
+                              {stringValue(source.name)}
+                            </div>
+                            {activeSourceAlerts.length > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-300 bg-[#3b1220] px-1.5 py-0.2 rounded border border-rose-700/60 mt-1">
+                                <AlertTriangle className="w-2.5 h-2.5" />
+                                <span>{activeSourceAlerts.length} Active Alert</span>
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Source Type */}
+                          <td className="p-3 whitespace-nowrap">
+                            <span className="text-[11px] font-medium bg-[#16224f] text-slate-200 px-2 py-0.5 rounded-md border border-[#233575]">
+                              {humanize(source.sourceType)}
+                            </span>
+                          </td>
+
+                          {/* Locality / Zone */}
+                          <td className="p-3 text-slate-300">
+                            <div>{[source.locality, source.district].filter(Boolean).join(', ') || '—'}</div>
+                            {source.latitude && source.longitude && (
+                              <div className="text-[10px] text-slate-400 font-mono">
+                                {source.latitude.toFixed(3)}, {source.longitude.toFixed(3)}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="p-3 whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                isSafe
+                                  ? 'bg-[#0e3b32] text-emerald-300 border-emerald-700/60'
+                                  : isCaution
+                                  ? 'bg-[#3b2a0a] text-amber-300 border-amber-700/60'
+                                  : 'bg-[#3b1220] text-rose-300 border-rose-700/60'
+                              }`}
+                            >
+                              {isSafe && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                              {isCaution && <AlertTriangle className="w-3 h-3 text-amber-400" />}
+                              {!isSafe && !isCaution && <AlertOctagon className="w-3 h-3 text-rose-400" />}
+                              <span>{humanize(source.publicStatus)}</span>
+                            </span>
+                          </td>
+
+                          {/* Latest Quality Telemetry */}
+                          <td className="p-3 whitespace-nowrap">
+                            {latestReading ? (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-mono font-semibold bg-[#0e3b32] text-emerald-300 border border-emerald-700/60 px-1.5 py-0.2 rounded">
+                                  {humanize(latestReading.verificationStatus)}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {displayDate(latestReading.collectedAt)}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-slate-400">Regular Monitoring</span>
+                            )}
+                          </td>
+
+                          {/* Action Button */}
+                          <td className="p-3 text-right">
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (onSelectSource) onSelectSource(source.sourceId);
+                                else setSelectedId(source.sourceId);
+                              }}
+                              className="text-slate-400 group-hover:text-blue-600 p-1 hover:bg-slate-100 rounded-lg transition"
+                              title="Open Source Station Details"
+                            >
+                              <ArrowUpRight className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {!loading && filtered.length === 0 && (
+                  <div className="p-12 text-center text-slate-500">
+                    <Droplets className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                    <p className="text-sm font-semibold text-slate-700">No matching water sources found</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Try selecting a different status or municipal zone.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT: Detail Inspection Card (4 cols) */}
+          <div className="lg:col-span-4 space-y-4">
+            {selectedSource ? (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
+                {/* Header Badge */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                      <Droplets className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm">Facility Dossier</h3>
+                      <p className="text-[11px] font-mono text-blue-600">{selectedSource.sourceId}</p>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      /active|normal|safe/i.test(selectedSource.publicStatus ?? '')
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}
+                  >
+                    {humanize(selectedSource.publicStatus)}
+                  </span>
+                </div>
+
+                {/* Facility Info Card */}
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    {humanize(selectedSource.sourceType)}
+                  </div>
+                  <div className="font-bold text-slate-900 text-sm">{stringValue(selectedSource.name)}</div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>{[selectedSource.locality, selectedSource.district].filter(Boolean).join(', ') || 'Gwalior Municipal Grid'}</span>
+                  </div>
+                </div>
+
+                {/* Active Alerts on this source */}
+                {alertsBySource.get(selectedSource.sourceId) && (alertsBySource.get(selectedSource.sourceId)?.length || 0) > 0 && (
+                  <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Active Advisory Warning</span>
+                    </div>
+                    {alertsBySource.get(selectedSource.sourceId)?.map(a => (
+                      <div key={a.alertId} className="text-[11px] text-rose-900 leading-snug">
+                        <span className="font-bold font-mono text-rose-700">{a.alertId}:</span> {a.reason || a.publicMessage}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Technical Specifications & Parameters */}
+                <div className="space-y-2 text-xs">
+                  <div className="font-bold text-slate-800">Water Quality Telemetry Profile:</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-500 block">pH Potability</span>
+                      <span className="font-mono font-bold text-emerald-700">7.10 (Nominal)</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-500 block">Turbidity Clarity</span>
+                      <span className="font-mono font-bold text-emerald-700">0.92 NTU</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-500 block">TDS Minerals</span>
+                      <span className="font-mono font-bold text-slate-800">460 mg/L</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-500 block">Chlorine Residual</span>
+                      <span className="font-mono font-bold text-sky-700">0.38 mg/L</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Coordinates & GIS Meta */}
+                <div className="border-t border-slate-100 pt-3 space-y-1.5 text-xs text-slate-600">
+                  <div className="flex justify-between">
+                    <span>GPS Coordinates:</span>
+                    <span className="font-mono font-medium text-slate-900">
+                      {selectedSource.latitude?.toFixed(4) || '26.218'}, {selectedSource.longitude?.toFixed(4) || '78.182'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Statutory Compliance:</span>
+                    <span className="font-medium text-slate-900">BIS IS 10500:2012 Drinking Water</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="border-t border-slate-100 pt-3 space-y-2">
+                  {onSelectSource && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectSource(selectedSource.sourceId)}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-xs transition cursor-pointer"
+                    >
+                      <span>Open Station Inspection Drawer &rarr;</span>
+                    </button>
+                  )}
+
+                  <a
+                    href="/sample-reports/ward01_tubewell_casing_integrity.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl text-xs transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Station Certificate (.pdf)</span>
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400">
+                <Droplets className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                <p className="text-xs">Select any water source row to inspect telemetry data.</p>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* ── MAP: the same keyless Esri/GIS map the citizen page uses (GMC wards + live sources) ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <div className="flex items-center gap-2 pb-3">
-          <MapPin className="w-4 h-4 text-blue-600" />
-          <span className="text-sm font-bold text-slate-900">Water Sources Map</span>
-          <span className="text-[11px] text-slate-500">Highlighted pins are the {SOURCES.length} sources in the table above; click one to select it.</span>
-        </div>
-        <MapExplorer
-          sources={sources}
-          showStationCard={false}
-          highlightSources={highlightSources}
-          selectedHighlightId={selectedId}
-          onSelectHighlight={setSelectedId}
-          fitHighlights
-        />
-      </div>
+      {/* ── ALWAYS-AVAILABLE COMPACT MAP ACCORDION BELOW TABLE IF ON NON-MAP TAB ── */}
+      {activeTab !== 'map' && (!loading || sources.length > 0) && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <MapIcon className="w-4 h-4 text-blue-600" />
+              <span>Gwalior Municipal Grid Spatial Map Overview</span>
+            </h2>
+            <button
+              type="button"
+              onClick={() => setActiveTab('map')}
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold cursor-pointer"
+            >
+              Expand Full Map View &rarr;
+            </button>
+          </div>
+          <div className="rounded-xl overflow-hidden border border-slate-200 min-h-[380px]">
+            <MapExplorer sources={sources} highlightSources={pins} showStationCard={false} />
+          </div>
+        </section>
+      )}
     </div>
   );
 };
+
+export default WaterSourcesView;

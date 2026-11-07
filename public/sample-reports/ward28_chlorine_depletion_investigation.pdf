@@ -1,0 +1,191 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F3 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 5508 >>
+stream
+q
+0.03 0.08 0.22 rg
+0 740 595 102 re f
+1 1 1 rg
+BT /F1 16 Tf 40 805 Td (GWALIOR MUNICIPAL CORPORATION) Tj ET
+BT /F2 9 Tf 40 790 Td (WATER QUALITY SURVEILLANCE & ENVIRONMENTAL HEALTH CELL - ISO/IEC 17025:2017) Tj ET
+BT /F2 8 Tf 40 775 Td (Central Analytical Testing Laboratory, Maharaj Bada Central Facility, Gwalior (M.P.)) Tj ET
+0.15 0.35 0.75 rg
+420 780 135 24 re f
+1 1 1 rg
+BT /F1 9 Tf 430 792 Td (NABL CERTIFIED TC-8491) Tj ET
+BT /F2 7 Tf 430 783 Td (Statutory BIS IS 10500:2012) Tj ET
+Q
+q
+0.1 0.15 0.35 rg
+BT /F1 14 Tf 40 710 Td (FIELD SURVEILLANCE & RESIDUAL CHLORINE INVESTIGATION) Tj ET
+0.3 0.3 0.3 rg
+BT /F2 9 Tf 40 695 Td (Incident corrective action and sodium hypochlorite booster dosing log) Tj ET
+0.8 0.85 0.9 RG 1.5 w
+40 685 m 555 685 l S
+Q
+q
+0.96 0.97 0.99 rg
+40 595 515 80 re f
+0.8 0.85 0.9 RG 1 w
+40 595 515 80 re S
+0.2 0.25 0.35 rg
+BT /F1 8 Tf 50 660 Td (REPORT / TRACKING ID:) Tj ET
+BT /F2 9 Tf 170 660 Td (GWL-SURV-35697) Tj ET
+BT /F1 8 Tf 340 660 Td (SAMPLING DATE:) Tj ET
+BT /F2 9 Tf 430 660 Td (04 November 2026) Tj ET
+BT /F1 8 Tf 50 640 Td (MONITORING STATION:) Tj ET
+BT /F2 9 Tf 170 640 Td (Ward 28 - Sikandar Kampoo Sub-Surface Supply Feeder) Tj ET
+BT /F1 8 Tf 340 640 Td (ANALYSIS PROTOCOL:) Tj ET
+BT /F2 9 Tf 430 640 Td (Spectrophotometric Batch) Tj ET
+BT /F1 8 Tf 50 620 Td (ACCREDITED CHEMIST:) Tj ET
+BT /F2 9 Tf 170 620 Td (A. K. Verma (Senior Engineer, Zonal Engineering Unit)) Tj ET
+BT /F1 8 Tf 340 620 Td (SECURITY SEAL:) Tj ET
+BT /F2 8 Tf 430 620 Td (SSE-KMS AES-256 Encrypted) Tj ET
+BT /F1 8 Tf 50 603 Td (AWS S3 OBJECT KEY:) Tj ET
+BT /F3 8 Tf 170 603 Td (reports/field-sheets/gmc-ward-28/ward28_chlorine_depletion_investigation.pdf) Tj ET
+Q
+q
+0.08 0.15 0.35 rg
+40 565 515 20 re f
+1 1 1 rg
+BT /F1 8 Tf 48 571 Td (#) Tj ET
+BT /F1 8 Tf 70 571 Td (WATER QUALITY PARAMETER) Tj ET
+BT /F1 8 Tf 240 571 Td (METHOD / INSTRUMENT) Tj ET
+BT /F1 8 Tf 360 571 Td (BIS IS 10500 LIMIT) Tj ET
+BT /F1 8 Tf 460 571 Td (RESULT) Tj ET
+BT /F1 8 Tf 510 571 Td (STATUS) Tj ET
+Q
+q
+0.9 0.92 0.95 RG 0.5 w
+40 542 m 555 542 l S
+0.3 0.35 0.4 rg
+BT /F2 8 Tf 48 547 Td (01) Tj ET
+BT /F1 8 Tf 70 547 Td (Free Residual Chlorine (Pre-flush)) Tj ET
+BT /F2 8 Tf 240 547 Td (DPD Field Photometer) Tj ET
+BT /F2 8 Tf 360 547 Td (Min 0.20 mg/L) Tj ET
+0.8 0.1 0.1 rg
+BT /F1 8 Tf 460 547 Td (0.05 mg/L) Tj ET
+BT /F1 8 Tf 510 547 Td (FLAGGED) Tj ET
+Q
+q
+0.97 0.98 1.0 rg
+40 524 515 18 re f
+0.9 0.92 0.95 RG 0.5 w
+40 524 m 555 524 l S
+0.3 0.35 0.4 rg
+BT /F2 8 Tf 48 529 Td (02) Tj ET
+BT /F1 8 Tf 70 529 Td (Potential of Hydrogen (pH)) Tj ET
+BT /F2 8 Tf 240 529 Td (Digital Pen Meter) Tj ET
+BT /F2 8 Tf 360 529 Td (6.5 - 8.5) Tj ET
+0.05 0.4 0.2 rg
+BT /F1 8 Tf 460 529 Td (7.85) Tj ET
+BT /F1 8 Tf 510 529 Td (PASS) Tj ET
+Q
+q
+0.9 0.92 0.95 RG 0.5 w
+40 506 m 555 506 l S
+0.3 0.35 0.4 rg
+BT /F2 8 Tf 48 511 Td (03) Tj ET
+BT /F1 8 Tf 70 511 Td (Nephelometric Turbidity) Tj ET
+BT /F2 8 Tf 240 511 Td (Portable Nephelometer) Tj ET
+BT /F2 8 Tf 360 511 Td (Max 1.0 NTU) Tj ET
+0.8 0.1 0.1 rg
+BT /F1 8 Tf 460 511 Td (1.10 NTU) Tj ET
+BT /F1 8 Tf 510 511 Td (FLAGGED) Tj ET
+Q
+q
+0.97 0.98 1.0 rg
+40 488 515 18 re f
+0.9 0.92 0.95 RG 0.5 w
+40 488 m 555 488 l S
+0.3 0.35 0.4 rg
+BT /F2 8 Tf 48 493 Td (04) Tj ET
+BT /F1 8 Tf 70 493 Td (Total Dissolved Solids (TDS)) Tj ET
+BT /F2 8 Tf 240 493 Td (Field Conductivity Meter) Tj ET
+BT /F2 8 Tf 360 493 Td (Max 500 mg/L) Tj ET
+0.05 0.4 0.2 rg
+BT /F1 8 Tf 460 493 Td (460 mg/L) Tj ET
+BT /F1 8 Tf 510 493 Td (PASS) Tj ET
+Q
+q
+0.9 0.92 0.95 RG 0.5 w
+40 470 m 555 470 l S
+0.3 0.35 0.4 rg
+BT /F2 8 Tf 48 475 Td (05) Tj ET
+BT /F1 8 Tf 70 475 Td (Free Residual Chlorine (Post-flush)) Tj ET
+BT /F2 8 Tf 240 475 Td (DPD Field Photometer) Tj ET
+BT /F2 8 Tf 360 475 Td (0.2 - 1.0 mg/L) Tj ET
+0.05 0.4 0.2 rg
+BT /F1 8 Tf 460 475 Td (0.55 mg/L) Tj ET
+BT /F1 8 Tf 510 475 Td (RESTORED) Tj ET
+Q
+q
+0.97 0.98 1.0 rg
+40 452 515 18 re f
+0.9 0.92 0.95 RG 0.5 w
+40 452 m 555 452 l S
+0.3 0.35 0.4 rg
+BT /F2 8 Tf 48 457 Td (06) Tj ET
+BT /F1 8 Tf 70 457 Td (Microbial Presumptive Test) Tj ET
+BT /F2 8 Tf 240 457 Td (Colilert 24-hr Rapid Screening) Tj ET
+BT /F2 8 Tf 360 457 Td (0 CFU/100ml) Tj ET
+0.05 0.4 0.2 rg
+BT /F1 8 Tf 460 457 Td (0 CFU/100ml) Tj ET
+BT /F1 8 Tf 510 457 Td (PASS) Tj ET
+Q
+q
+0.95 0.97 0.99 rg
+40 382 515 50 re f
+0.7 0.8 0.95 RG 1 w
+40 382 515 50 re S
+0.08 0.15 0.35 rg
+BT /F1 9 Tf 50 422 Td (STATUTORY VERDICT & FINDINGS:) Tj ET
+0.2 0.25 0.3 rg
+BT /F2 8 Tf 50 407 Td (VERDICT: Residual chlorine depletion successfully corrected via secondary booster chlorination.) Tj ET
+BT /F2 8 Tf 50 392 Td (Secondary flushing restored residual chlorine to nominal 0.55 mg/L across all downstream taps.) Tj ET
+Q
+q
+0.2 0.25 0.3 rg
+BT /F1 8 Tf 50 352 Td (EXAMINED & CERTIFIED BY:) Tj ET
+BT /F2 8 Tf 50 337 Td (A. K. Verma (Senior Engineer, Zonal Engineering Unit)) Tj ET
+BT /F2 7 Tf 50 325 Td (NABL National Accreditation Board Certification #TC-8491) Tj ET
+BT /F1 8 Tf 340 352 Td (STATUTORY CLEARANCE AUTHORITY:) Tj ET
+BT /F2 8 Tf 340 337 Td (GMC Water Works Directorate, Gwalior) Tj ET
+BT /F2 7 Tf 340 325 Td (Public Health Engineering Department, M.P. Government) Tj ET
+0.2 0.4 0.7 RG 1.5 w
+250 327 90 40 re S
+0.2 0.4 0.7 rg
+BT /F1 7 Tf 258 347 Td (GMC PHED SEAL) Tj ET
+BT /F2 6 Tf 258 337 Td (VERIFIED & SEALED) Tj ET
+BT /F3 6 Tf 258 329 Td (SHA-256: e3b0c442...) Tj ET
+Q
+q
+0.03 0.08 0.22 rg
+0 0 595 30 re f
+1 1 1 rg
+BT /F2 7 Tf 40 12 Td (AquaAlert Water Intelligence Platform | AWS Cloud ap-south-1 | S3 Bucket: waterq-dev-evidence-files) Tj ET
+BT /F2 7 Tf 450 12 Td (Page 1 of 1 - Official Record) Tj ET
+Q
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000411 00000 n 
+trailer
+<< /Size 5 /Root 1 0 R >>
+startxref
+5971
+%%EOF

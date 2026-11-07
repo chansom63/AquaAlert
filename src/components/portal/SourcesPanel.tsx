@@ -4,6 +4,7 @@ import type { Reading, Source } from '../../types/water';
 import ReadingCard from '../readings/ReadingCard';
 import SourceTable from '../sources/SourceTable';
 import Status from '../sources/Status';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
 type SourcesPanelProps = {
   admin: boolean;
@@ -47,7 +48,15 @@ const SourcesPanel: FC<SourcesPanelProps> = ({
         <input className="search-input" placeholder="Search source or ward" value={query} onChange={e => onQueryChange(e.target.value)} />
       </div>
     </div>
-    {loading ? <p className="empty-state">Loading sources…</p> : <SourceTable sources={sources} admin={admin} onSelect={s => onSelect(s.sourceId)} />}
+    {loading && sources.length === 0 ? (
+      <LoadingSpinner
+        label="Fetching public water sources from Central Database…"
+        sublabel="Querying active monitoring points &bull; live"
+        fullHeight
+      />
+    ) : (
+      <SourceTable sources={sources} admin={admin} onSelect={s => onSelect(s.sourceId)} />
+    )}
     <div className="detail-grid">
       <div>
         <div className="panel-eyebrow">SELECTED SOURCE</div>

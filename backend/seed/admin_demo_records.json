@@ -1,0 +1,31 @@
+{
+  "notice": "Synthetic demo records migrated from the old Admin mock screens. Every record isDemo=true; these are not real measurements or approved health findings.",
+  "WaterSources": [
+    {"sourceId":"A-04","name":"Hand Pump 001","sourceType":"HAND_PUMP","district":"Jhansi","locality":"Jhansi","latitude":25.453,"longitude":78.575,"publicStatus":"ACTIVE","lastReadingAt":"2026-11-01T14:10:00Z","isDemo":true},
+    {"sourceId":"B-02","name":"Borewell - Orchha","sourceType":"BOREWELL","district":"Orchha","locality":"Orchha","latitude":25.486,"longitude":78.541,"publicStatus":"ACTIVE","lastReadingAt":"2026-11-01T12:58:00Z","isDemo":true},
+    {"sourceId":"C-01","name":"River Intake - Datia","sourceType":"SURFACE_WATER","district":"Datia","locality":"Datia","latitude":25.499,"longitude":78.591,"publicStatus":"ACTIVE","lastReadingAt":"2026-11-01T12:25:00Z","isDemo":true},
+    {"sourceId":"D-03","name":"Community Tap","sourceType":"TAP_PIPELINE","district":"Lalitpur","locality":"Lalitpur","latitude":25.426,"longitude":78.521,"publicStatus":"ACTIVE","lastReadingAt":"2026-11-01T11:40:00Z","isDemo":true},
+    {"sourceId":"E-05","name":"Hand Pump 005","sourceType":"HAND_PUMP","district":"Jhansi","locality":"Jhansi","latitude":25.411,"longitude":78.621,"publicStatus":"UNDER_REVIEW","lastReadingAt":"2026-11-01T10:15:00Z","isDemo":true}
+  ],
+  "WaterReadings": [
+    {"sourceId":"A-04","readingKey":"2026-11-01T14:10:00Z#RD-2026-03124","readingId":"RD-2026-03124","collectedAt":"2026-11-01T14:10:00Z","receivedAt":"2026-11-01T14:15:00Z","method":"FIELD_SCREENING","verificationStatus":"SCREENING","parameters":{"pH":{"value":9.4,"unit":"pH"}},"isDemo":true},
+    {"sourceId":"B-02","readingKey":"2026-11-01T12:58:00Z#RD-2026-03123","readingId":"RD-2026-03123","collectedAt":"2026-11-01T12:58:00Z","receivedAt":"2026-11-01T13:00:00Z","method":"FIELD_SCREENING","verificationStatus":"SCREENING","parameters":{"Turbidity":{"value":12.6,"unit":"NTU"}},"isDemo":true},
+    {"sourceId":"C-01","readingKey":"2026-11-01T12:25:00Z#RD-2026-03122","readingId":"RD-2026-03122","collectedAt":"2026-11-01T12:25:00Z","receivedAt":"2026-11-01T12:31:00Z","method":"LAB_TEST","verificationStatus":"LAB_VERIFIED","parameters":{"TDS":{"value":1240,"unit":"mg/L"}},"isDemo":true},
+    {"sourceId":"D-03","readingKey":"2026-11-01T11:40:00Z#RD-2026-03121","readingId":"RD-2026-03121","collectedAt":"2026-11-01T11:40:00Z","receivedAt":"2026-11-01T11:45:00Z","method":"FIELD_SCREENING","verificationStatus":"SCREENING","parameters":{"pH":{"value":6.3,"unit":"pH"}},"isDemo":true},
+    {"sourceId":"E-05","readingKey":"2026-11-01T10:15:00Z#RD-2026-03120","readingId":"RD-2026-03120","collectedAt":"2026-11-01T10:15:00Z","receivedAt":"2026-11-01T10:20:00Z","method":"LAB_TEST","verificationStatus":"LAB_VERIFIED","parameters":{"Bacteria":{"value":"Detected","unit":"qualitative"}},"isDemo":true}
+  ],
+  "Alerts": [
+    {"alertId":"ALT-2026-0158","sourceId":"A-04","severity":"CRITICAL","state":"OPEN","reason":"Synthetic demo pH screening result: 9.4.","triggeringReadingKey":"2026-11-01T14:10:00Z#RD-2026-03124","createdAt":"2026-11-01T14:15:00Z","isDemo":true},
+    {"alertId":"ALT-2026-0157","sourceId":"B-02","severity":"HIGH","state":"OPEN","reason":"Synthetic demo turbidity screening result: 12.6 NTU.","triggeringReadingKey":"2026-11-01T12:58:00Z#RD-2026-03123","createdAt":"2026-11-01T13:00:00Z","isDemo":true},
+    {"alertId":"ALT-2026-0156","sourceId":"C-01","severity":"HIGH","state":"INVESTIGATION","reason":"Synthetic demo TDS lab result: 1240 mg/L.","triggeringReadingKey":"2026-11-01T12:25:00Z#RD-2026-03122","createdAt":"2026-11-01T12:31:00Z","isDemo":true},
+    {"alertId":"ALT-2026-0155","sourceId":"D-03","severity":"WARNING","state":"PENDING_LAB","reason":"Synthetic demo pH screening result: 6.3.","triggeringReadingKey":"2026-11-01T11:40:00Z#RD-2026-03121","createdAt":"2026-11-01T11:45:00Z","isDemo":true},
+    {"alertId":"ALT-2026-0154","sourceId":"E-05","severity":"WARNING","state":"OPEN","reason":"Synthetic demo qualitative bacteria result: detected.","triggeringReadingKey":"2026-11-01T10:15:00Z#RD-2026-03120","createdAt":"2026-11-01T10:20:00Z","isDemo":true}
+  ],
+  "ResponseActions": [
+    {"alertId":"ALT-2026-0158","actionKey":"2026-11-01T14:25:00Z#RA-2026-0108","actionId":"RA-2026-0108","actorRole":"OPERATOR","actionType":"COLLECT_LAB_SAMPLE","summary":"Synthetic demo action: dispatch a sampling operator to verify the screening result.","createdAt":"2026-11-01T14:25:00Z","isDemo":true},
+    {"alertId":"ALT-2026-0157","actionKey":"2026-11-01T13:10:00Z#RA-2026-0107","actionId":"RA-2026-0107","actorRole":"OPERATOR","actionType":"RESAMPLE_AND_TEST","summary":"Synthetic demo action: collect a second turbidity sample.","createdAt":"2026-11-01T13:10:00Z","isDemo":true},
+    {"alertId":"ALT-2026-0156","actionKey":"2026-11-01T13:30:00Z#RA-2026-0106","actionId":"RA-2026-0106","actorRole":"REVIEWER","actionType":"SITE_INVESTIGATION","summary":"Synthetic demo action: inspect the intake and record findings.","createdAt":"2026-11-01T13:30:00Z","isDemo":true},
+    {"alertId":"ALT-2026-0155","actionKey":"2026-11-01T12:05:00Z#RA-2026-0105","actionId":"RA-2026-0105","actorRole":"OPERATOR","actionType":"REMEDIATION","summary":"Synthetic demo action: record planned maintenance and await verification.","createdAt":"2026-11-01T12:05:00Z","isDemo":true},
+    {"alertId":"ALT-2026-0154","actionKey":"2026-11-01T10:40:00Z#RA-2026-0104","actionId":"RA-2026-0104","actorRole":"REVIEWER","actionType":"PUBLIC_NOTICE","summary":"Synthetic demo action: draft a notice for review; no message was sent.","createdAt":"2026-11-01T10:40:00Z","isDemo":true}
+  ]
+}

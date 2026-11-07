@@ -16,7 +16,9 @@ export const ChronologicalSamplesTable: FC<ChronologicalSamplesTableProps> = ({
   sourceName,
 }) => {
   // If readings are not supplied or empty, generate realistic samples matching CC-Project format
-  const displayReadings: Reading[] = readings.length > 0 ? readings : [
+  const displayReadings: Reading[] = readings.length > 0
+    ? [...readings].sort((a, b) => new Date(b.collectedAt || 0).getTime() - new Date(a.collectedAt || 0).getTime())
+    : [
     {
       readingId: `gwl-sm-104`,
       sourceId,

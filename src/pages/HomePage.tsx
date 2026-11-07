@@ -51,6 +51,14 @@ const HomePage: FC = () => {
                 View response <b>→</b>
               </button>
             </article>
+            <article className="water-card">
+              <WaterIllustration type="test" />
+              <h3>Lab Reports &amp; Archive</h3>
+              <p>Upload certified lab evidence and regulatory reports to secure encrypted document archive.</p>
+              <button onClick={() => navigate('/upload-document')}>
+                Upload Reports <b>→</b>
+              </button>
+            </article>
           </div>
           <div className="water-footnote">
             <span>DEMO DATA · Illustrative readings</span>

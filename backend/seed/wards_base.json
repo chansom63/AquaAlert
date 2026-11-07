@@ -1,0 +1,2378 @@
+[
+  {
+    "wardNumber": 1,
+    "name": "Ward 01 - Hazira Industrial Area",
+    "zoneId": 1,
+    "zoneName": "Zone 01 - Hazira",
+    "locality": "Hazira Crossing, Tansen Nagar Marg",
+    "population": 18200,
+    "status": "NORMAL",
+    "waterSource": "GMC Industrial Deep Borewell #01",
+    "tds": "490 mg/L",
+    "chlorine": "0.40 mg/L",
+    "turbidity": "0.90 NTU",
+    "pH": "7.1",
+    "center": {
+      "lat": 26.248,
+      "lng": 78.172
+    },
+    "bounds": [
+      [
+        26.253000000000004,
+        78.167
+      ],
+      [
+        26.2516,
+        78.178
+      ],
+      [
+        26.243,
+        78.17649999999999
+      ],
+      [
+        26.244400000000002,
+        78.166
+      ]
+    ]
+  },
+  {
+    "wardNumber": 2,
+    "name": "Ward 02 - Fort Foothills / Kila Gate",
+    "zoneId": 1,
+    "zoneName": "Zone 01 - Hazira",
+    "locality": "Kila Gate, Fort North Slopes",
+    "population": 15400,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Intake Gravity Conduit",
+    "tds": "235 mg/L",
+    "chlorine": "0.68 mg/L",
+    "turbidity": "0.35 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.241,
+      "lng": 78.166
+    },
+    "bounds": [
+      [
+        26.243499999999997,
+        78.1615
+      ],
+      [
+        26.24415,
+        78.16949999999999
+      ],
+      [
+        26.238500000000002,
+        78.17005
+      ],
+      [
+        26.237849999999998,
+        78.16250000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 3,
+    "name": "Ward 03 - Gwalior Old Town / Ghasmandi",
+    "zoneId": 1,
+    "zoneName": "Zone 01 - Hazira",
+    "locality": "Ghasmandi, Tansen Road",
+    "population": 19800,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Feeder Overhead Reservoir",
+    "tds": "250 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.42 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.236,
+      "lng": 78.174
+    },
+    "bounds": [
+      [
+        26.2405,
+        78.16950000000001
+      ],
+      [
+        26.239150000000002,
+        78.1795
+      ],
+      [
+        26.2315,
+        78.17805000000001
+      ],
+      [
+        26.23285,
+        78.16850000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 4,
+    "name": "Ward 04 - Vinay Nagar Sector 1",
+    "zoneId": 2,
+    "zoneName": "Zone 02 - Vinay Nagar",
+    "locality": "Vinay Nagar Main, Bahodapur Link",
+    "population": 17500,
+    "status": "OPTIMAL",
+    "waterSource": "North Distribution Substation",
+    "tds": "260 mg/L",
+    "chlorine": "0.60 mg/L",
+    "turbidity": "0.40 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.255,
+      "lng": 78.161
+    },
+    "bounds": [
+      [
+        26.258,
+        78.156
+      ],
+      [
+        26.258599999999998,
+        78.16499999999999
+      ],
+      [
+        26.252,
+        78.1655
+      ],
+      [
+        26.2514,
+        78.15700000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 5,
+    "name": "Ward 05 - Vinay Nagar Sector 2 & 3",
+    "zoneId": 2,
+    "zoneName": "Zone 02 - Vinay Nagar",
+    "locality": "Vinay Nagar West, Transport Nagar Perimeter",
+    "population": 16800,
+    "status": "OPTIMAL",
+    "waterSource": "Bahodapur Municipal Booster",
+    "tds": "275 mg/L",
+    "chlorine": "0.58 mg/L",
+    "turbidity": "0.45 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.259,
+      "lng": 78.152
+    },
+    "bounds": [
+      [
+        26.264000000000003,
+        78.147
+      ],
+      [
+        26.2626,
+        78.158
+      ],
+      [
+        26.253999999999998,
+        78.1565
+      ],
+      [
+        26.2554,
+        78.146
+      ]
+    ]
+  },
+  {
+    "wardNumber": 6,
+    "name": "Ward 06 - Anand Nagar & Bahodapur",
+    "zoneId": 2,
+    "zoneName": "Zone 02 - Vinay Nagar",
+    "locality": "Anand Nagar, Bahodapur Chowk",
+    "population": 21200,
+    "status": "NORMAL",
+    "waterSource": "Deep Borewell System #03",
+    "tds": "380 mg/L",
+    "chlorine": "0.45 mg/L",
+    "turbidity": "0.75 NTU",
+    "pH": "7.1",
+    "center": {
+      "lat": 26.249,
+      "lng": 78.148
+    },
+    "bounds": [
+      [
+        26.254499999999997,
+        78.1435
+      ],
+      [
+        26.25215,
+        78.15449999999998
+      ],
+      [
+        26.2435,
+        78.15205
+      ],
+      [
+        26.245849999999997,
+        78.14150000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 7,
+    "name": "Ward 07 - Laxmi Ganj Mandi",
+    "zoneId": 3,
+    "zoneName": "Zone 03 - Laxmi Ganj",
+    "locality": "Laxmi Ganj Wholesale Market",
+    "population": 19100,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Central Piped Trunk",
+    "tds": "255 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.38 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.216,
+      "lng": 78.148
+    },
+    "bounds": [
+      [
+        26.2185,
+        78.1435
+      ],
+      [
+        26.219150000000003,
+        78.15149999999998
+      ],
+      [
+        26.213500000000003,
+        78.15205
+      ],
+      [
+        26.21285,
+        78.14450000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 8,
+    "name": "Ward 08 - Gol Pahariya East",
+    "zoneId": 3,
+    "zoneName": "Zone 03 - Laxmi Ganj",
+    "locality": "Gol Pahariya, Lalita Shastri Nagar",
+    "population": 18400,
+    "status": "OPTIMAL",
+    "waterSource": "Lashkar North Elevated Tank",
+    "tds": "290 mg/L",
+    "chlorine": "0.65 mg/L",
+    "turbidity": "0.40 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.208,
+      "lng": 78.142
+    },
+    "bounds": [
+      [
+        26.2125,
+        78.1375
+      ],
+      [
+        26.21115,
+        78.1475
+      ],
+      [
+        26.2035,
+        78.14605
+      ],
+      [
+        26.204849999999997,
+        78.1365
+      ]
+    ]
+  },
+  {
+    "wardNumber": 9,
+    "name": "Ward 09 - Gol Pahariya West & Janak Ganj",
+    "zoneId": 3,
+    "zoneName": "Zone 03 - Laxmi Ganj",
+    "locality": "Janak Ganj North, Old Phalka Bazar",
+    "population": 17900,
+    "status": "NORMAL",
+    "waterSource": "Janak Ganj Municipal Tube Well",
+    "tds": "360 mg/L",
+    "chlorine": "0.50 mg/L",
+    "turbidity": "0.55 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.202,
+      "lng": 78.145
+    },
+    "bounds": [
+      [
+        26.206500000000002,
+        78.1405
+      ],
+      [
+        26.205150000000003,
+        78.1505
+      ],
+      [
+        26.1975,
+        78.14905
+      ],
+      [
+        26.19885,
+        78.1395
+      ]
+    ]
+  },
+  {
+    "wardNumber": 10,
+    "name": "Ward 10 - Jiwaji Ganj Central",
+    "zoneId": 4,
+    "zoneName": "Zone 04 - Jiwaji Ganj",
+    "locality": "Jiwaji Ganj, Bada Bazar",
+    "population": 16500,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Piped System",
+    "tds": "260 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.42 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.198,
+      "lng": 78.149
+    },
+    "bounds": [
+      [
+        26.2,
+        78.145
+      ],
+      [
+        26.2007,
+        78.152
+      ],
+      [
+        26.196,
+        78.1526
+      ],
+      [
+        26.1953,
+        78.146
+      ]
+    ]
+  },
+  {
+    "wardNumber": 11,
+    "name": "Ward 11 - Madhav Ganj North",
+    "zoneId": 4,
+    "zoneName": "Zone 04 - Jiwaji Ganj",
+    "locality": "Madhav Ganj North, Loha Mandi",
+    "population": 18300,
+    "status": "OPTIMAL",
+    "waterSource": "Lashkar Distribution Network",
+    "tds": "285 mg/L",
+    "chlorine": "0.59 mg/L",
+    "turbidity": "0.44 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.192,
+      "lng": 78.151
+    },
+    "bounds": [
+      [
+        26.196,
+        78.14699999999999
+      ],
+      [
+        26.1947,
+        78.156
+      ],
+      [
+        26.188,
+        78.1546
+      ],
+      [
+        26.1893,
+        78.14599999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 12,
+    "name": "Ward 12 - Madhav Ganj South & Rogi Kalyan",
+    "zoneId": 4,
+    "zoneName": "Zone 04 - Jiwaji Ganj",
+    "locality": "Madhav Ganj South, Hospital Road",
+    "population": 17200,
+    "status": "NORMAL",
+    "waterSource": "Madhav Ganj Tube Well Station",
+    "tds": "340 mg/L",
+    "chlorine": "0.52 mg/L",
+    "turbidity": "0.60 NTU",
+    "pH": "7.1",
+    "center": {
+      "lat": 26.186,
+      "lng": 78.153
+    },
+    "bounds": [
+      [
+        26.19,
+        78.149
+      ],
+      [
+        26.1887,
+        78.15800000000002
+      ],
+      [
+        26.182,
+        78.15660000000001
+      ],
+      [
+        26.1833,
+        78.148
+      ]
+    ]
+  },
+  {
+    "wardNumber": 13,
+    "name": "Ward 13 - Daulat Ganj & Topi Bazar",
+    "zoneId": 5,
+    "zoneName": "Zone 05 - Maharaj Bada",
+    "locality": "Topi Bazar, Daulat Ganj Central",
+    "population": 16400,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Conduit Feeder",
+    "tds": "270 mg/L",
+    "chlorine": "0.65 mg/L",
+    "turbidity": "0.38 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.201,
+      "lng": 78.156
+    },
+    "bounds": [
+      [
+        26.203,
+        78.152
+      ],
+      [
+        26.2037,
+        78.159
+      ],
+      [
+        26.199,
+        78.15960000000001
+      ],
+      [
+        26.1983,
+        78.153
+      ]
+    ]
+  },
+  {
+    "wardNumber": 14,
+    "name": "Ward 14 - Maharaj Bada Central Plaza",
+    "zoneId": 5,
+    "zoneName": "Zone 05 - Maharaj Bada",
+    "locality": "Maharaj Bada, Historic Market Complex",
+    "population": 22400,
+    "status": "ATTENTION",
+    "waterSource": "Maharaj Bada Hand Pump #04 (Under Inspection)",
+    "tds": "620 mg/L",
+    "chlorine": "0.45 mg/L",
+    "turbidity": "0.85 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.1965,
+      "lng": 78.158
+    },
+    "bounds": [
+      [
+        26.201,
+        78.15350000000001
+      ],
+      [
+        26.199650000000002,
+        78.1635
+      ],
+      [
+        26.192,
+        78.16205000000001
+      ],
+      [
+        26.19335,
+        78.1525
+      ]
+    ]
+  },
+  {
+    "wardNumber": 15,
+    "name": "Ward 15 - Sarafa Bazar & Huzrat Road",
+    "zoneId": 5,
+    "zoneName": "Zone 05 - Maharaj Bada",
+    "locality": "Sarafa Gold Market, Huzrat Road",
+    "population": 15100,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Central Feeder",
+    "tds": "245 mg/L",
+    "chlorine": "0.70 mg/L",
+    "turbidity": "0.34 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.194,
+      "lng": 78.163
+    },
+    "bounds": [
+      [
+        26.198,
+        78.15899999999999
+      ],
+      [
+        26.1967,
+        78.168
+      ],
+      [
+        26.189999999999998,
+        78.1666
+      ],
+      [
+        26.1913,
+        78.15799999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 16,
+    "name": "Ward 16 - Jayendraganj Commercial Sector",
+    "zoneId": 6,
+    "zoneName": "Zone 06 - Jayendraganj",
+    "locality": "Jayendraganj, Commercial Banks Lane",
+    "population": 17800,
+    "status": "OPTIMAL",
+    "waterSource": "Lashkar East Tank Substation",
+    "tds": "260 mg/L",
+    "chlorine": "0.64 mg/L",
+    "turbidity": "0.39 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.201,
+      "lng": 78.165
+    },
+    "bounds": [
+      [
+        26.205000000000002,
+        78.161
+      ],
+      [
+        26.2037,
+        78.17000000000002
+      ],
+      [
+        26.197,
+        78.16860000000001
+      ],
+      [
+        26.1983,
+        78.16
+      ]
+    ]
+  },
+  {
+    "wardNumber": 17,
+    "name": "Ward 17 - Roshni Ghar & Roxy Pul",
+    "zoneId": 6,
+    "zoneName": "Zone 06 - Jayendraganj",
+    "locality": "Roshni Ghar Road, Roxy Pul",
+    "population": 18600,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Intake System",
+    "tds": "250 mg/L",
+    "chlorine": "0.66 mg/L",
+    "turbidity": "0.36 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.207,
+      "lng": 78.167
+    },
+    "bounds": [
+      [
+        26.209,
+        78.163
+      ],
+      [
+        26.2097,
+        78.17
+      ],
+      [
+        26.205000000000002,
+        78.17060000000001
+      ],
+      [
+        26.2043,
+        78.164
+      ]
+    ]
+  },
+  {
+    "wardNumber": 18,
+    "name": "Ward 18 - Nai Sadak & Patankar Bazar",
+    "zoneId": 6,
+    "zoneName": "Zone 06 - Jayendraganj",
+    "locality": "Nai Sadak, Patankar Bazar",
+    "population": 19400,
+    "status": "OPTIMAL",
+    "waterSource": "Lashkar Piped Distribution",
+    "tds": "280 mg/L",
+    "chlorine": "0.58 mg/L",
+    "turbidity": "0.42 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.196,
+      "lng": 78.169
+    },
+    "bounds": [
+      [
+        26.200000000000003,
+        78.16499999999999
+      ],
+      [
+        26.198700000000002,
+        78.174
+      ],
+      [
+        26.192,
+        78.1726
+      ],
+      [
+        26.1933,
+        78.16399999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 19,
+    "name": "Ward 19 - Chhatri Bazar & Scindia Cenotaphs",
+    "zoneId": 7,
+    "zoneName": "Zone 07 - Chhatri Bazar",
+    "locality": "Chhatri Bazar Heritage Zone",
+    "population": 14600,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Piped Trunk",
+    "tds": "240 mg/L",
+    "chlorine": "0.68 mg/L",
+    "turbidity": "0.35 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.191,
+      "lng": 78.161
+    },
+    "bounds": [
+      [
+        26.195,
+        78.157
+      ],
+      [
+        26.1937,
+        78.16600000000001
+      ],
+      [
+        26.186999999999998,
+        78.16460000000001
+      ],
+      [
+        26.188299999999998,
+        78.15599999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 20,
+    "name": "Ward 20 - Dana Oli & Sarafa Extension",
+    "zoneId": 7,
+    "zoneName": "Zone 07 - Chhatri Bazar",
+    "locality": "Dana Oli, Dahi Mandi",
+    "population": 15800,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Piped Grid",
+    "tds": "265 mg/L",
+    "chlorine": "0.60 mg/L",
+    "turbidity": "0.41 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.188,
+      "lng": 78.165
+    },
+    "bounds": [
+      [
+        26.189999999999998,
+        78.161
+      ],
+      [
+        26.1907,
+        78.168
+      ],
+      [
+        26.186,
+        78.16860000000001
+      ],
+      [
+        26.185299999999998,
+        78.162
+      ]
+    ]
+  },
+  {
+    "wardNumber": 21,
+    "name": "Ward 21 - Naya Bazar & Phalka Bazar",
+    "zoneId": 7,
+    "zoneName": "Zone 07 - Chhatri Bazar",
+    "locality": "Naya Bazar, Phalka Bazar Corridor",
+    "population": 16900,
+    "status": "NORMAL",
+    "waterSource": "Lashkar Deep Tube Well Station",
+    "tds": "330 mg/L",
+    "chlorine": "0.55 mg/L",
+    "turbidity": "0.52 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.184,
+      "lng": 78.16
+    },
+    "bounds": [
+      [
+        26.188000000000002,
+        78.15599999999999
+      ],
+      [
+        26.186700000000002,
+        78.165
+      ],
+      [
+        26.18,
+        78.1636
+      ],
+      [
+        26.1813,
+        78.15499999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 22,
+    "name": "Ward 22 - Kampoo Kalan & Madhavrao Park",
+    "zoneId": 8,
+    "zoneName": "Zone 08 - Kampoo",
+    "locality": "Kampoo Kalan, Madhavrao Scindia Marg",
+    "population": 17700,
+    "status": "OPTIMAL",
+    "waterSource": "Kampoo Piped Substation",
+    "tds": "275 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.40 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.182,
+      "lng": 78.152
+    },
+    "bounds": [
+      [
+        26.183999999999997,
+        78.148
+      ],
+      [
+        26.1847,
+        78.155
+      ],
+      [
+        26.18,
+        78.1556
+      ],
+      [
+        26.179299999999998,
+        78.149
+      ]
+    ]
+  },
+  {
+    "wardNumber": 23,
+    "name": "Ward 23 - Kampoo Khurd & Fire Brigade Sector",
+    "zoneId": 8,
+    "zoneName": "Zone 08 - Kampoo",
+    "locality": "Kampoo Khurd, Lalitpur Colony Link",
+    "population": 16200,
+    "status": "OPTIMAL",
+    "waterSource": "Kampoo Elevated Reservoir",
+    "tds": "290 mg/L",
+    "chlorine": "0.60 mg/L",
+    "turbidity": "0.43 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.177,
+      "lng": 78.154
+    },
+    "bounds": [
+      [
+        26.181,
+        78.14999999999999
+      ],
+      [
+        26.1797,
+        78.159
+      ],
+      [
+        26.173,
+        78.1576
+      ],
+      [
+        26.1743,
+        78.14899999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 24,
+    "name": "Ward 24 - Amkhoh & Cancer Hospital Marg",
+    "zoneId": 8,
+    "zoneName": "Zone 08 - Kampoo",
+    "locality": "Amkhoh, Cancer Hills Foothills",
+    "population": 19400,
+    "status": "NORMAL",
+    "waterSource": "Deep Borewell System #07",
+    "tds": "370 mg/L",
+    "chlorine": "0.48 mg/L",
+    "turbidity": "0.65 NTU",
+    "pH": "7.1",
+    "center": {
+      "lat": 26.172,
+      "lng": 78.15
+    },
+    "bounds": [
+      [
+        26.1765,
+        78.14550000000001
+      ],
+      [
+        26.175150000000002,
+        78.1555
+      ],
+      [
+        26.1675,
+        78.15405000000001
+      ],
+      [
+        26.16885,
+        78.14450000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 25,
+    "name": "Ward 25 - Jinsi Nala & Sheetla Sahay Marg",
+    "zoneId": 9,
+    "zoneName": "Zone 09 - Jinsi",
+    "locality": "Jinsi Nala Corridor",
+    "population": 18100,
+    "status": "NORMAL",
+    "waterSource": "Jinsi Municipal Tube Well",
+    "tds": "395 mg/L",
+    "chlorine": "0.50 mg/L",
+    "turbidity": "0.68 NTU",
+    "pH": "7.1",
+    "center": {
+      "lat": 26.18,
+      "lng": 78.163
+    },
+    "bounds": [
+      [
+        26.182,
+        78.15899999999999
+      ],
+      [
+        26.1827,
+        78.166
+      ],
+      [
+        26.178,
+        78.1666
+      ],
+      [
+        26.1773,
+        78.16
+      ]
+    ]
+  },
+  {
+    "wardNumber": 26,
+    "name": "Ward 26 - Madhav Dispensary & Naya Bazar",
+    "zoneId": 9,
+    "zoneName": "Zone 09 - Jinsi",
+    "locality": "Madhav Dispensary Sector",
+    "population": 16500,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Intake Piped Supply",
+    "tds": "260 mg/L",
+    "chlorine": "0.65 mg/L",
+    "turbidity": "0.38 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.176,
+      "lng": 78.166
+    },
+    "bounds": [
+      [
+        26.18,
+        78.16199999999999
+      ],
+      [
+        26.1787,
+        78.171
+      ],
+      [
+        26.171999999999997,
+        78.1696
+      ],
+      [
+        26.173299999999998,
+        78.16099999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 27,
+    "name": "Ward 27 - Nawab Sahab Ka Bada",
+    "zoneId": 9,
+    "zoneName": "Zone 09 - Jinsi",
+    "locality": "Nawab Sahab Ka Bada, Kampoo Link",
+    "population": 15300,
+    "status": "OPTIMAL",
+    "waterSource": "Lashkar South Tank",
+    "tds": "285 mg/L",
+    "chlorine": "0.61 mg/L",
+    "turbidity": "0.42 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.173,
+      "lng": 78.161
+    },
+    "bounds": [
+      [
+        26.177,
+        78.157
+      ],
+      [
+        26.1757,
+        78.16600000000001
+      ],
+      [
+        26.168999999999997,
+        78.16460000000001
+      ],
+      [
+        26.170299999999997,
+        78.15599999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 28,
+    "name": "Ward 28 - Sikandar Kampoo",
+    "zoneId": 10,
+    "zoneName": "Zone 10 - Sikandar Kampoo",
+    "locality": "Sikandar Kampoo Main",
+    "population": 20100,
+    "status": "NORMAL",
+    "waterSource": "Deep Borewell Network #09",
+    "tds": "410 mg/L",
+    "chlorine": "0.46 mg/L",
+    "turbidity": "0.72 NTU",
+    "pH": "7.0",
+    "center": {
+      "lat": 26.168,
+      "lng": 78.156
+    },
+    "bounds": [
+      [
+        26.170499999999997,
+        78.15150000000001
+      ],
+      [
+        26.17115,
+        78.1595
+      ],
+      [
+        26.1655,
+        78.16005000000001
+      ],
+      [
+        26.164849999999998,
+        78.15250000000002
+      ]
+    ]
+  },
+  {
+    "wardNumber": 29,
+    "name": "Ward 29 - Gudha Gudi Ka Naka North",
+    "zoneId": 10,
+    "zoneName": "Zone 10 - Sikandar Kampoo",
+    "locality": "Gudha Gudi Naka Crossing",
+    "population": 19500,
+    "status": "NORMAL",
+    "waterSource": "Gudha Deep Tube Well",
+    "tds": "420 mg/L",
+    "chlorine": "0.45 mg/L",
+    "turbidity": "0.75 NTU",
+    "pH": "7.1",
+    "center": {
+      "lat": 26.164,
+      "lng": 78.162
+    },
+    "bounds": [
+      [
+        26.1685,
+        78.15750000000001
+      ],
+      [
+        26.167150000000003,
+        78.1675
+      ],
+      [
+        26.1595,
+        78.16605000000001
+      ],
+      [
+        26.16085,
+        78.15650000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 30,
+    "name": "Ward 30 - Gudha Gudi Ka Naka South & Girwai",
+    "zoneId": 10,
+    "zoneName": "Zone 10 - Sikandar Kampoo",
+    "locality": "Girwai Road, Gwalior Bypass Link",
+    "population": 22800,
+    "status": "NORMAL",
+    "waterSource": "Girwai Municipal Booster Station",
+    "tds": "440 mg/L",
+    "chlorine": "0.44 mg/L",
+    "turbidity": "0.80 NTU",
+    "pH": "7.0",
+    "center": {
+      "lat": 26.158,
+      "lng": 78.165
+    },
+    "bounds": [
+      [
+        26.164,
+        78.16000000000001
+      ],
+      [
+        26.1616,
+        78.172
+      ],
+      [
+        26.152,
+        78.1695
+      ],
+      [
+        26.154400000000003,
+        78.15800000000002
+      ]
+    ]
+  },
+  {
+    "wardNumber": 31,
+    "name": "Ward 31 - City Center North / Railway Colony",
+    "zoneId": 11,
+    "zoneName": "Zone 11 - City Center",
+    "locality": "City Center North, Railway Colony",
+    "population": 17200,
+    "status": "OPTIMAL",
+    "waterSource": "Collectorate Distribution Substation",
+    "tds": "235 mg/L",
+    "chlorine": "0.72 mg/L",
+    "turbidity": "0.35 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.213,
+      "lng": 78.182
+    },
+    "bounds": [
+      [
+        26.2155,
+        78.17750000000001
+      ],
+      [
+        26.216150000000003,
+        78.18549999999999
+      ],
+      [
+        26.210500000000003,
+        78.18605000000001
+      ],
+      [
+        26.20985,
+        78.17850000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 32,
+    "name": "Ward 32 - Patel Nagar Commercial Hub",
+    "zoneId": 11,
+    "zoneName": "Zone 11 - City Center",
+    "locality": "Patel Nagar, New High Court Complex",
+    "population": 18500,
+    "status": "OPTIMAL",
+    "waterSource": "City Center Piped System",
+    "tds": "240 mg/L",
+    "chlorine": "0.70 mg/L",
+    "turbidity": "0.38 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.208,
+      "lng": 78.189
+    },
+    "bounds": [
+      [
+        26.2125,
+        78.1845
+      ],
+      [
+        26.21115,
+        78.19449999999999
+      ],
+      [
+        26.2035,
+        78.19305
+      ],
+      [
+        26.204849999999997,
+        78.1835
+      ]
+    ]
+  },
+  {
+    "wardNumber": 33,
+    "name": "Ward 33 - New Collectorate & University Road",
+    "zoneId": 11,
+    "zoneName": "Zone 11 - City Center",
+    "locality": "New Collectorate Complex, Jiwaji University Gate",
+    "population": 19800,
+    "status": "OPTIMAL",
+    "waterSource": "City Center Collectorate Distribution Grid",
+    "tds": "240 mg/L",
+    "chlorine": "0.70 mg/L",
+    "turbidity": "0.38 NTU",
+    "pH": "7.38",
+    "center": {
+      "lat": 26.203,
+      "lng": 78.186
+    },
+    "bounds": [
+      [
+        26.2075,
+        78.18150000000001
+      ],
+      [
+        26.20615,
+        78.1915
+      ],
+      [
+        26.1985,
+        78.19005000000001
+      ],
+      [
+        26.199849999999998,
+        78.18050000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 34,
+    "name": "Ward 34 - Govindpuri Residential Enclave",
+    "zoneId": 12,
+    "zoneName": "Zone 12 - Govindpuri",
+    "locality": "Govindpuri, Balwant Nagar Extension",
+    "population": 21400,
+    "status": "OPTIMAL",
+    "waterSource": "Govindpuri Water Tower",
+    "tds": "250 mg/L",
+    "chlorine": "0.68 mg/L",
+    "turbidity": "0.36 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.201,
+      "lng": 78.196
+    },
+    "bounds": [
+      [
+        26.2035,
+        78.1915
+      ],
+      [
+        26.204150000000002,
+        78.19949999999999
+      ],
+      [
+        26.198500000000003,
+        78.20005
+      ],
+      [
+        26.19785,
+        78.19250000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 35,
+    "name": "Ward 35 - Sachin Tendulkar Marg / Alkapuri",
+    "zoneId": 12,
+    "zoneName": "Zone 12 - Govindpuri",
+    "locality": "Sachin Tendulkar Marg, Alkapuri",
+    "population": 23100,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Piped South Feeder",
+    "tds": "255 mg/L",
+    "chlorine": "0.66 mg/L",
+    "turbidity": "0.37 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.195,
+      "lng": 78.192
+    },
+    "bounds": [
+      [
+        26.1995,
+        78.1875
+      ],
+      [
+        26.198150000000002,
+        78.19749999999999
+      ],
+      [
+        26.1905,
+        78.19605
+      ],
+      [
+        26.19185,
+        78.1865
+      ]
+    ]
+  },
+  {
+    "wardNumber": 36,
+    "name": "Ward 36 - Jiwaji University Campus & Mahalgaon",
+    "zoneId": 12,
+    "zoneName": "Zone 12 - Govindpuri",
+    "locality": "Mahalgaon, University Hostel Grounds",
+    "population": 20500,
+    "status": "OPTIMAL",
+    "waterSource": "Mahalgaon Booster Substation",
+    "tds": "270 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.41 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.192,
+      "lng": 78.199
+    },
+    "bounds": [
+      [
+        26.1965,
+        78.1945
+      ],
+      [
+        26.19515,
+        78.2045
+      ],
+      [
+        26.1875,
+        78.20305
+      ],
+      [
+        26.18885,
+        78.1935
+      ]
+    ]
+  },
+  {
+    "wardNumber": 37,
+    "name": "Ward 37 - Thatipur West / Gandhi Road",
+    "zoneId": 13,
+    "zoneName": "Zone 13 - Thatipur West",
+    "locality": "Thatipur Main Square, Gandhi Road",
+    "population": 22600,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Reservoir Water Works Feeder",
+    "tds": "260 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.45 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.216,
+      "lng": 78.204
+    },
+    "bounds": [
+      [
+        26.2185,
+        78.1995
+      ],
+      [
+        26.219150000000003,
+        78.20749999999998
+      ],
+      [
+        26.213500000000003,
+        78.20805
+      ],
+      [
+        26.21285,
+        78.2005
+      ]
+    ]
+  },
+  {
+    "wardNumber": 38,
+    "name": "Ward 38 - Suresh Nagar & Madhav Rao Scindia Marg",
+    "zoneId": 13,
+    "zoneName": "Zone 13 - Thatipur West",
+    "locality": "Suresh Nagar Main, C-Block",
+    "population": 19800,
+    "status": "OPTIMAL",
+    "waterSource": "Thatipur High Level Tank",
+    "tds": "265 mg/L",
+    "chlorine": "0.61 mg/L",
+    "turbidity": "0.43 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.221,
+      "lng": 78.207
+    },
+    "bounds": [
+      [
+        26.2255,
+        78.2025
+      ],
+      [
+        26.22415,
+        78.21249999999999
+      ],
+      [
+        26.2165,
+        78.21105
+      ],
+      [
+        26.21785,
+        78.2015
+      ]
+    ]
+  },
+  {
+    "wardNumber": 39,
+    "name": "Ward 39 - Suresh Nagar Extension & Mayur Market",
+    "zoneId": 13,
+    "zoneName": "Zone 13 - Thatipur West",
+    "locality": "Mayur Market, Suresh Nagar Ext",
+    "population": 18700,
+    "status": "OPTIMAL",
+    "waterSource": "Thatipur Piped Distribution",
+    "tds": "270 mg/L",
+    "chlorine": "0.59 mg/L",
+    "turbidity": "0.46 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.225,
+      "lng": 78.209
+    },
+    "bounds": [
+      [
+        26.2295,
+        78.20450000000001
+      ],
+      [
+        26.228150000000003,
+        78.2145
+      ],
+      [
+        26.2205,
+        78.21305000000001
+      ],
+      [
+        26.22185,
+        78.2035
+      ]
+    ]
+  },
+  {
+    "wardNumber": 40,
+    "name": "Ward 40 - Balwant Nagar & Katoratal Colony",
+    "zoneId": 14,
+    "zoneName": "Zone 14 - Gandhi Nagar",
+    "locality": "Balwant Nagar, Katoratal Link",
+    "population": 19200,
+    "status": "OPTIMAL",
+    "waterSource": "Gandhi Nagar Water Works Piped Supply",
+    "tds": "255 mg/L",
+    "chlorine": "0.65 mg/L",
+    "turbidity": "0.40 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.211,
+      "lng": 78.208
+    },
+    "bounds": [
+      [
+        26.213499999999996,
+        78.2035
+      ],
+      [
+        26.21415,
+        78.21149999999999
+      ],
+      [
+        26.2085,
+        78.21205
+      ],
+      [
+        26.207849999999997,
+        78.20450000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 41,
+    "name": "Ward 41 - Gandhi Nagar Water Works Treatment Plant",
+    "zoneId": 14,
+    "zoneName": "Zone 14 - Gandhi Nagar",
+    "locality": "Gandhi Nagar Water Works, Thatipur Ward 24 Link",
+    "population": 24500,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Reservoir Treatment & Piped Feeder (source-gwl-003)",
+    "tds": "260 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.45 NTU",
+    "pH": "7.35",
+    "center": {
+      "lat": 26.2142,
+      "lng": 78.2015
+    },
+    "bounds": [
+      [
+        26.218700000000002,
+        78.197
+      ],
+      [
+        26.217350000000003,
+        78.207
+      ],
+      [
+        26.2097,
+        78.20555
+      ],
+      [
+        26.21105,
+        78.196
+      ]
+    ]
+  },
+  {
+    "wardNumber": 42,
+    "name": "Ward 42 - Darpan Colony & River View",
+    "zoneId": 14,
+    "zoneName": "Zone 14 - Gandhi Nagar",
+    "locality": "Darpan Colony, Morar River Basin Link",
+    "population": 17800,
+    "status": "OPTIMAL",
+    "waterSource": "Gandhi Nagar Overhead Feeder",
+    "tds": "275 mg/L",
+    "chlorine": "0.60 mg/L",
+    "turbidity": "0.48 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.218,
+      "lng": 78.214
+    },
+    "bounds": [
+      [
+        26.2225,
+        78.2095
+      ],
+      [
+        26.22115,
+        78.2195
+      ],
+      [
+        26.2135,
+        78.21805
+      ],
+      [
+        26.21485,
+        78.2085
+      ]
+    ]
+  },
+  {
+    "wardNumber": 43,
+    "name": "Ward 43 - Morar Cantonment Sector 1 & Army Gate",
+    "zoneId": 15,
+    "zoneName": "Zone 15 - Morar Cantt",
+    "locality": "Army Road, Cantonment Sector 1",
+    "population": 18900,
+    "status": "OPTIMAL",
+    "waterSource": "Morar Cantonment Tube Well Station #02",
+    "tds": "340 mg/L",
+    "chlorine": "0.58 mg/L",
+    "turbidity": "0.60 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.2268,
+      "lng": 78.2285
+    },
+    "bounds": [
+      [
+        26.231800000000003,
+        78.2235
+      ],
+      [
+        26.2304,
+        78.2345
+      ],
+      [
+        26.221799999999998,
+        78.23299999999999
+      ],
+      [
+        26.223200000000002,
+        78.2225
+      ]
+    ]
+  },
+  {
+    "wardNumber": 44,
+    "name": "Ward 44 - Morar Main Bazaar & Sadar Bazar",
+    "zoneId": 15,
+    "zoneName": "Zone 15 - Morar Cantt",
+    "locality": "Sadar Bazar, Morar Clock Tower",
+    "population": 23400,
+    "status": "OPTIMAL",
+    "waterSource": "Morar Municipal Reservoir",
+    "tds": "330 mg/L",
+    "chlorine": "0.60 mg/L",
+    "turbidity": "0.58 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.23,
+      "lng": 78.225
+    },
+    "bounds": [
+      [
+        26.232499999999998,
+        78.2205
+      ],
+      [
+        26.233150000000002,
+        78.22849999999998
+      ],
+      [
+        26.227500000000003,
+        78.22905
+      ],
+      [
+        26.22685,
+        78.2215
+      ]
+    ]
+  },
+  {
+    "wardNumber": 45,
+    "name": "Ward 45 - Saint Paul School Sector & Hurawali",
+    "zoneId": 15,
+    "zoneName": "Zone 15 - Morar Cantt",
+    "locality": "Hurawali Marg, Saint Paul Sector",
+    "population": 19600,
+    "status": "OPTIMAL",
+    "waterSource": "Morar Overhead Tank B",
+    "tds": "325 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.55 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.223,
+      "lng": 78.232
+    },
+    "bounds": [
+      [
+        26.2275,
+        78.2275
+      ],
+      [
+        26.22615,
+        78.2375
+      ],
+      [
+        26.2185,
+        78.23605
+      ],
+      [
+        26.219849999999997,
+        78.2265
+      ]
+    ]
+  },
+  {
+    "wardNumber": 46,
+    "name": "Ward 46 - Kalpi Road Sector 1",
+    "zoneId": 16,
+    "zoneName": "Zone 16 - Kalpi Road",
+    "locality": "Kalpi Road, Morar River Bridge",
+    "population": 21100,
+    "status": "OPTIMAL",
+    "waterSource": "Kalpi Road Municipal Tube Well",
+    "tds": "350 mg/L",
+    "chlorine": "0.56 mg/L",
+    "turbidity": "0.62 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.234,
+      "lng": 78.231
+    },
+    "bounds": [
+      [
+        26.238500000000002,
+        78.2265
+      ],
+      [
+        26.237150000000003,
+        78.23649999999999
+      ],
+      [
+        26.2295,
+        78.23505
+      ],
+      [
+        26.23085,
+        78.2255
+      ]
+    ]
+  },
+  {
+    "wardNumber": 47,
+    "name": "Ward 47 - Sun Temple Heritage Enclave",
+    "zoneId": 16,
+    "zoneName": "Zone 16 - Kalpi Road",
+    "locality": "Sun Temple (Surya Mandir) Enclave",
+    "population": 16800,
+    "status": "OPTIMAL",
+    "waterSource": "Morar East Piped Feed",
+    "tds": "310 mg/L",
+    "chlorine": "0.64 mg/L",
+    "turbidity": "0.45 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.238,
+      "lng": 78.238
+    },
+    "bounds": [
+      [
+        26.240499999999997,
+        78.2335
+      ],
+      [
+        26.24115,
+        78.24149999999999
+      ],
+      [
+        26.235500000000002,
+        78.24205
+      ],
+      [
+        26.234849999999998,
+        78.23450000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 48,
+    "name": "Ward 48 - Morar East / Kalpi Road Sector 2",
+    "zoneId": 16,
+    "zoneName": "Zone 16 - Kalpi Road",
+    "locality": "Kalpi Road Outer Corridor",
+    "population": 18500,
+    "status": "NORMAL",
+    "waterSource": "East GMC Borewell System",
+    "tds": "385 mg/L",
+    "chlorine": "0.50 mg/L",
+    "turbidity": "0.68 NTU",
+    "pH": "7.1",
+    "center": {
+      "lat": 26.242,
+      "lng": 78.243
+    },
+    "bounds": [
+      [
+        26.2465,
+        78.2385
+      ],
+      [
+        26.245150000000002,
+        78.24849999999999
+      ],
+      [
+        26.2375,
+        78.24705
+      ],
+      [
+        26.23885,
+        78.2375
+      ]
+    ]
+  },
+  {
+    "wardNumber": 49,
+    "name": "Ward 49 - Bada Gaon North & Bypass",
+    "zoneId": 17,
+    "zoneName": "Zone 17 - Bada Gaon",
+    "locality": "Bada Gaon Highway Bypass Link",
+    "population": 20400,
+    "status": "NORMAL",
+    "waterSource": "Bada Gaon Deep Borewell",
+    "tds": "410 mg/L",
+    "chlorine": "0.48 mg/L",
+    "turbidity": "0.74 NTU",
+    "pH": "7.1",
+    "center": {
+      "lat": 26.235,
+      "lng": 78.252
+    },
+    "bounds": [
+      [
+        26.238,
+        78.247
+      ],
+      [
+        26.238599999999998,
+        78.25599999999999
+      ],
+      [
+        26.232,
+        78.25649999999999
+      ],
+      [
+        26.2314,
+        78.248
+      ]
+    ]
+  },
+  {
+    "wardNumber": 50,
+    "name": "Ward 50 - Bada Gaon South / Mandi Sector",
+    "zoneId": 17,
+    "zoneName": "Zone 17 - Bada Gaon",
+    "locality": "Bada Gaon Central Mandi",
+    "population": 19100,
+    "status": "NORMAL",
+    "waterSource": "Municipal Tube Well Station #05",
+    "tds": "425 mg/L",
+    "chlorine": "0.46 mg/L",
+    "turbidity": "0.78 NTU",
+    "pH": "7.0",
+    "center": {
+      "lat": 26.229,
+      "lng": 78.254
+    },
+    "bounds": [
+      [
+        26.234,
+        78.24900000000001
+      ],
+      [
+        26.232599999999998,
+        78.26
+      ],
+      [
+        26.223999999999997,
+        78.2585
+      ],
+      [
+        26.2254,
+        78.248
+      ]
+    ]
+  },
+  {
+    "wardNumber": 51,
+    "name": "Ward 51 - Bijoli Industrial Corridor",
+    "zoneId": 17,
+    "zoneName": "Zone 17 - Bada Gaon",
+    "locality": "Bijoli Outer Ring",
+    "population": 22700,
+    "status": "NORMAL",
+    "waterSource": "Bijoli Industrial Booster",
+    "tds": "445 mg/L",
+    "chlorine": "0.44 mg/L",
+    "turbidity": "0.82 NTU",
+    "pH": "7.0",
+    "center": {
+      "lat": 26.221,
+      "lng": 78.256
+    },
+    "bounds": [
+      [
+        26.226000000000003,
+        78.251
+      ],
+      [
+        26.2246,
+        78.262
+      ],
+      [
+        26.215999999999998,
+        78.2605
+      ],
+      [
+        26.2174,
+        78.25
+      ]
+    ]
+  },
+  {
+    "wardNumber": 52,
+    "name": "Ward 52 - Pinto Park Central",
+    "zoneId": 18,
+    "zoneName": "Zone 18 - Pinto Park",
+    "locality": "Pinto Park Main Circle",
+    "population": 24200,
+    "status": "OPTIMAL",
+    "waterSource": "Pinto Park Water Tower",
+    "tds": "310 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.52 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.246,
+      "lng": 78.225
+    },
+    "bounds": [
+      [
+        26.248499999999996,
+        78.2205
+      ],
+      [
+        26.24915,
+        78.22849999999998
+      ],
+      [
+        26.2435,
+        78.22905
+      ],
+      [
+        26.242849999999997,
+        78.2215
+      ]
+    ]
+  },
+  {
+    "wardNumber": 53,
+    "name": "Ward 53 - Air Force Station Perimeter",
+    "zoneId": 18,
+    "zoneName": "Zone 18 - Pinto Park",
+    "locality": "Air Force Road, Maharajpur Link",
+    "population": 18600,
+    "status": "OPTIMAL",
+    "waterSource": "Air Force Sector Booster",
+    "tds": "295 mg/L",
+    "chlorine": "0.65 mg/L",
+    "turbidity": "0.48 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.252,
+      "lng": 78.229
+    },
+    "bounds": [
+      [
+        26.2565,
+        78.2245
+      ],
+      [
+        26.25515,
+        78.2345
+      ],
+      [
+        26.2475,
+        78.23305
+      ],
+      [
+        26.248849999999997,
+        78.2235
+      ]
+    ]
+  },
+  {
+    "wardNumber": 54,
+    "name": "Ward 54 - Bhind Road & Aditya College Corridor",
+    "zoneId": 18,
+    "zoneName": "Zone 18 - Pinto Park",
+    "locality": "Bhind Road, Aditya Campus Sector",
+    "population": 21500,
+    "status": "NORMAL",
+    "waterSource": "North-East GMC Deep Well",
+    "tds": "375 mg/L",
+    "chlorine": "0.52 mg/L",
+    "turbidity": "0.66 NTU",
+    "pH": "7.2",
+    "center": {
+      "lat": 26.258,
+      "lng": 78.234
+    },
+    "bounds": [
+      [
+        26.263,
+        78.229
+      ],
+      [
+        26.261599999999998,
+        78.24
+      ],
+      [
+        26.252999999999997,
+        78.23849999999999
+      ],
+      [
+        26.2544,
+        78.228
+      ]
+    ]
+  },
+  {
+    "wardNumber": 55,
+    "name": "Ward 55 - Gole Ka Mandir Chowk",
+    "zoneId": 19,
+    "zoneName": "Zone 19 - Gole Ka Mandir",
+    "locality": "Gole Ka Mandir Major Crossing",
+    "population": 23800,
+    "status": "OPTIMAL",
+    "waterSource": "Central Gwalior Feeder",
+    "tds": "280 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.46 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.242,
+      "lng": 78.214
+    },
+    "bounds": [
+      [
+        26.2445,
+        78.2095
+      ],
+      [
+        26.245150000000002,
+        78.21749999999999
+      ],
+      [
+        26.239500000000003,
+        78.21805
+      ],
+      [
+        26.23885,
+        78.21050000000001
+      ]
+    ]
+  },
+  {
+    "wardNumber": 56,
+    "name": "Ward 56 - Gwalior Trade Fair (Mela) Ground",
+    "zoneId": 19,
+    "zoneName": "Zone 19 - Gole Ka Mandir",
+    "locality": "Mela Ground Exhibition Enclave",
+    "population": 17400,
+    "status": "OPTIMAL",
+    "waterSource": "Mela Ground Dedicated Piped Storage",
+    "tds": "270 mg/L",
+    "chlorine": "0.66 mg/L",
+    "turbidity": "0.40 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.236,
+      "lng": 78.209
+    },
+    "bounds": [
+      [
+        26.2405,
+        78.20450000000001
+      ],
+      [
+        26.239150000000002,
+        78.2145
+      ],
+      [
+        26.2315,
+        78.21305000000001
+      ],
+      [
+        26.23285,
+        78.2035
+      ]
+    ]
+  },
+  {
+    "wardNumber": 57,
+    "name": "Ward 57 - Race Course Road & Police Line",
+    "zoneId": 19,
+    "zoneName": "Zone 19 - Gole Ka Mandir",
+    "locality": "Race Course Road, Police Line",
+    "population": 18900,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Central Piped Trunk",
+    "tds": "255 mg/L",
+    "chlorine": "0.68 mg/L",
+    "turbidity": "0.38 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.231,
+      "lng": 78.202
+    },
+    "bounds": [
+      [
+        26.235500000000002,
+        78.1975
+      ],
+      [
+        26.234150000000003,
+        78.2075
+      ],
+      [
+        26.2265,
+        78.20605
+      ],
+      [
+        26.22785,
+        78.1965
+      ]
+    ]
+  },
+  {
+    "wardNumber": 58,
+    "name": "Ward 58 - Gwalior Railway Station Main Platform",
+    "zoneId": 20,
+    "zoneName": "Zone 20 - Railway Station",
+    "locality": "Platform 1 Area, Station Circle",
+    "population": 20600,
+    "status": "OPTIMAL",
+    "waterSource": "Northern Railway & GMC Piped Line",
+    "tds": "250 mg/L",
+    "chlorine": "0.70 mg/L",
+    "turbidity": "0.36 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.223,
+      "lng": 78.188
+    },
+    "bounds": [
+      [
+        26.224999999999998,
+        78.184
+      ],
+      [
+        26.2257,
+        78.191
+      ],
+      [
+        26.221,
+        78.19160000000001
+      ],
+      [
+        26.220299999999998,
+        78.185
+      ]
+    ]
+  },
+  {
+    "wardNumber": 59,
+    "name": "Ward 59 - Padav Major Intersection & Bus Stand",
+    "zoneId": 20,
+    "zoneName": "Zone 20 - Railway Station",
+    "locality": "Padav Chowk, Central Bus Stand",
+    "population": 22100,
+    "status": "OPTIMAL",
+    "waterSource": "Padav Elevated Reservoir",
+    "tds": "265 mg/L",
+    "chlorine": "0.64 mg/L",
+    "turbidity": "0.42 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.218,
+      "lng": 78.184
+    },
+    "bounds": [
+      [
+        26.222,
+        78.17999999999999
+      ],
+      [
+        26.2207,
+        78.18900000000001
+      ],
+      [
+        26.214,
+        78.1876
+      ],
+      [
+        26.2153,
+        78.17899999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 60,
+    "name": "Ward 60 - Gandhi Market & Station Road",
+    "zoneId": 20,
+    "zoneName": "Zone 20 - Railway Station",
+    "locality": "Gandhi Market, Hotel Tansen Marg",
+    "population": 18200,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Piped Grid",
+    "tds": "255 mg/L",
+    "chlorine": "0.66 mg/L",
+    "turbidity": "0.39 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.215,
+      "lng": 78.179
+    },
+    "bounds": [
+      [
+        26.219,
+        78.175
+      ],
+      [
+        26.2177,
+        78.18400000000001
+      ],
+      [
+        26.211,
+        78.18260000000001
+      ],
+      [
+        26.2123,
+        78.17399999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 61,
+    "name": "Ward 61 - Shinde Ki Chhawani Central",
+    "zoneId": 21,
+    "zoneName": "Zone 21 - Shinde Ki Chhawani",
+    "locality": "Shinde Ki Chhawani, Khedapati Marg",
+    "population": 19800,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Feeder Pipeline",
+    "tds": "260 mg/L",
+    "chlorine": "0.65 mg/L",
+    "turbidity": "0.41 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.22,
+      "lng": 78.174
+    },
+    "bounds": [
+      [
+        26.221999999999998,
+        78.17
+      ],
+      [
+        26.2227,
+        78.177
+      ],
+      [
+        26.218,
+        78.17760000000001
+      ],
+      [
+        26.217299999999998,
+        78.171
+      ]
+    ]
+  },
+  {
+    "wardNumber": 62,
+    "name": "Ward 62 - Phoolbagh Botanical Gardens & Zoo",
+    "zoneId": 21,
+    "zoneName": "Zone 21 - Shinde Ki Chhawani",
+    "locality": "Phoolbagh, Italian Garden Grounds",
+    "population": 16700,
+    "status": "OPTIMAL",
+    "waterSource": "Phoolbagh Piped System",
+    "tds": "245 mg/L",
+    "chlorine": "0.68 mg/L",
+    "turbidity": "0.35 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.214,
+      "lng": 78.173
+    },
+    "bounds": [
+      [
+        26.218,
+        78.169
+      ],
+      [
+        26.2167,
+        78.17800000000001
+      ],
+      [
+        26.209999999999997,
+        78.17660000000001
+      ],
+      [
+        26.211299999999998,
+        78.16799999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 63,
+    "name": "Ward 63 - Motimahal Administrative Campus",
+    "zoneId": 22,
+    "zoneName": "Zone 22 - Motimahal",
+    "locality": "Motimahal Divisional Offices",
+    "population": 15900,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Treated Water Works",
+    "tds": "240 mg/L",
+    "chlorine": "0.70 mg/L",
+    "turbidity": "0.34 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.212,
+      "lng": 78.169
+    },
+    "bounds": [
+      [
+        26.214,
+        78.16499999999999
+      ],
+      [
+        26.2147,
+        78.172
+      ],
+      [
+        26.21,
+        78.1726
+      ],
+      [
+        26.2093,
+        78.166
+      ]
+    ]
+  },
+  {
+    "wardNumber": 64,
+    "name": "Ward 64 - Urwai Gate & Fort Ascent",
+    "zoneId": 22,
+    "zoneName": "Zone 22 - Motimahal",
+    "locality": "Urwai Gate, Jain Rock Sculptures Path",
+    "population": 13800,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Fort Gravity Feeder",
+    "tds": "235 mg/L",
+    "chlorine": "0.72 mg/L",
+    "turbidity": "0.32 NTU",
+    "pH": "7.4",
+    "center": {
+      "lat": 26.22,
+      "lng": 78.164
+    },
+    "bounds": [
+      [
+        26.224,
+        78.16
+      ],
+      [
+        26.2227,
+        78.16900000000001
+      ],
+      [
+        26.215999999999998,
+        78.16760000000001
+      ],
+      [
+        26.217299999999998,
+        78.15899999999999
+      ]
+    ]
+  },
+  {
+    "wardNumber": 65,
+    "name": "Ward 65 - Tomb of Ghaus Mohammad Sector",
+    "zoneId": 23,
+    "zoneName": "Zone 23 - Heritage North",
+    "locality": "Ghaus Mohammad Monument Road",
+    "population": 17400,
+    "status": "OPTIMAL",
+    "waterSource": "Heritage Area Piped Pipeline",
+    "tds": "270 mg/L",
+    "chlorine": "0.62 mg/L",
+    "turbidity": "0.44 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.23,
+      "lng": 78.177
+    },
+    "bounds": [
+      [
+        26.232,
+        78.173
+      ],
+      [
+        26.2327,
+        78.18
+      ],
+      [
+        26.228,
+        78.18060000000001
+      ],
+      [
+        26.2273,
+        78.174
+      ]
+    ]
+  },
+  {
+    "wardNumber": 66,
+    "name": "Ward 66 - Tansen Tomb & Music Academy Heritage Enclave",
+    "zoneId": 23,
+    "zoneName": "Zone 23 - Heritage North",
+    "locality": "Tansen Smarak, Tansen Nagar Old Enclave",
+    "population": 18100,
+    "status": "OPTIMAL",
+    "waterSource": "Tigra Intake Heritage Feeder",
+    "tds": "265 mg/L",
+    "chlorine": "0.64 mg/L",
+    "turbidity": "0.42 NTU",
+    "pH": "7.3",
+    "center": {
+      "lat": 26.235,
+      "lng": 78.178
+    },
+    "bounds": [
+      [
+        26.239,
+        78.17399999999999
+      ],
+      [
+        26.2377,
+        78.183
+      ],
+      [
+        26.230999999999998,
+        78.1816
+      ],
+      [
+        26.2323,
+        78.17299999999999
+      ]
+    ]
+  }
+]

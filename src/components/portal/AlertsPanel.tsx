@@ -6,12 +6,14 @@ import { ALERT_SEVERITIES, getAlertSeverity } from '../../config/alertSeverities
 import type { AlertSeverityLevel } from '../../config/alertSeverities';
 
 import AlertDetailDrawer from '../alerts/AlertDetailDrawer';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
 type AlertsPanelProps = {
   admin: boolean;
   alerts: Alert[];
   sources: Source[];
   busy: boolean;
+  loading?: boolean;
   onSelect?: (sourceId: string) => void;
   onSelectAlert?: (alert: Alert) => void;
   onSubmitAction?: (event: FormEvent<HTMLFormElement>) => void;
@@ -22,6 +24,7 @@ const AlertsPanel: FC<AlertsPanelProps> = ({
   alerts,
   sources,
   busy,
+  loading = false,
   onSelect,
   onSelectAlert,
   onSubmitAction,
@@ -92,17 +95,25 @@ const AlertsPanel: FC<AlertsPanelProps> = ({
             </div>
           </div>
 
-          <AlertList
-            alerts={filteredAlerts}
-            sources={sources}
-            onSelect={(a) => {
-              if (onSelectAlert) {
-                onSelectAlert(a);
-              } else {
-                setInternalAlertId(a.alertId);
-              }
-            }}
-          />
+          {loading && alerts.length === 0 ? (
+            <LoadingSpinner
+              label="Fetching published water advisories from Central Database…"
+              sublabel="Querying active incident queue &bull; live"
+              fullHeight
+            />
+          ) : (
+            <AlertList
+              alerts={filteredAlerts}
+              sources={sources}
+              onSelect={(a) => {
+                if (onSelectAlert) {
+                  onSelectAlert(a);
+                } else {
+                  setInternalAlertId(a.alertId);
+                }
+              }}
+            />
+          )}
         </section>
 
         {admin && onSubmitAction && (

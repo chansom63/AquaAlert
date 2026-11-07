@@ -111,7 +111,7 @@ export const HistoricalParameterChart: FC<{
     { readingId: 'gwl-sm-104', sourceId: 'source-gwl-014', collectedAt: '2026-10-24T07:30:00Z', receivedAt: '2026-10-24T07:31:12Z', method: 'FIELD_SCREENING', verificationStatus: 'FLAGGED_ANOMALY', parameters: { tds: { value: 620, unit: 'mg/L' }, pH: { value: 7.2, unit: 'pH' }, turbidity: { value: 0.85, unit: 'NTU' }, freeChlorine: { value: 0.45, unit: 'mg/L' }, fluoride: { value: 0.70, unit: 'mg/L' }, nitrate: { value: 18, unit: 'mg/L' } } },
   ];
 
-  const now = new Date('2026-10-24T12:00:00Z').getTime();
+  const now = Date.now();
   const filtered = sourceReadings.filter(r => {
     if (timeRange === 'ALL') return true;
     const itemTime = new Date(r.collectedAt || 0).getTime();

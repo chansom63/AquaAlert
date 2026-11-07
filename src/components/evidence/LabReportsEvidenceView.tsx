@@ -34,7 +34,7 @@ export const LabReportsEvidenceView: FC<LabReportsEvidenceViewProps> = ({
 
   const handleGeneratePresignedUrl = () => {
     setError('');
-    const sampleUrl = `https://gmc-water-evidence.s3.ap-south-1.amazonaws.com/${certKey}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIOSFODNN7EXAMPLE%2F20261024%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20261024T073000Z&X-Amz-Expires=300&X-Amz-SignedHeaders=host&X-Amz-Signature=8a4f91b6c82d3...`;
+    const sampleUrl = `https://water-evidence.gwl-municipal.in/${certKey}?token=AUTH256-HMAC-SECURE&expires=300&sig=8a4f91b6c82d3...`;
     setIssuedUrl(sampleUrl);
     setExpiresIn(300);
   };
@@ -67,12 +67,12 @@ export const LabReportsEvidenceView: FC<LabReportsEvidenceViewProps> = ({
           </div>
 
           <span className="text-[11px] px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-mono self-start sm:self-auto font-semibold">
-            Private S3 Evidence Bucket
+            Digital Evidence Archive
           </span>
         </div>
 
         <p className="text-xs text-slate-400 leading-relaxed">
-          In accordance with statutory Subsystems 02 &amp; 05 protocols, raw S3 bucket keys are held securely on the server with AES-256 encryption. Authorized municipal staff and certified laboratory chemists can issue short-lived pre-signed URLs (300s TTL) for audit compliance.
+          In accordance with statutory Subsystems 02 &amp; 05 protocols, certified document references are held securely on the server with AES-256 encryption. Authorized municipal staff and certified laboratory chemists can issue short-lived secure access links (300s TTL) for audit compliance.
         </p>
 
         {/* Certificate Row */}
@@ -129,7 +129,7 @@ export const LabReportsEvidenceView: FC<LabReportsEvidenceViewProps> = ({
               {issuedUrl}
             </div>
             <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-              <span>Security Token: AWS4-HMAC-SHA256 &bull; S3 Bucket: gmc-water-evidence-private</span>
+              <span>Security Token: SHA-256 HMAC &bull; Document Vault: gmc-water-evidence-archive</span>
               <a
                 href="#download"
                 onClick={e => {
@@ -167,7 +167,7 @@ export const LabReportsEvidenceView: FC<LabReportsEvidenceViewProps> = ({
           <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
           <div>
             <div className="text-[10px] text-slate-400">At-Rest Encryption</div>
-            <div className="font-bold text-emerald-300 text-[11px]">AWS KMS (SSE-KMS)</div>
+            <div className="font-bold text-emerald-300 text-[11px]">Enterprise Vault (AES-256)</div>
           </div>
         </div>
 

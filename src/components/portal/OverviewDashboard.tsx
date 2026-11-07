@@ -3,6 +3,7 @@ import { API } from '../../api/client';
 import type { Alert, Source } from '../../types/water';
 import AlertList from '../alerts/AlertList';
 import SourceTable from '../sources/SourceTable';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
 type OverviewDashboardProps = {
   admin: boolean;
@@ -36,10 +37,22 @@ const OverviewDashboard: FC<OverviewDashboardProps> = ({
       ]
     : [
         ['Monitoring points', String(sources.length)],
-        ['Open notices', String(alerts.length)],
-        ['Wards covered', '66'],
+        ['Open notices', String(alerts.filter(a => !/resolved|closed/i.test(a.state || '')).length || alerts.length)],
+        ['Wards covered', String(new Set(sources.map(s => s.wardNumber).filter(Boolean)).size || 66)],
         ['Data connection', API ? 'Live API' : 'Demo preview'],
       ];
+
+  if (loading && sources.length === 0 && alerts.length === 0) {
+    return (
+      <div className="portal-panel my-4">
+        <LoadingSpinner
+          label="Fetching Gwalior water surveillance overview from Central Database…"
+          sublabel="Connecting to Municipal Data Gateway &bull; live"
+          fullHeight
+        />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -83,7 +96,7 @@ const OverviewDashboard: FC<OverviewDashboardProps> = ({
               View all →
             </button>
           </div>
-          <AlertList alerts={alerts.slice(0, 4)} sources={sources} onSelect={a => onSelectAlert(a.sourceId)} />
+          <AlertList alerts={alerts.slice(0, 4)} sources={sources} onSelect={a => onSelectAlert(a.alertId)} />
         </section>
       </div>
     </>

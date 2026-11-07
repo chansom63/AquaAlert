@@ -341,15 +341,15 @@ export const SettingsView: FC = () => {
           </div>
 
           <div className="divide-y divide-slate-100 space-y-3">
-            {/* AWS Services */}
+            {/* Cloud Surveillance Services */}
             <div className="flex items-center justify-between pt-2">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 font-bold text-[10px]">
-                  aws
+                <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center shrink-0 font-bold text-[10px]">
+                  CLOUD
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-slate-800">AWS Services</div>
-                  <div className="text-[11px] text-slate-500">(Lambda, S3, SNS, DynamoDB)</div>
+                  <div className="text-xs font-bold text-slate-800">Cloud Services</div>
+                  <div className="text-[11px] text-slate-500">(Surveillance API, Document Vault, Alerts)</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -370,7 +370,7 @@ export const SettingsView: FC = () => {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-slate-800">Database</div>
-                  <div className="text-[11px] text-slate-500">(DynamoDB)</div>
+                  <div className="text-[11px] text-slate-500">(Central Grid DB)</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -530,7 +530,7 @@ export const SettingsView: FC = () => {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-slate-800">Auto Data Backup</div>
-                  <div className="text-[11px] text-slate-500">Schedule periodic backups to S3</div>
+                  <div className="text-[11px] text-slate-500">Schedule periodic backups to secure archive</div>
                 </div>
               </div>
               <button

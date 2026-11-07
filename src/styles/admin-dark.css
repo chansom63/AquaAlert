@@ -146,3 +146,59 @@
 .admin-dark aside .text-slate-300 { color: #cbd5e1; }
 .admin-dark aside .text-slate-400 { color: #94a3b8; }
 .admin-dark aside .text-slate-500 { color: #64748b; }
+
+/* ---- 5. Table Rows & Record Selection (Resonating with Dark Navy, Zero Whitish Glare) -------- */
+.admin-dark thead {
+  background-color: #0b1438 !important;
+  border-bottom: 1px solid #1c295c !important;
+}
+
+.admin-dark thead th {
+  color: #9aa6d0 !important;
+}
+
+.admin-dark tr {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Dark navy hover sheen */
+.admin-dark tr:hover,
+.admin-dark tr.hover\:bg-slate-50\/70:hover,
+.admin-dark tr.hover\:bg-slate-50\/80:hover,
+.admin-dark tr.hover\:bg-slate-50\/50:hover,
+.admin-dark tr.hover\:bg-slate-50:hover {
+  background-color: #162354 !important;
+}
+
+/* Selected record highlight - deep midnight blue with glowing cyan border */
+.admin-dark tr.bg-blue-50\/80,
+.admin-dark tr.bg-blue-50\/70,
+.admin-dark tr.bg-blue-50\/60,
+.admin-dark tr.bg-blue-50\/40,
+.admin-dark tr.bg-blue-50\/30,
+.admin-dark tr.bg-blue-50\/20,
+.admin-dark tr.bg-blue-50,
+.admin-dark .record-selected {
+  background-color: #152c66 !important;
+}
+
+/* Flagged / anomaly records - deep wine/ruby, never whitish */
+.admin-dark tr.bg-rose-50\/30,
+.admin-dark tr.bg-rose-50\/20,
+.admin-dark tr.bg-rose-50\/50,
+.admin-dark tr.bg-rose-50 {
+  background-color: #291024 !important;
+}
+
+.admin-dark tr.bg-rose-50\/30:hover,
+.admin-dark tr.bg-rose-50\/20:hover {
+  background-color: #381630 !important;
+}
+
+/* Inputs & search boxes */
+.admin-dark input,
+.admin-dark select,
+.admin-dark textarea {
+  color: #f1f4ff;
+}
+

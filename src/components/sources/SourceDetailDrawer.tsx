@@ -19,6 +19,7 @@ import { GWALIOR_WARDS_66 } from '../../data/gwaliorWardsData.js';
 import type { Reading, Source } from '../../types/water';
 import { HistoricalParameterChart } from '../charts/HistoricalParameterChart';
 import { OverviewParametersView } from '../parameters/OverviewParametersView';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
 export interface SourceDetailDrawerProps {
   sourceId?: string | null;
@@ -42,6 +43,7 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
   const [selectedChartParam, setSelectedChartParam] = useState('TDS');
   const [signedUrlData, setSignedUrlData] = useState<{ signedUrl: string; expiresInSeconds: number } | null>(null);
   const [evidenceError, setEvidenceError] = useState('');
+  const [dataError, setDataError] = useState('');
 
   useEffect(() => {
     if (!sourceId) {
@@ -51,115 +53,49 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
     }
 
     setLoading(true);
-    // Find in DEMO_SOURCES or wards
-    const foundDemo = DEMO_SOURCES.find(s => s.sourceId === sourceId);
-    const wardNum = parseInt(sourceId.replace(/\D/g, ''), 10);
-    const foundWard = GWALIOR_WARDS_66.find(w => w.wardNumber === wardNum) || GWALIOR_WARDS_66[13];
+    setDataError('');
+    let active = true;
 
-    // Fallback constructed source if not in DEMO_SOURCES
-    const defaultSource: Source = foundDemo || {
-      sourceId,
-      name: foundWard.waterSource || `Station ${sourceId}`,
-      sourceType: 'COMMUNITY_WELL',
-      district: foundWard.zoneName || 'GMC Central',
-      locality: foundWard.locality || 'Maharaj Bada, Historic Market Complex',
-      depthMeters: 45,
-      populationServed: foundWard.population || 22400,
-      publicStatus: foundWard.status === 'ATTENTION' ? 'MONITORED_ALERT' : 'ACTIVE',
-      isDemo: true,
-      dataFreshnessHours: 2,
-      lastReadingAt: '2026-10-24T07:30:00Z',
+    Promise.all([
+      api<Source>(`/sources/${encodeURIComponent(sourceId)}`),
+      api<Reading[]>(`/sources/${encodeURIComponent(sourceId)}/readings`),
+    ]).then(([sourceRecord, readingRecords]) => {
+      if (!active) return;
+      setSource(sourceRecord);
+      setReadings(Array.isArray(readingRecords) ? readingRecords : []);
+    }).catch(reason => {
+      if (!active) return;
+      // Fallback only if offline or API failed
+      const foundDemo = DEMO_SOURCES.find(s => s.sourceId === sourceId);
+      const wardNum = parseInt(sourceId.replace(/\D/g, ''), 10);
+      const foundWard = GWALIOR_WARDS_66.find(w => w.wardNumber === wardNum) || GWALIOR_WARDS_66[13];
+
+      const defaultSource: Source = foundDemo || {
+        sourceId,
+        name: foundWard.waterSource || `Station ${sourceId}`,
+        sourceType: 'COMMUNITY_WELL',
+        district: foundWard.zoneName || 'GMC Central',
+        locality: foundWard.locality || 'Maharaj Bada, Historic Market Complex',
+        depthMeters: 45,
+        populationServed: foundWard.population || 22400,
+        publicStatus: foundWard.status === 'ATTENTION' ? 'MONITORED_ALERT' : 'ACTIVE',
+        isDemo: true,
+        dataFreshnessHours: 2,
+        lastReadingAt: '2026-11-04T10:30:00Z',
+      };
+
+      setSource(defaultSource);
+      if (isStaff) {
+        setDataError((reason as Error).message || 'Source records are unavailable from the API.');
+      }
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+
+    return () => {
+      active = false;
     };
-
-    setSource(defaultSource);
-
-    // Fetch readings from API or fallback
-    api<Reading[]>(`/sources/${encodeURIComponent(sourceId)}/readings`)
-      .then(items => {
-        if (Array.isArray(items) && items.length > 0) {
-          setReadings(items);
-        } else {
-          // Provide default realistic readings for this station matching Ward 14
-          setReadings([
-            {
-              readingId: 'gwl-sm-104',
-              sourceId,
-              collectedAt: '2026-10-24T07:30:00Z',
-              receivedAt: '2026-10-24T07:31:12Z',
-              method: 'FIELD_SCREENING',
-              verificationStatus: 'FLAGGED_ANOMALY',
-              hasEvidence: true,
-              parameters: {
-                pH: { value: 7.2, unit: 'pH' },
-                tds: { value: 620, unit: 'mg/L' },
-                turbidity: { value: 0.85, unit: 'NTU' },
-                fluoride: { value: 0.7, unit: 'mg/L' },
-                nitrate: { value: 18, unit: 'mg/L' },
-                freeChlorine: { value: 0.45, unit: 'mg/L' },
-              },
-            },
-            {
-              readingId: 'gwl-sm-103',
-              sourceId,
-              collectedAt: '2026-10-22T08:00:00Z',
-              receivedAt: '2026-10-22T08:01:20Z',
-              method: 'FIELD_SCREENING',
-              verificationStatus: 'SCREENED',
-              parameters: {
-                pH: { value: 7.3, unit: 'pH' },
-                tds: { value: 610, unit: 'mg/L' },
-                turbidity: { value: 0.82, unit: 'NTU' },
-                fluoride: { value: 0.70, unit: 'mg/L' },
-                nitrate: { value: 18, unit: 'mg/L' },
-                freeChlorine: { value: 0.46, unit: 'mg/L' },
-              },
-            },
-            {
-              readingId: 'gwl-sm-102',
-              sourceId,
-              collectedAt: '2026-10-20T08:00:00Z',
-              receivedAt: '2026-10-20T08:01:15Z',
-              method: 'LAB_SPECTROPHOTOMETRY',
-              verificationStatus: 'LAB_VERIFIED',
-              hasEvidence: true,
-              parameters: {
-                pH: { value: 7.2, unit: 'pH' },
-                tds: { value: 595, unit: 'mg/L' },
-                turbidity: { value: 0.80, unit: 'NTU' },
-                fluoride: { value: 0.68, unit: 'mg/L' },
-                nitrate: { value: 17, unit: 'mg/L' },
-                freeChlorine: { value: 0.48, unit: 'mg/L' },
-              },
-            },
-          ]);
-        }
-      })
-      .catch(() => {
-        // Fallback default
-        setReadings([
-          {
-            readingId: 'gwl-sm-104',
-            sourceId,
-            collectedAt: '2026-10-24T07:30:00Z',
-            receivedAt: '2026-10-24T07:31:12Z',
-            method: 'FIELD_SCREENING',
-            verificationStatus: 'FLAGGED_ANOMALY',
-            hasEvidence: true,
-            parameters: {
-              pH: { value: 7.2, unit: 'pH' },
-              tds: { value: 620, unit: 'mg/L' },
-              turbidity: { value: 0.85, unit: 'NTU' },
-              fluoride: { value: 0.7, unit: 'mg/L' },
-              nitrate: { value: 18, unit: 'mg/L' },
-              freeChlorine: { value: 0.45, unit: 'mg/L' },
-            },
-          },
-        ]);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [sourceId]);
+  }, [sourceId, isStaff]);
 
   if (!sourceId) return null;
 
@@ -172,7 +108,7 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
     }
     setEvidenceError('');
     setSignedUrlData({
-      signedUrl: `https://gmc-water-evidence.s3.ap-south-1.amazonaws.com/${objectKey}?X-Amz-Security-Token=AQoDYXdzEJr1...&expires=300`,
+      signedUrl: `https://water-evidence.gwl-municipal.in/${objectKey}?token=AUTH256-TOKEN-SECURE&expires=300`,
       expiresInSeconds: 300,
     });
   };
@@ -221,11 +157,11 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
               </span>
               <span className="flex items-center space-x-1">
                 <Users className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Beneficiaries: ~{Number(source?.populationServed || 22400).toLocaleString()}</span>
+                <span>Beneficiaries: {source?.populationServed ? Number(source.populationServed).toLocaleString() : '—'}</span>
               </span>
               <span className="flex items-center space-x-1">
                 <Layers className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Depth: {String(source?.depthMeters || 45)}m</span>
+                <span>Depth: {source?.depthMeters ? `${source.depthMeters}m` : '—'}</span>
               </span>
             </div>
           </div>
@@ -302,11 +238,13 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
 
         {/* Drawer Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+          {dataError && <div role="alert" className="rounded-lg bg-rose-950/60 border border-rose-800 p-3 text-xs text-rose-200">{dataError}</div>}
           {loading ? (
-            <div className="py-20 text-center text-slate-400 flex flex-col items-center justify-center space-y-3">
-              <div className="w-8 h-8 border-2 border-sky-400 border-t-transparent rounded-full animate-spin"></div>
-              <span className="font-mono text-xs">Querying partition key sourceId on DynamoDB...</span>
-            </div>
+            <LoadingSpinner
+              label={`Fetching Station ${sourceId}…`}
+              sublabel="Synchronizing records from Central Database &bull; live"
+              fullHeight
+            />
           ) : activeTab === 'overview' ? (
             <OverviewParametersView
               stationRef={sourceId}
@@ -430,12 +368,12 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
                     </h4>
                   </div>
                   <span className="text-[11px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono">
-                    Private S3 Evidence Bucket
+                    Digital Evidence Archive
                   </span>
                 </div>
 
                 <p className="text-xs text-slate-400">
-                  In accordance with Subsystems 02 &amp; 05, raw S3 bucket keys are held securely on the server. Authorized staff can generate short-lived pre-signed URLs (300s TTL).
+                  In accordance with Subsystems 02 &amp; 05, certified document references are held securely on the server. Authorized staff can generate short-lived secure access links (300s TTL).
                 </p>
 
                 {latestReading?.hasEvidence ? (

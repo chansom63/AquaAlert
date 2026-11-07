@@ -1,334 +1,657 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { FC } from 'react';
 import {
-  AlertTriangle, Bell, CheckCircle2, ChevronLeft, ChevronRight,
-  Download, Eye, FileText, FlaskConical, MapPin, MoreHorizontal,
-  Plus, Search, Thermometer, X,
+  AlertCircle,
+  AlertTriangle,
+  ArrowUpRight,
+  CheckCircle2,
+  Download,
+  Flame,
+  Layers,
+  Loader2,
+  MapPin,
+  RotateCcw,
+  Search,
+  ShieldAlert,
+  X,
 } from 'lucide-react';
+import type { Alert, Source } from '../../types/water';
+import { displayDate, humanize, stringValue } from '../../api/adminRecords';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
-interface AlertRow {
-  id: string;
-  source: string;
-  location: string;
-  parameter: string;
-  paramValue: string;
-  severity: 'Critical' | 'High' | 'Warning' | 'Info';
-  status: 'Open' | 'Under Investigation' | 'Pending Lab' | 'Resolved';
-  triggeredAt: string;
+export interface AlertsIncidentsViewProps {
+  alerts: Alert[];
+  sources: Source[];
+  loading: boolean;
+  onSelectAlert?: (alertId: string) => void;
+  onRefresh?: () => Promise<void>;
 }
 
-const ALERTS: AlertRow[] = [
-  { id: 'ALT-2026-0158', source: 'A-04', location: 'Jhansi',   parameter: 'pH',       paramValue: '9.4',         severity: 'Critical', status: 'Open',                triggeredAt: '01 Nov 2026,\n07:45 PM' },
-  { id: 'ALT-2026-0157', source: 'B-02', location: 'Orchha',   parameter: 'Turbidity',paramValue: '12.6 NTU',    severity: 'High',     status: 'Open',                triggeredAt: '01 Nov 2026,\n06:30 PM' },
-  { id: 'ALT-2026-0156', source: 'C-01', location: 'Datia',    parameter: 'TDS',      paramValue: '1,240 mg/L',  severity: 'High',     status: 'Under Investigation', triggeredAt: '01 Nov 2026,\n05:55 PM' },
-  { id: 'ALT-2026-0155', source: 'D-03', location: 'Lalitpur', parameter: 'pH',       paramValue: '6.3',         severity: 'Warning',  status: 'Pending Lab',         triggeredAt: '01 Nov 2026,\n05:10 PM' },
-  { id: 'ALT-2026-0154', source: 'E-05', location: 'Jhansi',   parameter: 'Bacteria', paramValue: 'Detected',    severity: 'Warning',  status: 'Open',                triggeredAt: '01 Nov 2026,\n03:45 PM' },
-];
+type AlertTab = 'all' | 'critical' | 'active' | 'resolved';
 
-const SEVERITY_STYLES: Record<string, string> = {
-  Critical: 'bg-rose-600 text-white',
-  High:     'bg-orange-500 text-white',
-  Warning:  'bg-amber-400 text-amber-950',
-  Info:     'bg-blue-100 text-blue-700',
-};
+export const AlertsIncidentsView: FC<AlertsIncidentsViewProps> = ({
+  alerts = [],
+  sources = [],
+  loading = false,
+  onSelectAlert,
+  onRefresh,
+}) => {
+  const [activeTab, setActiveTab] = useState<AlertTab>('all');
+  const [search, setSearch] = useState('');
+  const [selectedSeverity, setSelectedSeverity] = useState('All severities');
+  const [selectedState, setSelectedState] = useState('All states');
+  const [selectedSourceId, setSelectedSourceId] = useState('All sources');
+  const [selectedId, setSelectedId] = useState<string>('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-const STATUS_STYLES: Record<string, string> = {
-  'Open':                'bg-sky-100 text-sky-700',
-  'Under Investigation': 'bg-amber-100 text-amber-800',
-  'Pending Lab':         'bg-purple-100 text-purple-700',
-  'Resolved':            'bg-emerald-100 text-emerald-700',
-};
+  // Source map for quick lookups
+  const sourceMap = useMemo(() => {
+    const map = new Map<string, Source>();
+    sources.forEach(s => map.set(s.sourceId, s));
+    return map;
+  }, [sources]);
 
-const SeverityBadge: FC<{ severity: string }> = ({ severity }) => (
-  <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded ${SEVERITY_STYLES[severity] ?? 'bg-slate-100 text-slate-600'}`}>
-    ▲ {severity}
-  </span>
-);
-const StatusBadge: FC<{ status: string }> = ({ status }) => (
-  <span className={`inline-flex items-center text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${STATUS_STYLES[status] ?? 'bg-slate-100 text-slate-600'}`}>
-    {status}
-  </span>
-);
+  // Distinct lists for dropdowns
+  const severities = useMemo(() => {
+    const set = new Set<string>();
+    alerts.forEach(a => {
+      if (a.severity) set.add(String(a.severity));
+    });
+    return Array.from(set);
+  }, [alerts]);
 
-export const AlertsIncidentsView: FC = () => {
-  const [activeTab, setActiveTab]       = useState<'alerts' | 'history'>('alerts');
-  const [selectedId, setSelectedId]     = useState('ALT-2026-0158');
-  const [severityFilter, setSeverityFilter] = useState('All Severities');
-  const [statusFilter, setStatusFilter]     = useState('All Statuses');
-  const [sourceFilter, setSourceFilter]     = useState('All Sources');
-  const [search, setSearch]             = useState('');
+  const states = useMemo(() => {
+    const set = new Set<string>();
+    alerts.forEach(a => {
+      if (a.state) set.add(String(a.state));
+    });
+    return Array.from(set);
+  }, [alerts]);
 
-  const selected = ALERTS.find(a => a.id === selectedId) ?? ALERTS[0];
+  const impactedSources = useMemo(() => {
+    const set = new Set<string>();
+    alerts.forEach(a => {
+      if (a.sourceId) set.add(String(a.sourceId));
+    });
+    return Array.from(set);
+  }, [alerts]);
 
-  const filtered = ALERTS.filter(a => {
-    const q = search.toLowerCase();
-    const matchQ = !q || a.id.toLowerCase().includes(q) || a.source.toLowerCase().includes(q) || a.location.toLowerCase().includes(q) || a.parameter.toLowerCase().includes(q);
-    const matchSev = severityFilter === 'All Severities' || a.severity === severityFilter;
-    const matchStat = statusFilter === 'All Statuses' || a.status === statusFilter;
-    const matchSrc = sourceFilter === 'All Sources' || a.source.includes(sourceFilter);
-    return matchQ && matchSev && matchStat && matchSrc;
-  });
+  // KPI Calculations
+  const kpiStats = useMemo(() => {
+    const total = alerts.length;
+    let criticalCount = 0;
+    let activeCount = 0;
+    let resolvedCount = 0;
+    const sourceIds = new Set<string>();
+
+    alerts.forEach(a => {
+      const sev = String(a.severity ?? '').toLowerCase();
+      const st = String(a.state ?? '').toLowerCase();
+
+      if (sev.includes('critical') || sev.includes('high')) {
+        criticalCount++;
+      }
+      if (st.includes('open') || st.includes('active') || st.includes('investigating')) {
+        activeCount++;
+      }
+      if (st.includes('resolved') || st.includes('closed') || st.includes('cleared')) {
+        resolvedCount++;
+      }
+      if (a.sourceId) {
+        sourceIds.add(String(a.sourceId));
+      }
+    });
+
+    return {
+      total,
+      criticalCount,
+      activeCount,
+      resolvedCount,
+      wardsAffected: sourceIds.size,
+    };
+  }, [alerts]);
+
+  // Filtered alerts
+  const filtered = useMemo(() => {
+    return alerts.filter(alert => {
+      // 1. Tab filter
+      const sev = String(alert.severity ?? '').toLowerCase();
+      const st = String(alert.state ?? '').toLowerCase();
+
+      if (activeTab === 'critical' && !sev.includes('critical') && !sev.includes('high')) return false;
+      if (activeTab === 'active' && !st.includes('open') && !st.includes('active') && !st.includes('investigating')) return false;
+      if (activeTab === 'resolved' && !st.includes('resolved') && !st.includes('closed') && !st.includes('cleared')) return false;
+
+      // 2. Severity filter
+      if (selectedSeverity !== 'All severities' && alert.severity !== selectedSeverity) return false;
+
+      // 3. State filter
+      if (selectedState !== 'All states' && alert.state !== selectedState) return false;
+
+      // 4. Source filter
+      if (selectedSourceId !== 'All sources' && alert.sourceId !== selectedSourceId) return false;
+
+      // 5. Search filter
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const id = String(alert.alertId ?? '').toLowerCase();
+        const sid = String(alert.sourceId ?? '').toLowerCase();
+        const sName = (sourceMap.get(alert.sourceId)?.name ?? '').toLowerCase();
+        const reason = String(alert.reason ?? alert.publicMessage ?? '').toLowerCase();
+        if (!id.includes(q) && !sid.includes(q) && !sName.includes(q) && !reason.includes(q)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [alerts, activeTab, selectedSeverity, selectedState, selectedSourceId, search, sourceMap]);
+
+  // Selected Alert for right detail pane
+  const selectedAlert = useMemo(() => {
+    if (selectedId) {
+      const found = alerts.find(a => a.alertId === selectedId);
+      if (found) return found;
+    }
+    return filtered[0] || alerts[0] || null;
+  }, [alerts, filtered, selectedId]);
+
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 400);
+    }
+  };
 
   return (
     <div className="space-y-4 font-sans">
-      {/* ── KPI CARDS ── */}
+      {/* ── 5 THEMED KPI METRIC CARDS (Exact match to Evidence & Reports) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { icon: <AlertTriangle className="w-5 h-5 fill-current" />, bg: 'bg-rose-50', iconBg: 'bg-rose-100 text-rose-600', label: 'Active Alerts',         value: '5',  sub: '▲ +2', subClr: 'text-rose-600', desc: 'Requiring action' },
-          { icon: <Thermometer   className="w-5 h-5" />,              bg: 'bg-amber-50',iconBg: 'bg-amber-100 text-amber-600',label: 'Under Investigation',   value: '3',  sub: '',     subClr: '',              desc: 'In progress' },
-          { icon: <FlaskConical  className="w-5 h-5" />,              bg: 'bg-sky-50',  iconBg: 'bg-sky-100 text-sky-600',   label: 'Pending Lab',           value: '12', sub: '',     subClr: '',              desc: 'Awaiting verification' },
-          { icon: <CheckCircle2  className="w-5 h-5 fill-current" />, bg: 'bg-emerald-50',iconBg:'bg-emerald-100 text-emerald-600',label:'Resolved (7 days)', value: '27', sub: '▲ +5', subClr: 'text-emerald-600',desc:'Closed incidents' },
-          { icon: <FileText      className="w-5 h-5" />,              bg: 'bg-blue-50', iconBg: 'bg-blue-100 text-blue-600', label: 'Total Incidents',        value: '44', sub: '',     subClr: '',              desc: 'This month' },
-        ].map(c => (
-          <div key={c.label} className={`${c.bg} border border-slate-100 rounded-2xl p-4 shadow-sm`}>
+          {
+            icon: <Layers className="w-5 h-5" />,
+            bg: 'bg-blue-50',
+            iconBg: 'bg-blue-100 text-blue-600',
+            label: 'Total Incidents Logged',
+            value: loading && alerts.length === 0 ? '…' : kpiStats.total,
+            sub: 'Incident Ledger',
+            subClr: 'text-blue-600',
+            desc: 'Continuous surveillance history',
+          },
+          {
+            icon: <Flame className="w-5 h-5" />,
+            bg: 'bg-rose-50',
+            iconBg: 'bg-rose-100 text-rose-600',
+            label: 'Critical Severity Urgency',
+            value: loading && alerts.length === 0 ? '…' : kpiStats.criticalCount,
+            sub: kpiStats.criticalCount > 0 ? 'Urgent Action' : 'Nominal',
+            subClr: kpiStats.criticalCount > 0 ? 'text-rose-700' : 'text-emerald-700',
+            desc: 'Immediate public health risk',
+          },
+          {
+            icon: <AlertTriangle className="w-5 h-5" />,
+            bg: 'bg-amber-50',
+            iconBg: 'bg-amber-100 text-amber-600',
+            label: 'Active & Investigating',
+            value: loading && alerts.length === 0 ? '…' : kpiStats.activeCount,
+            sub: 'Field Crews Dispatched',
+            subClr: 'text-amber-700',
+            desc: 'Under active mitigation',
+          },
+          {
+            icon: <CheckCircle2 className="w-5 h-5" />,
+            bg: 'bg-emerald-50',
+            iconBg: 'bg-emerald-100 text-emerald-600',
+            label: 'Resolved & Cleared',
+            value: loading && alerts.length === 0 ? '…' : kpiStats.resolvedCount,
+            sub: 'Safe Restoration',
+            subClr: 'text-emerald-700',
+            desc: 'Post-flush lab verified',
+          },
+          {
+            icon: <MapPin className="w-5 h-5" />,
+            bg: 'bg-purple-50',
+            iconBg: 'bg-purple-100 text-purple-600',
+            label: 'Impacted Ward Sources',
+            value: kpiStats.wardsAffected,
+            sub: 'Gwalior Grid',
+            subClr: 'text-purple-700',
+            desc: 'Surveillance containment zones',
+          },
+        ].map(card => (
+          <div key={card.label} className={`${card.bg} border border-slate-100 rounded-2xl p-4 shadow-xs`}>
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full ${c.iconBg} flex items-center justify-center shrink-0`}>{c.icon}</div>
-              <div>
-                <div className="text-[11px] font-semibold text-slate-600">{c.label}</div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-slate-900">{c.value}</span>
-                  {c.sub && <span className={`text-[11px] font-bold ${c.subClr}`}>{c.sub}</span>}
+              <div className={`w-10 h-10 rounded-full ${card.iconBg} flex items-center justify-center shrink-0 shadow-2xs`}>
+                {card.icon}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold text-slate-600 truncate">{card.label}</div>
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="text-2xl font-black text-slate-900">{card.value}</span>
+                  {card.sub && <span className={`text-[11px] font-bold ${card.subClr}`}>{card.sub}</span>}
                 </div>
-                <div className="text-[10px] text-slate-500">{c.desc}</div>
+                {card.desc && <div className="text-[10px] text-slate-500 truncate">{card.desc}</div>}
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── TABS ── */}
-      <div className="flex border-b border-slate-200 gap-1">
-        <button
-          onClick={() => setActiveTab('alerts')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition ${activeTab === 'alerts' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-        >
-          <Bell className="w-3.5 h-3.5" /> Alerts (5)
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition ${activeTab === 'history' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-        >
-          <FileText className="w-3.5 h-3.5" /> Incident History (39)
-        </button>
-      </div>
-
-      {/* ── FILTERS ── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by Alert ID, Source ID, or Parameter…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg w-64 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
-          />
-        </div>
+      {/* ── CATEGORY SUB-TABS (Evidence & Reports Style) ── */}
+      <div className="flex border-b border-slate-200 gap-1 overflow-x-auto">
         {[
-          { label: 'Severity', val: severityFilter, set: setSeverityFilter, opts: ['All Severities','Critical','High','Warning','Info'] },
-          { label: 'Status',   val: statusFilter,   set: setStatusFilter,   opts: ['All Statuses','Open','Under Investigation','Pending Lab','Resolved'] },
-          { label: 'Source',   val: sourceFilter,   set: setSourceFilter,   opts: ['All Sources','A-04','B-02','C-01','D-03','E-05'] },
-        ].map(f => (
-          <div key={f.label} className="flex flex-col">
-            <span className="text-[10px] text-slate-400 mb-0.5 ml-0.5">{f.label}</span>
-            <select
-              value={f.val}
-              onChange={e => f.set(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
-            >
-              {f.opts.map(o => <option key={o}>{o}</option>)}
-            </select>
-          </div>
+          { id: 'all', label: `All Incidents (${kpiStats.total})`, icon: <Layers className="w-3.5 h-3.5" /> },
+          { id: 'critical', label: `Critical Urgency (${kpiStats.criticalCount})`, icon: <Flame className="w-3.5 h-3.5 text-rose-600" /> },
+          { id: 'active', label: `Active & Investigating (${kpiStats.activeCount})`, icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> },
+          { id: 'resolved', label: `Resolved & Cleared (${kpiStats.resolvedCount})`, icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as AlertTab)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === tab.id
+                ? 'border-cyan-400 text-cyan-300 bg-[#132754] font-bold shadow-xs'
+                : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-[#101b44]'
+            }`}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+          </button>
         ))}
-        {/* Date Range */}
-        <div className="flex flex-col">
-          <span className="text-[10px] text-slate-400 mb-0.5 ml-0.5">Date Range</span>
-          <div className="flex items-center gap-1.5 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-xs text-slate-600">
-            <span>📅</span>
-            <span>01 Nov 2026 – 01 Nov 2026</span>
-          </div>
-        </div>
-        <button className="text-xs font-semibold text-blue-600 hover:text-blue-700 mt-4 ml-1">Clear</button>
-        <button className="flex items-center gap-1.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg mt-4 transition">
-          <Download className="w-3.5 h-3.5" /> Export (CSV)
-        </button>
       </div>
 
-      {/* ── MAIN TWO-COLUMN LAYOUT ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* LEFT: Alert Table */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm">
-          {/* Table Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-500" />
-              <h3 className="font-bold text-slate-900 text-sm">Active Alerts ({filtered.length})</h3>
-            </div>
-            <button className="flex items-center gap-1.5 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition">
-              <Plus className="w-3.5 h-3.5" /> Create Incident
-            </button>
+      {/* ── FILTER & ACTION TOOLBAR ── */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Search Box */}
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              aria-label="Search alerts"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search incidents by Alert ID, Ward, severity, reason..."
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60 text-slate-400 text-[11px] font-semibold">
-                  <th className="py-2.5 px-3">Alert ID</th>
-                  <th className="py-2.5 px-3">Source / Location</th>
-                  <th className="py-2.5 px-3">Parameter (Value)</th>
-                  <th className="py-2.5 px-3">Severity</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Triggered At</th>
-                  <th className="py-2.5 px-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map(a => (
-                  <tr
-                    key={a.id}
-                    onClick={() => setSelectedId(a.id)}
-                    className={`cursor-pointer transition ${selectedId === a.id ? 'bg-blue-50/70' : 'hover:bg-slate-50'}`}
-                  >
-                    <td className="py-2.5 px-3 font-mono font-semibold text-slate-800">{a.id}</td>
-                    <td className="py-2.5 px-3 font-medium text-slate-700">{a.source} ({a.location})</td>
-                    <td className="py-2.5 px-3 text-slate-700">
-                      {a.parameter}
-                      <br />
-                      <span className="font-bold text-rose-600">({a.paramValue})</span>
-                    </td>
-                    <td className="py-2.5 px-3"><SeverityBadge severity={a.severity} /></td>
-                    <td className="py-2.5 px-3"><StatusBadge status={a.status} /></td>
-                    <td className="py-2.5 px-3 text-slate-500 whitespace-pre-line text-[11px]">{a.triggeredAt}</td>
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-1.5">
-                        <button className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"><Eye className="w-3.5 h-3.5" /></button>
-                        <button className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"><MoreHorizontal className="w-3.5 h-3.5" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* Filter Dropdowns & Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Severity Select */}
+            <select
+              aria-label="Filter by severity"
+              value={selectedSeverity}
+              onChange={e => setSelectedSeverity(e.target.value)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium cursor-pointer"
+            >
+              <option value="All severities">All Severities</option>
+              {severities.map(s => (
+                <option key={s} value={s}>
+                  {humanize(s)}
+                </option>
+              ))}
+            </select>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">
-            <span className="text-[11px] text-slate-500">Showing 1 – {filtered.length} of 5 alerts</span>
-            <div className="flex items-center gap-1">
-              <button className="p-1 rounded text-slate-400 hover:text-slate-600"><ChevronLeft className="w-4 h-4" /></button>
-              <button className="w-7 h-7 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center">1</button>
-              <button className="p-1 rounded text-slate-400 hover:text-slate-600"><ChevronRight className="w-4 h-4" /></button>
+            {/* State Select */}
+            <select
+              aria-label="Filter by incident state"
+              value={selectedState}
+              onChange={e => setSelectedState(e.target.value)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium cursor-pointer"
+            >
+              <option value="All states">All Incident States</option>
+              {states.map(s => (
+                <option key={s} value={s}>
+                  {humanize(s)}
+                </option>
+              ))}
+            </select>
+
+            {/* Source Select */}
+            <select
+              aria-label="Filter by source"
+              value={selectedSourceId}
+              onChange={e => setSelectedSourceId(e.target.value)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium cursor-pointer"
+            >
+              <option value="All sources">All Sources</option>
+              {impactedSources.map(s => (
+                <option key={s} value={s}>
+                  {s} &bull; {sourceMap.get(s)?.name || s}
+                </option>
+              ))}
+            </select>
+
+            {/* Live Database Pill */}
+            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="hidden sm:inline">Surveillance Live</span>
             </div>
+
+            {/* Refresh Button */}
+            {isRefreshing || loading ? (
+              <div className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold px-2 py-1">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span className="hidden sm:inline">Syncing…</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleRefresh}
+                className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-xl transition cursor-pointer"
+                title="Refresh alerts"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Refresh</span>
+              </button>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* RIGHT: Alert Detail Panel */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-          {/* Panel Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+      {/* ── 8/4 SPLIT LAYOUT: LEFT TABLE & RIGHT INSPECTION CARD ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* LEFT: Alerts Table (8 cols) */}
+        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="flex items-center justify-between p-3.5 border-b border-[#1c295c] bg-[#0c1538]">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-500" />
-              <h3 className="font-bold text-slate-900 text-sm">Alert: {selected.id}</h3>
+              <span className="text-xs font-bold text-slate-200">
+                Water Advisory &amp; Incident Ledger ({filtered.length} of {alerts.length})
+              </span>
+              {loading && alerts.length > 0 && <LoadingSpinner inline label="Refreshing alerts…" />}
             </div>
-            <SeverityBadge severity={selected.severity} />
+            <span className="text-[11px] text-slate-400 font-medium">
+              Click any incident to open full dossier &amp; trigger mitigation
+            </span>
           </div>
 
-          <div className="p-4 space-y-4 flex-1 overflow-y-auto">
-            {/* Meta Grid */}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-              <div className="flex items-start gap-1.5 text-slate-600">
-                <MapPin className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
-                <span><span className="text-slate-400">Source:</span> {selected.source} ({selected.location})</span>
-              </div>
-              <div className="flex items-start gap-1.5 text-slate-600">
-                <span className="text-slate-400 shrink-0">📅</span>
-                <span><span className="text-slate-400">Triggered:</span> {selected.triggeredAt.replace('\n', ' ')}</span>
-              </div>
-              <div className="flex items-start gap-1.5 text-slate-600">
-                <Thermometer className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
-                <span><span className="text-slate-400">Parameter:</span> {selected.parameter}</span>
-              </div>
-              <div className="flex items-start gap-1.5 text-slate-600">
-                <span className="text-slate-400 shrink-0">📊</span>
-                <span><span className="text-slate-400">Value:</span> <span className="font-bold text-rose-600">{selected.paramValue}</span></span>
-              </div>
-              <div className="flex items-start gap-1.5 text-slate-600">
-                <span className="text-slate-400 shrink-0">🔢</span>
-                <span><span className="text-slate-400">Threshold:</span> 6.5 – 8.5</span>
-              </div>
-              <div className="flex items-start gap-1.5 text-slate-600">
-                <span className="text-slate-400 shrink-0">🔵</span>
-                <span><span className="text-slate-400">Status:</span> <StatusBadge status={selected.status} /></span>
-              </div>
-            </div>
+          {loading && alerts.length === 0 ? (
+            <LoadingSpinner
+              label="Fetching alerts & incident surveillance from Central Database…"
+              sublabel="Querying active water advisories &bull; live"
+              fullHeight
+            />
+          ) : (
+            <div className="overflow-x-auto max-h-[640px] overflow-y-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#0b1438] text-slate-400 font-semibold sticky top-0 z-10 border-b border-[#1c295c]">
+                  <tr>
+                    <th className="p-3">Alert ID</th>
+                    <th className="p-3">Affected Source &amp; Ward</th>
+                    <th className="p-3">Severity</th>
+                    <th className="p-3">State</th>
+                    <th className="p-3">Public Advisory &amp; Root Cause</th>
+                    <th className="p-3">Issued Date</th>
+                    <th className="p-3 text-right">Dossier</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filtered.map(alert => {
+                    const isSelected = selectedAlert?.alertId === alert.alertId;
+                    const isCritical = /critical|high/i.test(alert.severity ?? '');
+                    const isWarning = /warning|medium/i.test(alert.severity ?? '');
+                    const isResolved = /resolved|closed|cleared/i.test(alert.state ?? '');
+                    const sourceObj = sourceMap.get(alert.sourceId);
 
-            {/* Incident Timeline */}
-            <div>
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 mb-2">
-                <span>⚡</span> Incident Timeline
-              </div>
-              <div className="space-y-3 relative pl-4">
-                {/* vertical line */}
-                <div className="absolute left-1.5 top-2 bottom-2 w-px bg-slate-200" />
-                {[
-                  { dot: 'bg-rose-500', title: 'Alert Created', time: '01 Nov, 07:45 PM', desc: 'pH value 9.4 exceeds the permissible range (6.5 – 8.5).' },
-                  { dot: 'bg-blue-400', title: 'Notification Sent (SNS)', time: '01 Nov, 07:46 PM', desc: 'Email sent to operations team.' },
-                  { dot: 'bg-slate-300', title: 'Under Investigation', time: 'Pending', desc: 'Field team assigned for resampling and lab verification.' },
-                ].map((t, i) => (
-                  <div key={i} className="relative flex gap-3">
-                    <div className={`w-3 h-3 rounded-full ${t.dot} ring-2 ring-white shrink-0 mt-0.5 -ml-1.5`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-slate-800">{t.title}</span>
-                        <span className="text-[10px] text-slate-400 shrink-0">{t.time}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">{t.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                    return (
+                      <tr
+                        key={alert.alertId}
+                        onClick={() => setSelectedId(alert.alertId)}
+                        className={`transition-all duration-150 cursor-pointer group ${
+                          isSelected
+                            ? 'bg-[#152c66] border-l-4 border-l-cyan-400 text-white shadow-inner'
+                            : isCritical
+                            ? 'bg-[#291024]/70 hover:bg-[#381630] border-l-2 border-l-rose-500/70'
+                            : 'hover:bg-[#162354]'
+                        }`}
+                      >
+                        {/* Alert ID */}
+                        <td className="p-3 font-mono font-bold whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            {isCritical ? (
+                              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                            ) : isWarning ? (
+                              <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            ) : (
+                              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            )}
+                            <span className={isSelected ? 'text-cyan-300 font-bold' : 'text-blue-400'}>
+                              {alert.alertId}
+                            </span>
+                          </div>
+                        </td>
 
-            {/* Linked Evidence */}
-            <div>
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 mb-2">
-                🔗 Linked Evidence
-              </div>
-              <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
-                    <FileText className="w-4 h-4" />
+                        {/* Source Station */}
+                        <td className="p-3">
+                          <div className="font-semibold text-slate-200 leading-tight">
+                            {sourceObj?.name || alert.sourceId}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            {alert.sourceId} &bull; {sourceObj?.locality || 'Gwalior Grid'}
+                          </div>
+                        </td>
+
+                        {/* Severity */}
+                        <td className="p-3 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                              isCritical
+                                ? 'bg-[#3b1220] text-rose-300 border-rose-700/60'
+                                : isWarning
+                                ? 'bg-[#3b2a0a] text-amber-300 border-amber-700/60'
+                                : 'bg-[#0c2e56] text-sky-300 border-sky-700/60'
+                            }`}
+                          >
+                            {isCritical && <Flame className="w-3 h-3 text-rose-400" />}
+                            {humanize(alert.severity)}
+                          </span>
+                        </td>
+
+                        {/* State */}
+                        <td className="p-3 whitespace-nowrap">
+                          <span
+                            className={`inline-block px-2.5 py-0.5 rounded-md text-[10px] font-semibold border ${
+                              isResolved
+                                ? 'bg-[#0e3b32] text-emerald-300 border-emerald-700/60'
+                                : /investigating/i.test(alert.state ?? '')
+                                ? 'bg-[#3b2a0a] text-amber-300 border-amber-700/60'
+                                : 'bg-[#3b1220] text-rose-300 border-rose-700/60'
+                            }`}
+                          >
+                            {humanize(alert.state)}
+                          </span>
+                        </td>
+
+                        {/* Reason / Public Message */}
+                        <td className="p-3 text-slate-800 max-w-xs">
+                          <p className="line-clamp-2 text-xs leading-snug">
+                            {stringValue(alert.reason, stringValue(alert.publicMessage))}
+                          </p>
+                        </td>
+
+                        {/* Timestamp */}
+                        <td className="p-3 text-slate-400 whitespace-nowrap text-[11px]">
+                          {displayDate(alert.createdAt ?? alert.issuedAt)}
+                        </td>
+
+                        {/* Action */}
+                        <td className="p-3 text-right">
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation();
+                              if (onSelectAlert) onSelectAlert(alert.alertId);
+                              else setSelectedId(alert.alertId);
+                            }}
+                            className="text-slate-400 group-hover:text-blue-600 p-1 hover:bg-slate-100 rounded-lg transition"
+                            title="Open Incident Drawer"
+                          >
+                            <ArrowUpRight className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {!loading && filtered.length === 0 && (
+                <div className="p-12 text-center text-slate-500">
+                  <AlertCircle className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                  <p className="text-sm font-semibold text-slate-700">No matching incident alerts found</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Try selecting a different severity or clearing filters.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: Detail Inspection Card (4 cols) */}
+        <div className="lg:col-span-4 space-y-4">
+          {selectedAlert ? (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
+              {/* Header Badge */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold ${
+                      /critical|high/i.test(selectedAlert.severity ?? '')
+                        ? 'bg-rose-50 text-rose-600'
+                        : 'bg-amber-50 text-amber-600'
+                    }`}
+                  >
+                    <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-[11px] font-semibold text-slate-800">field_report_A04.pdf</div>
-                    <div className="text-[10px] text-slate-500">1.2 MB · Lab sample sheet</div>
+                    <h3 className="font-bold text-slate-900 text-sm">Incident Brief</h3>
+                    <p className="text-[11px] font-mono text-blue-600">{selectedAlert.alertId}</p>
                   </div>
                 </div>
-                <button className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      /critical|high/i.test(selectedAlert.severity ?? '')
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}
+                  >
+                    {humanize(selectedAlert.severity)}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      /resolved|closed/i.test(selectedAlert.state ?? '')
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                    }`}
+                  >
+                    {humanize(selectedAlert.state)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Station Info */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
+                <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                  Contaminated / Impacted Facility
+                </div>
+                <div className="font-bold text-slate-900 text-sm">
+                  {sourceMap.get(selectedAlert.sourceId)?.name || selectedAlert.sourceId}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>
+                    {[
+                      sourceMap.get(selectedAlert.sourceId)?.locality,
+                      sourceMap.get(selectedAlert.sourceId)?.district,
+                    ]
+                      .filter(Boolean)
+                      .join(', ') || 'Gwalior Municipal Grid'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Public Notice Box */}
+              <div className="p-3.5 bg-rose-50/60 rounded-xl border border-rose-200 space-y-1.5">
+                <div className="text-[11px] font-bold text-rose-800 flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Public Health Water Advisory</span>
+                </div>
+                <p className="text-xs text-rose-900 leading-relaxed">
+                  {selectedAlert.publicMessage || selectedAlert.reason}
+                </p>
+              </div>
+
+              {/* Root Cause & Engineering Protocol */}
+              <div className="space-y-2 text-xs">
+                <div className="font-bold text-slate-800">Operational Response Protocol:</div>
+                <ul className="space-y-1 text-slate-600 list-disc list-inside text-[11px]">
+                  <li>Deploy field inspection unit for on-site reagent titration.</li>
+                  <li>Increase chlorination booster dosing at feeder injection point.</li>
+                  <li>Order distribution scour flush if turbidity &gt;5 NTU persists.</li>
+                  <li>Collect confirmatory laboratory specimen for incubation.</li>
+                </ul>
+              </div>
+
+              {/* Incident Metadata */}
+              <div className="border-t border-slate-100 pt-3 space-y-1.5 text-xs text-slate-600">
+                <div className="flex justify-between">
+                  <span>Incident Registered:</span>
+                  <span className="font-medium text-slate-900">
+                    {displayDate(selectedAlert.createdAt ?? selectedAlert.issuedAt)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Advisory Standard:</span>
+                  <span className="font-medium text-slate-900">BIS IS 10500:2012 Drinking Water</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="border-t border-slate-100 pt-3 space-y-2">
+                {onSelectAlert && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectAlert(selectedAlert.alertId)}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-xs transition cursor-pointer"
+                  >
+                    <span>Open Comprehensive Incident Dossier &rarr;</span>
+                  </button>
+                )}
+
+                <a
+                  href="/sample-reports/ward28_chlorine_depletion_investigation.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl text-xs transition"
+                >
                   <Download className="w-3.5 h-3.5" />
-                </button>
+                  <span>Download Incident Report (.pdf)</span>
+                </a>
               </div>
             </div>
-          </div>
-
-          {/* Action Buttons Footer */}
-          <div className="px-4 py-3 border-t border-slate-100 flex items-center gap-2 flex-wrap">
-            <button className="flex items-center gap-1.5 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Acknowledge
-            </button>
-            <button className="flex items-center gap-1.5 text-[11px] font-bold border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg transition">
-              <FlaskConical className="w-3.5 h-3.5" /> Mark for Lab
-            </button>
-            <button className="flex items-center gap-1.5 text-[11px] font-bold border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg transition">
-              <X className="w-3.5 h-3.5" /> Resolve
-            </button>
-            <button className="ml-auto p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition">
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
-          </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400">
+              <AlertTriangle className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+              <p className="text-xs">Select any incident row to view advisory details.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
+
+export default AlertsIncidentsView;

@@ -12,7 +12,9 @@ import {
   type AlertDetailRecord,
 } from '../../data/alertDetailDataset';
 import { getAlertSeverity } from '../../config/alertSeverities';
-import { date } from '../../api/client';
+import { api, date } from '../../api/client';
+import { allApiRecords } from '../../api/adminRecords';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
 export interface AlertDetailDrawerProps {
   alertId?: string | null;
@@ -34,6 +36,7 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
   const [detail, setDetail] = useState<AlertDetailRecord | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState('');
 
   // Fetch or generate alert details
   useEffect(() => {
@@ -42,12 +45,51 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
       return;
     }
 
-    const currentAlert = alerts.find((a) => a.alertId === alertId);
-    const currentSource = sources.find((s) => s.sourceId === currentAlert?.sourceId);
-    const rec = getAlertDetail(alertId, currentAlert, currentSource);
-    setDetail(rec);
+    let active = true;
+    setDetail(null);
+    setLoadError('');
+
+    Promise.all([
+      api<unknown>(`/alerts/${encodeURIComponent(alertId)}`),
+      allApiRecords(`/alerts/${encodeURIComponent(alertId)}/actions`),
+    ]).then(([response, actions]) => {
+      if (!active) return;
+      const outer = response && typeof response === 'object' ? response as Record<string, unknown> : {};
+      const body = outer.alert && typeof outer.alert === 'object' ? outer.alert as Record<string, unknown> : outer;
+      setDetail({
+        ...body,
+        alertId: String(body.alertId ?? alertId),
+        sourceId: String(body.sourceId ?? ''),
+        severity: String(body.severity ?? ''),
+        state: String(body.state ?? ''),
+        publicationStatus: String(body.publicationStatus ?? ''),
+        advisoryStatus: String(body.advisoryStatus ?? ''),
+        notificationStatus: String(body.notificationStatus ?? ''),
+        notificationAttempts: Number(body.notificationAttempts ?? 0),
+        reason: String(body.reason ?? ''),
+        updatedAt: String(body.updatedAt ?? body.createdAt ?? ''),
+        repeatCount: Number(body.repeatCount ?? 0),
+        readingId: String(body.readingId ?? body.triggeringReadingKey ?? ''),
+        threshold: body.threshold && typeof body.threshold === 'object' ? body.threshold as AlertDetailRecord['threshold'] : undefined,
+        timeline: actions as unknown as AlertDetailRecord['timeline'],
+      } as AlertDetailRecord);
+    }).catch(reason => {
+      if (!active) return;
+      // Fallback only if API is offline
+      const currentAlert = alerts.find((a) => a.alertId === alertId);
+      const currentSource = sources.find((s) => s.sourceId === currentAlert?.sourceId);
+      const rec = getAlertDetail(alertId, currentAlert, currentSource);
+      setDetail(rec);
+      if (_isStaff) {
+        setLoadError((reason as Error).message || 'Alert details are unavailable from the API.');
+      }
+    });
+
     setNotice(null);
-  }, [alertId, alerts, sources]);
+    return () => {
+      active = false;
+    };
+  }, [alertId, alerts, sources, _isStaff]);
 
   // Handle escape key
   useEffect(() => {
@@ -60,7 +102,38 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  if (!alertId || !detail) return null;
+  if (!alertId) return null;
+  if (!detail) {
+    return (
+      <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-sm flex justify-end animate-in fade-in duration-200">
+        <div className="h-full w-full max-w-xl bg-slate-900 border-l border-sky-500/20 p-6 flex flex-col justify-between">
+          <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+            <span className="text-xs font-mono font-bold text-sky-400">INCIDENT {alertId}</span>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-white text-xs px-2.5 py-1 rounded-lg bg-slate-800 transition"
+            >
+              Close
+            </button>
+          </div>
+          {loadError ? (
+            <div className="text-rose-400 text-sm p-4 bg-rose-950/30 rounded-xl border border-rose-800">
+              {loadError}
+            </div>
+          ) : (
+            <LoadingSpinner
+              label={`Fetching incident ${alertId}…`}
+              sublabel="Loading telemetry & response timeline from central database"
+              fullHeight
+            />
+          )}
+          <div className="text-center text-[10px] text-slate-500 font-mono">
+            Municipal Surveillance Grid &bull; Active
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const source = sources.find((s) => s.sourceId === detail.sourceId);
   const severityConfig = getAlertSeverity(detail.severity, detail.state);
@@ -78,7 +151,7 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
             }
           : null
       );
-      setNotice('SNS accepted operator notification retry (MessageId: sns-gwl-' + Date.now().toString(36) + ').');
+      setNotice('Notification service accepted operator dispatch retry (ID: msg-gwl-' + Date.now().toString(36) + ').');
       setTimeout(() => setNotice(null), 5000);
     }, 600);
   };
@@ -247,12 +320,12 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
                           : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                       }`}
                     >
-                      {detail.notificationStatus}
+                      {detail.notificationStatus === 'SENT_TO_SNS' ? 'DISPATCHED' : detail.notificationStatus}
                     </span>
                   </div>
 
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    E-mail/SMS delivery via AWS SNS never acknowledges or resolves an incident automatically.
+                    Automated SMS/Email notification delivery never acknowledges or resolves an incident automatically.
                     Attempts recorded: <span className="text-white font-mono font-bold">{detail.notificationAttempts}</span>.
                   </p>
 
@@ -269,7 +342,7 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
               </div>
 
               {/* Rule that Fired / Threshold Provenance */}
-              <div className="p-4 sm:p-5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
+              {detail.threshold && <div className="p-4 sm:p-5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="font-mono text-[10px] tracking-wider text-cyan-400 uppercase font-semibold">
                     RULE THAT FIRED (PROVENANCE AUDIT)
@@ -309,7 +382,7 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
                     <b className="text-amber-300">Approved advisory wording:</b> {detail.advisoryMessage}
                   </div>
                 )}
-              </div>
+              </div>}
 
               {/* Source Quick Link */}
               {source && onOpenSource && (

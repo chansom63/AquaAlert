@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { API, api } from '../api/client';
+import { allApiRecords } from '../api/adminRecords';
 import { DEMO_ALERTS, DEMO_SOURCES, GWALIOR_AREAS } from '../data/demoDataset';
 import type { Alert, ComplaintPreview, Reading, Source } from '../types/water';
 
-export const useWaterData = () => {
+export const useWaterData = (activePage: string = 'Overview') => {
   const [sources, setSources] = useState<Source[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [readings, setReadings] = useState<Reading[]>([]);
   const [selected, setSelected] = useState('');
-  const [loading, setLoading] = useState(true);
+
+  const [loadingSources, setLoadingSources] = useState(false);
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [loadingReadings, setLoadingReadings] = useState(false);
+
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
@@ -17,41 +22,86 @@ export const useWaterData = () => {
   const [busy, setBusy] = useState(false);
   const [complaints, setComplaints] = useState<ComplaintPreview[]>([]);
 
-  const reload = async () => {
-    setLoading(true);
-    setError('');
-    const results = await Promise.allSettled([api<Source[]>('/sources'), api<Alert[]>('/alerts')]);
-    if (results[0].status === 'fulfilled') {
-      const items = Array.isArray(results[0].value) ? results[0].value : [];
+  const loadedSourcesRef = useRef(false);
+  const loadedAlertsRef = useRef(false);
+
+  const fetchSources = useCallback(async (force = false) => {
+    if (loadedSourcesRef.current && !force) return;
+    setLoadingSources(true);
+    try {
+      const res = await api<Source[]>('/sources');
+      const items = Array.isArray(res) ? res : [];
       setSources(items);
       setSelected(s => s || items[0]?.sourceId || '');
-    } else {
+      loadedSourcesRef.current = true;
+    } catch (err) {
       setSources(DEMO_SOURCES);
       setSelected(s => s || DEMO_SOURCES[0]?.sourceId || '');
-      setError(`Showing the local Gwalior demo dataset. API unavailable: ${results[0].reason.message}`);
+      setError(`Showing local Gwalior demo dataset. API unavailable: ${(err as Error).message}`);
+    } finally {
+      setLoadingSources(false);
     }
-    if (results[1].status === 'fulfilled') {
-      setAlerts(Array.isArray(results[1].value) ? results[1].value : []);
-    } else {
-      setAlerts(DEMO_ALERTS);
-      const message = (results[1] as PromiseRejectedResult).reason?.message || 'Alerts request failed';
-      setError(e => (e ? `${e} · Showing illustrative Gwalior demo notices.` : `Showing illustrative Gwalior demo notices. ${message}`));
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    void reload();
   }, []);
 
+  const fetchAlerts = useCallback(async (force = false) => {
+    if (loadedAlertsRef.current && !force) return;
+    setLoadingAlerts(true);
+    try {
+      const res = await allApiRecords('/alerts');
+      setAlerts(res as Alert[]);
+      loadedAlertsRef.current = true;
+    } catch (err) {
+      setAlerts(DEMO_ALERTS);
+      setError(e => (e ? `${e} · Showing illustrative Gwalior demo notices.` : `Showing illustrative Gwalior demo notices. ${(err as Error).message}`));
+    } finally {
+      setLoadingAlerts(false);
+    }
+  }, []);
+
+  // Fetch only when navigating to a particular page/tab
+  useEffect(() => {
+    switch (activePage) {
+      case 'Overview':
+        void fetchSources();
+        void fetchAlerts();
+        break;
+      case 'Interactive Map':
+        void fetchSources();
+        break;
+      case 'Sources':
+        void fetchSources();
+        break;
+      case 'Alerts':
+        void fetchSources();
+        void fetchAlerts();
+        break;
+      case 'Reports':
+        void fetchSources();
+        void fetchAlerts();
+        break;
+      default:
+        break;
+    }
+  }, [activePage, fetchSources, fetchAlerts]);
+
+  const reload = useCallback(async () => {
+    loadedSourcesRef.current = false;
+    loadedAlertsRef.current = false;
+    setError('');
+    await Promise.all([fetchSources(true), fetchAlerts(true)]);
+  }, [fetchSources, fetchAlerts]);
+
+  // Fetch readings for the currently selected water source on-demand
   useEffect(() => {
     if (!selected) {
       setReadings([]);
       return;
     }
+    setLoadingReadings(true);
     api<Reading[]>(`/sources/${encodeURIComponent(selected)}/readings`)
       .then(r => setReadings(Array.isArray(r) ? r : []))
-      .catch(e => setError(e.message));
+      .catch(e => setError((e as Error).message))
+      .finally(() => setLoadingReadings(false));
   }, [selected]);
 
   const visibleSources = useMemo(
@@ -59,10 +109,22 @@ export const useWaterData = () => {
       sources.filter(
         s =>
           `${s.name || ''} ${s.district || ''} ${s.locality || ''} ${s.sourceId}`.toLowerCase().includes(query.toLowerCase()) &&
-          (area === 'All areas' || `${s.name || ''} ${s.locality || ''} ${s.district || ''}`.toLowerCase().includes(area.toLowerCase())),
+          (area === 'All areas' || `${s.name || ''} ${s.locality || ''} ${s.district || ''} ${s.zoneName || ''}`.toLowerCase().includes(area.toLowerCase())),
       ),
     [sources, query, area],
   );
+
+  const availableAreas = useMemo(() => {
+    const list = new Set<string>();
+    GWALIOR_AREAS.forEach(a => list.add(a));
+    sources.forEach(s => {
+      if (s.zoneName) {
+        const part = s.zoneName.split(' - ')[1];
+        if (part) list.add(part.split('/')[0].trim());
+      }
+    });
+    return Array.from(list);
+  }, [sources]);
 
   const selectedSource = sources.find(s => s.sourceId === selected);
 
@@ -172,15 +234,20 @@ export const useWaterData = () => {
     event.currentTarget.reset();
   };
 
+  const loading = loadingSources || loadingAlerts || loadingReadings;
+
   return {
     API,
-    GWALIOR_AREAS,
+    GWALIOR_AREAS: availableAreas,
     sources,
     alerts,
     readings,
     selected,
     setSelected,
     loading,
+    loadingSources,
+    loadingAlerts,
+    loadingReadings,
     error,
     setError,
     notice,

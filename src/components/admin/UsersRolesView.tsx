@@ -286,7 +286,7 @@ export const UsersRolesView: FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 text-center space-y-2">
           <Key className="w-8 h-8 text-blue-400 mx-auto" />
           <h3 className="font-bold text-slate-800">Permission Matrix</h3>
-          <p className="text-xs text-slate-500">Granular RBAC permissions are managed per-role and scoped to AWS IAM groups.</p>
+          <p className="text-xs text-slate-500">Granular RBAC permissions are managed per-role and scoped to municipal directory access groups.</p>
         </div>
       )}
     </div>

@@ -376,7 +376,7 @@ export const LabReportsPanel: FC<{
         </div>
       </div>
 
-      {/* 3. PRIVATE S3 EVIDENCE UPLOAD & PREVIEW SECTION */}
+      {/* 3. DIGITAL EVIDENCE UPLOAD & PREVIEW SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
         <div className="lg:col-span-6">
           <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
@@ -384,7 +384,7 @@ export const LabReportsPanel: FC<{
               <Upload className="w-5 h-5 text-purple-400" />
               <div>
                 <h3 className="font-bold text-white text-sm">Upload Laboratory Certificate (.pdf)</h3>
-                <p className="text-xs text-slate-400">Direct presigned multipart upload into private S3 evidence bucket</p>
+                <p className="text-xs text-slate-400">Direct encrypted multipart upload into municipal digital archive</p>
               </div>
             </div>
 
@@ -427,7 +427,7 @@ export const LabReportsPanel: FC<{
                 className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center space-x-2 shadow-lg shadow-purple-600/20 cursor-pointer border-0 disabled:opacity-50"
               >
                 <FileCheck className="w-4 h-4" />
-                <span>{busy ? 'Uploading to Private S3...' : 'Upload &amp; Generate S3 Object Key →'}</span>
+                <span>{busy ? 'Uploading Document...' : 'Upload Document &amp; Generate Key →'}</span>
               </button>
             </form>
           </div>

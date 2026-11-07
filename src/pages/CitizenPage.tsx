@@ -19,7 +19,7 @@ const CitizenPage: FC = () => {
   const [drawerSourceId, setDrawerSourceId] = useState<string | null>(null);
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const data = useWaterData();
+  const data = useWaterData(page);
 
   const alertParam = searchParams.get('alert');
   useEffect(() => {
@@ -52,6 +52,7 @@ const CitizenPage: FC = () => {
       description="Explore water source readings and published alerts across Gwalior’s wards."
       nav={CITIZEN_NAV}
       page={page}
+      loading={data.loading}
       onPageChange={setPage}
       onRefresh={() => void data.reload()}
       error={data.error}
@@ -111,6 +112,7 @@ const CitizenPage: FC = () => {
       {page === 'Alerts' && (
         <AlertsPanel
           admin={false}
+          loading={data.loadingAlerts}
           alerts={data.alerts}
           sources={data.sources}
           busy={data.busy}
