@@ -24,6 +24,17 @@ export const REGION = import.meta.env.VITE_AWS_REGION || 'ap-south-1';
 export const USER_POOL_ID = import.meta.env.VITE_COGNITO_USER_POOL_ID || '';
 export const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID || '';
 
+/**
+ * Predefined static administrator credentials
+ */
+export const STATIC_ADMIN = {
+  email: 'admin@aquaalert.gov.in',
+  password: 'AquaAlert@Admin2026!',
+  name: 'Central Municipal Administrator (Dr. Rajesh Verma)',
+  role: 'ADMIN' as const,
+  groups: ['Admins'],
+};
+
 const COGNITO_ENDPOINT = `https://cognito-idp.${REGION}.amazonaws.com/`;
 
 /**
@@ -142,6 +153,28 @@ export const cognitoSignIn = async (
   email: string,
   password: string
 ): Promise<CognitoUserSession> => {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // 1. Static Predefined Administrator Authentication
+  if (normalizedEmail === STATIC_ADMIN.email.toLowerCase()) {
+    if (password === STATIC_ADMIN.password) {
+      return {
+        email: STATIC_ADMIN.email,
+        name: STATIC_ADMIN.name,
+        sub: 'static-admin-sub-001',
+        groups: ['Admins'],
+        role: 'ADMIN',
+        idToken: `static-admin-token-${Date.now()}`,
+        accessToken: `static-admin-access-${Date.now()}`,
+        refreshToken: `static-admin-refresh-${Date.now()}`,
+        expiresAt: Date.now() + 86400 * 1000,
+      };
+    } else {
+      throw new Error('Invalid password for predefined administrator account.');
+    }
+  }
+
+  // 2. Regular User Authentication with AWS Cognito
   const res = await callCognito<{
     AuthenticationResult?: {
       IdToken: string;

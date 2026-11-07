@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
+import { STATIC_ADMIN } from '../../services/cognitoAuth';
 
 export interface AuthModalProps {
   isOpen: boolean;
@@ -54,7 +55,6 @@ export const AuthModal: FC<AuthModalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'CITIZEN' | 'ADMIN'>('CITIZEN');
   const [verificationCode, setVerificationCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -99,7 +99,7 @@ export const AuthModal: FC<AuthModalProps> = ({
       password,
       fullName.trim(),
       phoneNumber.trim() || undefined,
-      selectedRole
+      'CITIZEN'
     );
 
     if (res.success) {
@@ -332,39 +332,62 @@ export const AuthModal: FC<AuthModalProps> = ({
                 )}
               </button>
 
-              {/* Quick Evaluation Demo Credentials */}
+              {/* Predefined Administrator Box */}
               <div className="pt-3 border-t border-[#1c295c] space-y-2 text-left">
-                <div className="flex items-center justify-between">
+                <div className="p-3 rounded-xl bg-[#0d1f47] border border-blue-500/40 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Predefined Administrator</span>
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800/50">
+                      STATIC ADMIN
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-300 font-mono flex items-center justify-between bg-[#060e24] px-2.5 py-1.5 rounded border border-[#162758]">
+                    <span className="truncate">{STATIC_ADMIN.email}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail(STATIC_ADMIN.email);
+                        setPassword(STATIC_ADMIN.password);
+                      }}
+                      className="text-cyan-300 hover:text-cyan-200 font-bold ml-2 underline cursor-pointer text-[10px]"
+                    >
+                      Fill Admin Credentials
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
                   <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-amber-400" />
-                    <span>Quick Evaluation Logins</span>
+                    <span>Quick RBAC Logins</span>
                   </span>
-                  <span className="text-[10px] text-cyan-400 font-mono">1-Click RBAC</span>
+                  <span className="text-[10px] text-cyan-400 font-mono">1-Click</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => handleQuickDemo('ADMIN')}
-                    className="p-2 rounded-xl bg-[#0d1f47] hover:bg-[#12285a] border border-[#1e3470] text-left transition cursor-pointer"
+                    className="p-2.5 rounded-xl bg-[#0d1f47] hover:bg-[#12285a] border border-[#1e3470] text-left transition cursor-pointer"
                   >
-                    <div className="text-[11px] font-bold text-rose-300">Admin</div>
-                    <div className="text-[10px] text-slate-400 truncate">Full CRUD</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemo('ANALYST')}
-                    className="p-2 rounded-xl bg-[#0d1f47] hover:bg-[#12285a] border border-[#1e3470] text-left transition cursor-pointer"
-                  >
-                    <div className="text-[11px] font-bold text-purple-300">Lab Chemist</div>
-                    <div className="text-[10px] text-slate-400 truncate">Reports/NABL</div>
+                    <div className="text-[11px] font-bold text-rose-300 flex items-center justify-between">
+                      <span>Static Admin</span>
+                      <span className="text-[10px] font-mono">Full CRUD</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate">{STATIC_ADMIN.email}</div>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickDemo('CITIZEN')}
-                    className="p-2 rounded-xl bg-[#0d1f47] hover:bg-[#12285a] border border-[#1e3470] text-left transition cursor-pointer"
+                    className="p-2.5 rounded-xl bg-[#0d1f47] hover:bg-[#12285a] border border-[#1e3470] text-left transition cursor-pointer"
                   >
-                    <div className="text-[11px] font-bold text-emerald-300">Citizen</div>
-                    <div className="text-[10px] text-slate-400 truncate">Grievances</div>
+                    <div className="text-[11px] font-bold text-emerald-300 flex items-center justify-between">
+                      <span>Citizen User</span>
+                      <span className="text-[10px] font-mono">Public Portal</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate">citizen@gwalior.in</div>
                   </button>
                 </div>
               </div>
@@ -447,34 +470,14 @@ export const AuthModal: FC<AuthModalProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Account Type &amp; Role</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRole('CITIZEN')}
-                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                      selectedRole === 'CITIZEN'
-                        ? 'bg-blue-950/80 border-cyan-400 text-white font-bold'
-                        : 'bg-[#060e24] border-[#1e3470] text-slate-400'
-                    }`}
-                  >
-                    <div className="text-xs">Citizen Resident</div>
-                    <div className="text-[10px] text-slate-400">Public Reports &amp; Wards</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRole('ADMIN')}
-                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                      selectedRole === 'ADMIN'
-                        ? 'bg-blue-950/80 border-cyan-400 text-white font-bold'
-                        : 'bg-[#060e24] border-[#1e3470] text-slate-400'
-                    }`}
-                  >
-                    <div className="text-xs">Municipal Admin</div>
-                    <div className="text-[10px] text-slate-400">Surveillance &amp; Ledger</div>
-                  </button>
+              <div className="p-3 rounded-xl bg-[#060e24] border border-[#162758] flex items-center justify-between text-xs">
+                <div>
+                  <div className="font-bold text-white">Citizen User Account</div>
+                  <div className="text-[10px] text-slate-400">Public ward surveillance telemetry &amp; grievance dispatch</div>
                 </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/60">
+                  CITIZEN
+                </span>
               </div>
 
               <button
