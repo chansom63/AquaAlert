@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FC } from 'react';
 import {
   AlertTriangle,
@@ -74,8 +74,13 @@ export interface RulesThresholdsViewProps {
   alerts?: ApiRecord[];
   readings?: ApiRecord[];
   sources?: Source[];
+  rules?: RuleItem[];
+  thresholds?: ThresholdStandard[];
+  loading?: boolean;
   initialTab?: 'rules' | 'standards' | 'split';
   onNavigateToTab?: (tab: string) => void;
+  onRefresh?: () => Promise<void>;
+  onSaveRule?: (rule: RuleItem) => Promise<void> | void;
 }
 
 // ── EVALUATION RULES ENGINE DATASET ──────────────────────────────────────────
@@ -679,14 +684,19 @@ const CATEGORY_BADGES: Record<string, string> = {
 export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   alerts = [],
   readings = [],
+  rules: propRules,
+  thresholds: propThresholds,
+  loading = false,
   initialTab = 'rules',
   onNavigateToTab,
+  onRefresh,
+  onSaveRule,
 }) => {
   // Main view navigation: 'rules' (Rules Table) | 'standards' (Thresholds Table) | 'split' (Both)
   const [activeTab, setActiveTab] = useState<'rules' | 'standards' | 'split'>(initialTab);
 
   // Rules Table State
-  const [rules, setRules] = useState<RuleItem[]>(INITIAL_RULES);
+  const [rules, setRules] = useState<RuleItem[]>(() => (propRules && propRules.length > 0 ? propRules : INITIAL_RULES));
   const [selectedRuleId, setSelectedRuleId] = useState<string>('R-PH-001');
   const [ruleSearch, setRuleSearch] = useState('');
   const [ruleParamFilter, setRuleParamFilter] = useState('All Parameters');
@@ -695,11 +705,24 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   const [ruleCategoryFilter, setRuleCategoryFilter] = useState('All Categories');
 
   // Thresholds Table State
-  const [thresholds] = useState<ThresholdStandard[]>(STATUTORY_THRESHOLDS);
+  const [thresholds, setThresholds] = useState<ThresholdStandard[]>(() => (propThresholds && propThresholds.length > 0 ? propThresholds : STATUTORY_THRESHOLDS));
   const [selectedThresholdId, setSelectedThresholdId] = useState<string>('TH-PH');
   const [thresholdSearch, setThresholdSearch] = useState('');
   const [thresholdCategoryFilter, setThresholdCategoryFilter] = useState('All Categories');
   const [thresholdStatusFilter, setThresholdStatusFilter] = useState('All Enforcements');
+
+  // Sync with live DynamoDB data when loaded
+  useEffect(() => {
+    if (propRules && propRules.length > 0) {
+      setRules(propRules);
+    }
+  }, [propRules]);
+
+  useEffect(() => {
+    if (propThresholds && propThresholds.length > 0) {
+      setThresholds(propThresholds);
+    }
+  }, [propThresholds]);
 
   // Interactive UI state
   const [publicWordingEnabled, setPublicWordingEnabled] = useState(true);
@@ -754,29 +777,30 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
     const updatedStatus = String(form.get('status') || editingRule.status) as RuleItem['status'];
     const updatedWording = String(form.get('publicWording') || editingRule.publicWording);
 
+    const nextRule: RuleItem = {
+      ...editingRule,
+      threshold: updatedThreshold,
+      severity: updatedSeverity,
+      status: updatedStatus,
+      publicWording: updatedWording,
+      version: `${editingRule.version.split('.')[0]}.${Number(editingRule.version.split('.')[1] || 0) + 1}`,
+      history: [
+        {
+          version: `${editingRule.version.split('.')[0]}.${Number(editingRule.version.split('.')[1] || 0) + 1}`,
+          desc: `Updated threshold to ${updatedThreshold} (${updatedSeverity})`,
+          date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        },
+        ...editingRule.history,
+      ],
+    };
+
     setRules(prev =>
-      prev.map(r => {
-        if (r.ruleId === editingRule.ruleId) {
-          return {
-            ...r,
-            threshold: updatedThreshold,
-            severity: updatedSeverity,
-            status: updatedStatus,
-            publicWording: updatedWording,
-            version: `${r.version.split('.')[0]}.${Number(r.version.split('.')[1] || 0) + 1}`,
-            history: [
-              {
-                version: `${r.version.split('.')[0]}.${Number(r.version.split('.')[1] || 0) + 1}`,
-                desc: `Updated threshold to ${updatedThreshold} (${updatedSeverity})`,
-                date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-              },
-              ...r.history,
-            ],
-          };
-        }
-        return r;
-      })
+      prev.map(r => (r.ruleId === editingRule.ruleId ? nextRule : r))
     );
+
+    if (onSaveRule) {
+      void onSaveRule(nextRule);
+    }
 
     showToast(`Rule ${editingRule.ruleId} successfully updated and re-calibrated!`);
     setEditingRule(null);
@@ -922,6 +946,34 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ── DYNAMODB TABLES INTEGRATION STATUS BAR ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-[#091533] border border-[#1c295c] text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 text-cyan-300 font-mono text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-semibold text-slate-300">AWS DynamoDB Active:</span>
+            <span className="text-white font-bold bg-[#111e47] px-2 py-0.5 rounded border border-[#1e3478]">
+              Rules <span className="text-slate-400 font-normal">[ruleId (S)]</span>
+            </span>
+            <span className="text-white font-bold bg-[#111e47] px-2 py-0.5 rounded border border-[#1e3478]">
+              Thresholds <span className="text-slate-400 font-normal">[parameterId (S)]</span>
+            </span>
+          </div>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 font-mono">
+            LIVE • ap-south-1
+          </span>
+        </div>
+        {onRefresh && (
+          <button
+            onClick={() => onRefresh()}
+            disabled={loading}
+            className="flex items-center gap-1 text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer disabled:opacity-50"
+          >
+            <span>{loading ? 'Syncing DynamoDB...' : 'Sync DynamoDB Tables'}</span>
+          </button>
+        )}
       </div>
 
       {/* ── SUB-TABS: SEPARATE TABLES SWITCHER ── */}

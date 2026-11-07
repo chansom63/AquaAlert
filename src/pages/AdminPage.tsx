@@ -813,7 +813,11 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               alerts={adminTables.alerts}
               readings={adminTables.readings}
               sources={adminTables.sources}
+              rules={adminTables.rules}
+              thresholds={adminTables.thresholds}
+              loading={adminTables.loadingRules || adminTables.loadingThresholds}
               onNavigateToTab={handleNavChange}
+              onRefresh={adminTables.reloadAll}
             />
           )}
 

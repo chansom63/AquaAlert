@@ -4,6 +4,7 @@ import { allApiRecords, recordsFrom, type ApiRecord } from '../api/adminRecords'
 import type { Alert, Source } from '../types/water';
 import { DEMO_SOURCES, DEMO_ALERTS } from '../data/demoDataset';
 import { DEMO_ADMIN_READINGS, DEMO_ADMIN_ACTIONS } from '../data/demoAdminData';
+import type { RuleItem, ThresholdStandard } from '../components/admin/RulesThresholdsView';
 
 export interface LabReportRecord {
   reportId: string;
@@ -42,12 +43,16 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [actions, setActions] = useState<ApiRecord[]>([]);
   const [reports, setReports] = useState<LabReportRecord[]>([]);
+  const [rules, setRules] = useState<RuleItem[]>([]);
+  const [thresholds, setThresholds] = useState<ThresholdStandard[]>([]);
 
   const [loadingSources, setLoadingSources] = useState(false);
   const [loadingReadings, setLoadingReadings] = useState(false);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
   const [loadingActions, setLoadingActions] = useState(false);
   const [loadingReports, setLoadingReports] = useState(false);
+  const [loadingRules, setLoadingRules] = useState(false);
+  const [loadingThresholds, setLoadingThresholds] = useState(false);
   const [error, setError] = useState('');
 
   const loadedSourcesRef = useRef(false);
@@ -55,6 +60,8 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
   const loadedAlertsRef = useRef(false);
   const loadedActionsRef = useRef(false);
   const loadedReportsRef = useRef(false);
+  const loadedRulesRef = useRef(false);
+  const loadedThresholdsRef = useRef(false);
 
   const fetchSources = useCallback(async (force = false) => {
     if (loadedSourcesRef.current && !force) return;
@@ -132,6 +139,38 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     }
   }, []);
 
+  const fetchRules = useCallback(async (force = false) => {
+    if (loadedRulesRef.current && !force) return;
+    setLoadingRules(true);
+    try {
+      const res = await allApiRecords('/rules').catch(() => allApiRecords('/rules-thresholds'));
+      if (res && res.length > 0) {
+        setRules(res as unknown as RuleItem[]);
+      }
+      loadedRulesRef.current = true;
+    } catch (err) {
+      console.warn('Rules API notice:', (err as Error).message);
+    } finally {
+      setLoadingRules(false);
+    }
+  }, []);
+
+  const fetchThresholds = useCallback(async (force = false) => {
+    if (loadedThresholdsRef.current && !force) return;
+    setLoadingThresholds(true);
+    try {
+      const res = await allApiRecords('/thresholds').catch(() => allApiRecords('/standards'));
+      if (res && res.length > 0) {
+        setThresholds(res as unknown as ThresholdStandard[]);
+      }
+      loadedThresholdsRef.current = true;
+    } catch (err) {
+      console.warn('Thresholds API notice:', (err as Error).message);
+    } finally {
+      setLoadingThresholds(false);
+    }
+  }, []);
+
   useEffect(() => {
     // Lazy on-demand fetching: only fetch records required for the currently active tab/page!
     switch (activeNav) {
@@ -141,6 +180,8 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
         void fetchReports();
         void fetchReadings();
         void fetchActions();
+        void fetchRules();
+        void fetchThresholds();
         break;
       case 'Water Sources':
         void fetchSources();
@@ -154,6 +195,12 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
         break;
       case 'Response Actions':
         void fetchActions();
+        break;
+      case 'Rules & Thresholds':
+        void fetchRules();
+        void fetchThresholds();
+        void fetchAlerts();
+        void fetchReadings();
         break;
       case 'Reports':
       case 'Upload Reports':
@@ -171,10 +218,10 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
         void fetchReports();
         break;
       default:
-        // Users & Roles, Rules & Thresholds, Settings do not query remote database tables
+        // Users & Roles and Settings do not query remote database tables
         break;
     }
-  }, [activeNav, fetchSources, fetchAlerts, fetchReadings, fetchActions, fetchReports]);
+  }, [activeNav, fetchSources, fetchAlerts, fetchReadings, fetchActions, fetchReports, fetchRules, fetchThresholds]);
 
   const reloadAll = useCallback(async () => {
     loadedSourcesRef.current = false;
@@ -182,6 +229,8 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     loadedAlertsRef.current = false;
     loadedActionsRef.current = false;
     loadedReportsRef.current = false;
+    loadedRulesRef.current = false;
+    loadedThresholdsRef.current = false;
 
     if (activeNav === 'Readings') {
       await fetchReadings(true);
@@ -189,6 +238,8 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
       await fetchActions(true);
     } else if (activeNav === 'Water Sources') {
       await fetchSources(true);
+    } else if (activeNav === 'Rules & Thresholds') {
+      await Promise.all([fetchRules(true), fetchThresholds(true), fetchAlerts(true), fetchReadings(true)]);
     } else if (activeNav === 'Reports' || activeNav === 'Upload Reports' || activeNav === 'Upload Document' || activeNav === 'Evidence Archive' || activeNav === 'Evidence (S3)') {
       await Promise.all([fetchSources(true), fetchReports(true)]);
     } else {
@@ -198,11 +249,13 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
         fetchReports(true),
         fetchReadings(true),
         fetchActions(true),
+        fetchRules(true),
+        fetchThresholds(true),
       ]);
     }
-  }, [activeNav, fetchSources, fetchAlerts, fetchReadings, fetchActions, fetchReports]);
+  }, [activeNav, fetchSources, fetchAlerts, fetchReadings, fetchActions, fetchReports, fetchRules, fetchThresholds]);
 
-  const isFetching = loadingSources || loadingReadings || loadingAlerts || loadingActions || loadingReports;
+  const isFetching = loadingSources || loadingReadings || loadingAlerts || loadingActions || loadingReports || loadingRules || loadingThresholds;
   const loading = isFetching;
 
   return {
@@ -211,12 +264,16 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     alerts,
     actions,
     reports,
+    rules,
+    thresholds,
     loading,
     loadingSources,
     loadingReadings,
     loadingAlerts,
     loadingActions,
     loadingReports,
+    loadingRules,
+    loadingThresholds,
     isFetching,
     error,
     setError,
@@ -226,5 +283,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     fetchAlerts,
     fetchActions,
     fetchReports,
+    fetchRules,
+    fetchThresholds,
   };
 };
