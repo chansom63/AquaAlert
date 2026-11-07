@@ -14,6 +14,7 @@ import {
   Edit,
   ExternalLink,
   Layers,
+  Loader2,
   PauseCircle,
   PlayCircle,
   Plus,
@@ -21,6 +22,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
 import type { Source } from '../../types/water';
@@ -81,6 +83,11 @@ export interface RulesThresholdsViewProps {
   onNavigateToTab?: (tab: string) => void;
   onRefresh?: () => Promise<void>;
   onSaveRule?: (rule: RuleItem) => Promise<void> | void;
+  onCreateRule?: (rule: RuleItem) => Promise<RuleItem> | void;
+  onDeleteRule?: (ruleId: string) => Promise<void> | void;
+  onSaveThreshold?: (threshold: ThresholdStandard) => Promise<void> | void;
+  onCreateThreshold?: (threshold: ThresholdStandard) => Promise<ThresholdStandard> | void;
+  onDeleteThreshold?: (paramId: string) => Promise<void> | void;
 }
 
 // ── EVALUATION RULES ENGINE DATASET ──────────────────────────────────────────
@@ -691,6 +698,11 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   onNavigateToTab,
   onRefresh,
   onSaveRule,
+  onCreateRule,
+  onDeleteRule,
+  onSaveThreshold,
+  onCreateThreshold,
+  onDeleteThreshold,
 }) => {
   // Main view navigation: 'rules' (Rules Table) | 'standards' (Thresholds Table) | 'split' (Both)
   const [activeTab, setActiveTab] = useState<'rules' | 'standards' | 'split'>(initialTab);
@@ -727,6 +739,11 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
   // Interactive UI state
   const [publicWordingEnabled, setPublicWordingEnabled] = useState(true);
   const [editingRule, setEditingRule] = useState<RuleItem | null>(null);
+  const [deletingRule, setDeletingRule] = useState<RuleItem | null>(null);
+  const [showAddThresholdModal, setShowAddThresholdModal] = useState(false);
+  const [editingThreshold, setEditingThreshold] = useState<ThresholdStandard | null>(null);
+  const [deletingThreshold, setDeletingThreshold] = useState<ThresholdStandard | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
@@ -757,16 +774,18 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
     setRules(prev =>
       prev.map(r => {
         if (r.ruleId === ruleId) {
-          const nextStatus = r.status === 'Active' ? 'Inactive' : 'Active';
+          const nextStatus: RuleItem['status'] = r.status === 'Active' ? 'Inactive' : 'Active';
           showToast(`Rule ${r.ruleId} status changed to ${nextStatus}.`);
-          return { ...r, status: nextStatus };
+          const updated: RuleItem = { ...r, status: nextStatus };
+          if (onSaveRule) void onSaveRule(updated);
+          return updated;
         }
         return r;
       })
     );
   };
 
-  // Save edited rule
+  // Save edited or new rule
   const handleSaveRuleEdit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!editingRule) return;
@@ -776,6 +795,8 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
     const updatedSeverity = String(form.get('severity') || editingRule.severity) as RuleItem['severity'];
     const updatedStatus = String(form.get('status') || editingRule.status) as RuleItem['status'];
     const updatedWording = String(form.get('publicWording') || editingRule.publicWording);
+
+    const isNew = !rules.some(r => r.ruleId === editingRule.ruleId);
 
     const nextRule: RuleItem = {
       ...editingRule,
@@ -794,16 +815,112 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
       ],
     };
 
-    setRules(prev =>
-      prev.map(r => (r.ruleId === editingRule.ruleId ? nextRule : r))
-    );
-
-    if (onSaveRule) {
-      void onSaveRule(nextRule);
+    if (isNew) {
+      setRules(prev => [nextRule, ...prev]);
+      if (onCreateRule) void onCreateRule(nextRule);
+      else if (onSaveRule) void onSaveRule(nextRule);
+      showToast(`Rule ${editingRule.ruleId} created & activated in evaluation engine!`);
+    } else {
+      setRules(prev =>
+        prev.map(r => (r.ruleId === editingRule.ruleId ? nextRule : r))
+      );
+      if (onSaveRule) {
+        void onSaveRule(nextRule);
+      }
+      showToast(`Rule ${editingRule.ruleId} successfully updated and re-calibrated!`);
     }
-
-    showToast(`Rule ${editingRule.ruleId} successfully updated and re-calibrated!`);
     setEditingRule(null);
+  };
+
+  const handleDeleteRuleConfirm = async () => {
+    if (!deletingRule) return;
+    setIsSubmitting(true);
+    try {
+      if (onDeleteRule) await onDeleteRule(deletingRule.ruleId);
+      setRules(prev => prev.filter(r => r.ruleId !== deletingRule.ruleId));
+      showToast(`Rule ${deletingRule.ruleId} deleted.`);
+      if (selectedRuleId === deletingRule.ruleId) setSelectedRuleId(rules[0]?.ruleId || '');
+      setDeletingRule(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateThresholdSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    const param = String(form.get('parameter') || 'Analyte');
+    const id = String(form.get('id') || `TH-${param.slice(0, 4).toUpperCase()}`);
+    const newThresh: ThresholdStandard = {
+      id,
+      parameter: param,
+      chemicalFormula: String(form.get('chemicalFormula') || ''),
+      category: String(form.get('category') || 'Chemical') as any,
+      acceptableLimit: String(form.get('acceptableLimit') || '1.0'),
+      permissibleLimit: String(form.get('permissibleLimit') || '1.5'),
+      unit: String(form.get('unit') || 'mg/L'),
+      standardReference: String(form.get('standardReference') || 'BIS IS 10500:2012'),
+      clause: String(form.get('clause') || 'Table 1 Mandatory'),
+      sensorMethod: String(form.get('sensorMethod') || 'Standard Photometry'),
+      healthImpact: String(form.get('healthImpact') || 'Gastrointestinal distress & toxicity.'),
+      surveillanceFrequency: 'Monthly Municipal Assay',
+      enforcingRuleIds: [],
+      enforcementStatus: 'Mandatory Legal Limit',
+      description: `Statutory standard for ${param}.`,
+    };
+    try {
+      if (onCreateThreshold) await onCreateThreshold(newThresh);
+      setThresholds(prev => [newThresh, ...prev.filter(t => t.id !== newThresh.id)]);
+      showToast(`Standard threshold ${newThresh.parameter} added to statutory registry!`);
+      setShowAddThresholdModal(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditThresholdSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingThreshold) return;
+    setIsSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    const updated: ThresholdStandard = {
+      ...editingThreshold,
+      acceptableLimit: String(form.get('acceptableLimit') || editingThreshold.acceptableLimit),
+      permissibleLimit: String(form.get('permissibleLimit') || editingThreshold.permissibleLimit),
+      healthImpact: String(form.get('healthImpact') || editingThreshold.healthImpact),
+      clause: String(form.get('clause') || editingThreshold.clause),
+    };
+    try {
+      if (onSaveThreshold) await onSaveThreshold(updated);
+      setThresholds(prev => prev.map(t => (t.id === editingThreshold.id ? updated : t)));
+      showToast(`Standard threshold for ${editingThreshold.parameter} updated!`);
+      setEditingThreshold(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteThresholdConfirm = async () => {
+    if (!deletingThreshold) return;
+    setIsSubmitting(true);
+    try {
+      if (onDeleteThreshold) await onDeleteThreshold(deletingThreshold.id);
+      setThresholds(prev => prev.filter(t => t.id !== deletingThreshold.id));
+      showToast(`Statutory threshold standard ${deletingThreshold.parameter} deleted.`);
+      if (selectedThresholdId === deletingThreshold.id) setSelectedThresholdId(thresholds[0]?.id || '');
+      setDeletingThreshold(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Jump from threshold standard to its enforcing rule
@@ -1057,6 +1174,16 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
             </button>
           )}
 
+          {(activeTab === 'standards' || activeTab === 'split') && (
+            <button
+              onClick={() => setShowAddThresholdModal(true)}
+              className="flex items-center gap-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl transition shadow-xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Statutory Standard</span>
+            </button>
+          )}
+
           <button
             onClick={() => {
               const exportData = activeTab === 'standards' ? thresholds : rules;
@@ -1301,6 +1428,16 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
                                 title="Edit Rule Parameters"
                               >
                                 <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingRule(rule);
+                                }}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-[#381622] transition"
+                                title="Delete Rule"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={(e) => {
@@ -1588,6 +1725,7 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
                       <th className="py-2.5 px-3">Statutory Ref</th>
                       <th className="py-2.5 px-3">Enforcing Rule(s)</th>
                       <th className="py-2.5 px-3">Surveillance</th>
+                      <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#16224f]">
@@ -1664,6 +1802,32 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
                           {/* Surveillance Frequency */}
                           <td className="py-2.5 px-3 text-[10px] text-slate-400 truncate max-w-[120px]">
                             {thresh.surveillanceFrequency}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingThreshold(thresh);
+                                }}
+                                className="p-1 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-[#132754] transition"
+                                title="Edit Threshold Standard"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingThreshold(thresh);
+                                }}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-[#381622] transition"
+                                title="Delete Statutory Standard"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1794,16 +1958,37 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
 
               {/* Action Buttons Footer */}
               <div className="p-3 border-t border-[#1c295c] bg-[#0b1438] flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingThreshold(selectedThreshold)}
+                  className="px-3 py-2 rounded-xl bg-[#132754] hover:bg-[#1a3574] text-cyan-300 border border-[#22448f] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  title="Edit Threshold Standard"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Edit Standard</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeletingThreshold(selectedThreshold)}
+                  className="px-3 py-2 rounded-xl bg-[#33111e] hover:bg-[#48182b] text-rose-300 border border-rose-800/60 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  title="Delete Standard"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+
                 {selectedThreshold.enforcingRuleIds.length > 0 ? (
                   <button
+                    type="button"
                     onClick={() => handleJumpToRule(selectedThreshold.enforcingRuleIds[0])}
                     className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white py-2 rounded-xl transition shadow-xs cursor-pointer"
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5" />
-                    <span>Jump to Enforcing Rule</span>
+                    <span>Jump to Rule</span>
                   </button>
                 ) : (
                   <button
+                    type="button"
                     onClick={() => {
                       setEditingRule({
                         ruleId: `R-${selectedThreshold.parameter.substring(0, 3).toUpperCase()}-001`,
@@ -1828,7 +2013,7 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
                     className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl transition shadow-xs cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Create Alert Rule for this Analyte</span>
+                    <span>Create Alert Rule</span>
                   </button>
                 )}
               </div>
@@ -1956,6 +2141,349 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ── DELETE RULE MODAL ── */}
+      {deletingRule && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-rose-900/60 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-900/50 text-rose-400 flex items-center justify-center border border-rose-700/60 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-100">Delete Evaluation Rule</h3>
+                <p className="text-[11px] text-rose-300 font-mono">{deletingRule.ruleId}</p>
+              </div>
+            </div>
+
+            <p className="mt-3.5 text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to delete rule <strong className="text-white">{deletingRule.ruleId}</strong> (
+              {deletingRule.parameterName})? Incoming readings for {deletingRule.parameter} will no longer trigger this
+              alert condition.
+            </p>
+
+            <div className="mt-5 pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeletingRule(null)}
+                className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteRuleConfirm}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Confirm Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADD THRESHOLD STANDARD MODAL ── */}
+      {showAddThresholdModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-[#1c295c] rounded-2xl shadow-2xl max-w-xl w-full p-6 text-white animate-in fade-in-50 zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1c295c]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-600/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">Add Statutory Parameter Threshold</h3>
+                  <p className="text-[11px] text-slate-400">Register statutory BIS IS 10500 drinking water threshold</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddThresholdModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#162758] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateThresholdSubmit} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Standard ID</label>
+                  <input
+                    name="id"
+                    defaultValue={`TH-PARAM-${Date.now().toString(36).slice(-4).toUpperCase()}`}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Analyte Parameter Name</label>
+                  <input
+                    name="parameter"
+                    placeholder="e.g. Nitrate"
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Chemical Formula</label>
+                  <input
+                    name="chemicalFormula"
+                    placeholder="e.g. NO3-"
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Category</label>
+                  <select
+                    name="category"
+                    defaultValue="Chemical"
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="Physical">Physical</option>
+                    <option value="Chemical">Chemical</option>
+                    <option value="Biological">Biological</option>
+                    <option value="Disinfection">Disinfection</option>
+                    <option value="Heavy Metal">Heavy Metal</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Measurement Unit</label>
+                  <input
+                    name="unit"
+                    defaultValue="mg/L"
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Acceptable Limit (Desirable)
+                  </label>
+                  <input
+                    name="acceptableLimit"
+                    placeholder="e.g. 45"
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Permissible Limit (Max in absence of alternate)
+                  </label>
+                  <input
+                    name="permissibleLimit"
+                    placeholder="e.g. 45 (No relaxation)"
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Standard Ref</label>
+                  <input
+                    name="standardReference"
+                    defaultValue="BIS IS 10500:2012"
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Clause Reference</label>
+                  <input
+                    name="clause"
+                    defaultValue="Table 2 Cl. 4.2"
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Health Impact / Clinical Rationale</label>
+                <textarea
+                  name="healthImpact"
+                  rows={2}
+                  placeholder="e.g. Methemoglobinemia (blue baby syndrome) in infants, gastric cancer risks."
+                  required
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddThresholdModal(false)}
+                  className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  <span>Save Standard Threshold</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT THRESHOLD STANDARD MODAL ── */}
+      {editingThreshold && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-[#1c295c] rounded-2xl shadow-2xl max-w-xl w-full p-6 text-white animate-in fade-in-50 zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1c295c]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-cyan-600/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                  <Edit className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">
+                    Edit Standard Threshold ({editingThreshold.parameter})
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Update statutory compliance limits and health advisory</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingThreshold(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#162758] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditThresholdSubmit} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Parameter</label>
+                  <input
+                    value={`${editingThreshold.parameter} (${editingThreshold.unit})`}
+                    disabled
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-400 font-mono text-xs cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Clause Ref</label>
+                  <input
+                    name="clause"
+                    defaultValue={editingThreshold.clause}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Acceptable Limit (Desirable)
+                  </label>
+                  <input
+                    name="acceptableLimit"
+                    defaultValue={editingThreshold.acceptableLimit}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Permissible Limit (Max)
+                  </label>
+                  <input
+                    name="permissibleLimit"
+                    defaultValue={editingThreshold.permissibleLimit}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Health Impact Summary</label>
+                <textarea
+                  name="healthImpact"
+                  rows={2}
+                  defaultValue={editingThreshold.healthImpact}
+                  required
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingThreshold(null)}
+                  className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  <span>Save Standard Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE THRESHOLD STANDARD MODAL ── */}
+      {deletingThreshold && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-rose-900/60 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-900/50 text-rose-400 flex items-center justify-center border border-rose-700/60 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-100">Delete Statutory Standard</h3>
+                <p className="text-[11px] text-rose-300 font-mono">{deletingThreshold.parameter} ({deletingThreshold.id})</p>
+              </div>
+            </div>
+
+            <p className="mt-3.5 text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to delete the statutory threshold standard for{' '}
+              <strong className="text-white">{deletingThreshold.parameter}</strong>? This standard governs water potability
+              evaluations and will be removed from BIS reference tables.
+            </p>
+
+            <div className="mt-5 pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeletingThreshold(null)}
+                className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteThresholdConfirm}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Confirm Delete</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

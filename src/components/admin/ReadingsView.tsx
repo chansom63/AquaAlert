@@ -6,6 +6,7 @@ import {
   Clock,
   Download,
   Droplets,
+  Edit,
   Eye,
   FlaskConical,
   Layers,
@@ -15,6 +16,7 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
+  Trash2,
   X,
 } from 'lucide-react';
 import type { Source } from '../../types/water';
@@ -27,6 +29,8 @@ export interface ReadingsViewProps {
   loading: boolean;
   onSubmitReading?: () => void;
   onRefresh?: () => Promise<void>;
+  onUpdateReading?: (sourceId: string, readingKey: string, updates: ApiRecord) => Promise<void>;
+  onDeleteReading?: (sourceId: string, readingKey: string) => Promise<void>;
 }
 
 type ReadingTab = 'all' | 'verified' | 'screening' | 'anomalies';
@@ -37,6 +41,8 @@ export const ReadingsView: FC<ReadingsViewProps> = ({
   loading = false,
   onSubmitReading,
   onRefresh,
+  onUpdateReading,
+  onDeleteReading,
 }) => {
   const [activeTab, setActiveTab] = useState<ReadingTab>('all');
   const [search, setSearch] = useState('');
@@ -45,6 +51,69 @@ export const ReadingsView: FC<ReadingsViewProps> = ({
   const [selectedParamFilter, setSelectedParamFilter] = useState('All parameters');
   const [selectedId, setSelectedId] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // CRUD states
+  const [editingReading, setEditingReading] = useState<ApiRecord | null>(null);
+  const [deletingReading, setDeletingReading] = useState<ApiRecord | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!onUpdateReading || !editingReading) return;
+    setIsSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    const sourceId = String(editingReading.sourceId || '');
+    const readingKey = String(editingReading.readingKey || editingReading.readingId || '');
+
+    const phVal = form.get('pH') ? Number(form.get('pH')) : undefined;
+    const turbVal = form.get('turbidity') ? Number(form.get('turbidity')) : undefined;
+    const tdsVal = form.get('tds') ? Number(form.get('tds')) : undefined;
+    const clVal = form.get('chlorine') ? Number(form.get('chlorine')) : undefined;
+
+    const currentParams = (editingReading.parameters || {}) as Record<string, any>;
+    const updatedParams: Record<string, any> = { ...currentParams };
+
+    if (phVal !== undefined) updatedParams['pH'] = { value: phVal, unit: 'pH' };
+    if (turbVal !== undefined) updatedParams['turbidity'] = { value: turbVal, unit: 'NTU' };
+    if (tdsVal !== undefined) updatedParams['TDS'] = { value: tdsVal, unit: 'mg/L' };
+    if (clVal !== undefined) updatedParams['Chlorine'] = { value: clVal, unit: 'mg/L' };
+
+    const updates: ApiRecord = {
+      verificationStatus: String(form.get('verificationStatus') || editingReading.verificationStatus),
+      method: String(form.get('method') || editingReading.method),
+      parameters: updatedParams,
+    };
+
+    try {
+      await onUpdateReading(sourceId, readingKey, updates);
+      setActionFeedback(`Reading ${readingKey} successfully updated & re-verified!`);
+      setEditingReading(null);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!onDeleteReading || !deletingReading) return;
+    setIsSubmitting(true);
+    const sourceId = String(deletingReading.sourceId || '');
+    const readingKey = String(deletingReading.readingKey || deletingReading.readingId || '');
+    try {
+      await onDeleteReading(sourceId, readingKey);
+      setActionFeedback(`Reading ${readingKey} removed from telemetry records.`);
+      if (selectedId === String(deletingReading.readingId)) setSelectedId('');
+      setDeletingReading(null);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Map of sources for friendly name lookup
   const sourceMap = useMemo(() => {
@@ -407,6 +476,19 @@ export const ReadingsView: FC<ReadingsViewProps> = ({
             )}
           </div>
         </div>
+
+        {/* Action feedback notice */}
+        {actionFeedback && (
+          <div className="mt-2.5 px-3 py-2 bg-emerald-900/60 border border-emerald-500/50 text-emerald-200 rounded-xl text-xs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>{actionFeedback}</span>
+            </div>
+            <button onClick={() => setActionFeedback(null)} className="text-emerald-400 hover:text-emerald-200">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── 8/4 SPLIT LAYOUT: LEFT TABLE & RIGHT INSPECTION CARD ── */}
@@ -575,19 +657,47 @@ export const ReadingsView: FC<ReadingsViewProps> = ({
                           {displayDate(reading.collectedAt)}
                         </td>
 
-                        {/* Action */}
+                        {/* Action Buttons */}
                         <td className="p-3 text-right">
-                          <button
-                            type="button"
-                            onClick={e => {
-                              e.stopPropagation();
-                              setSelectedId(String(reading.readingId));
-                            }}
-                            className="text-slate-400 group-hover:text-blue-600 p-1 hover:bg-slate-100 rounded-lg transition"
-                            title="Inspect Reading Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            {onUpdateReading && (
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setEditingReading(reading);
+                                }}
+                                className="text-slate-400 hover:text-cyan-300 p-1 hover:bg-[#162758] rounded-lg transition"
+                                title="Edit / Verify Quality Parameters"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {onDeleteReading && (
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setDeletingReading(reading);
+                                }}
+                                className="text-slate-400 hover:text-rose-400 p-1 hover:bg-[#381622] rounded-lg transition"
+                                title="Delete Reading Record"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                setSelectedId(String(reading.readingId));
+                              }}
+                              className="text-slate-400 hover:text-blue-400 p-1 hover:bg-[#162758] rounded-lg transition"
+                              title="Inspect Reading Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -789,7 +899,30 @@ export const ReadingsView: FC<ReadingsViewProps> = ({
               </div>
 
               {/* Actions */}
-              <div className="border-t border-slate-100 pt-3">
+              <div className="border-t border-slate-100 pt-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {onUpdateReading && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingReading(selectedReading)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#132754] hover:bg-[#1a3574] text-cyan-300 font-bold rounded-xl text-xs border border-[#22448f] transition cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>Edit &amp; Verify</span>
+                    </button>
+                  )}
+                  {onDeleteReading && (
+                    <button
+                      type="button"
+                      onClick={() => setDeletingReading(selectedReading)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#33111e] hover:bg-[#48182b] text-rose-300 font-bold rounded-xl text-xs border border-rose-800/60 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  )}
+                </div>
+
                 <a
                   href="/sample-reports/ward14_spectroscopic_assay_2026.pdf"
                   target="_blank"
@@ -809,6 +942,189 @@ export const ReadingsView: FC<ReadingsViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* CRUD MODALS FOR READINGS                                                  */}
+      {/* ========================================================================= */}
+
+      {/* 1. Edit & Verify Reading Modal */}
+      {editingReading && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-[#1c295c] rounded-2xl shadow-2xl max-w-xl w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1c295c]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-cyan-600/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                  <Edit className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">
+                    Edit &amp; Verify Quality Reading ({String(editingReading.readingId || editingReading.readingKey)})
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Update laboratory values and promote screening to lab-verified
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingReading(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#162758] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Source ID</label>
+                  <input
+                    value={String(editingReading.sourceId)}
+                    disabled
+                    className="w-full px-3 py-1.5 bg-[#060a1d] border border-[#1e3470] rounded-xl text-slate-400 font-mono text-xs cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Verification Status</label>
+                  <select
+                    name="verificationStatus"
+                    defaultValue={String(editingReading.verificationStatus || 'SCREENING')}
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="SCREENING">SCREENING (Field Telemetry / Unverified)</option>
+                    <option value="LAB_VERIFIED">LAB_VERIFIED (Certified Accredited Assay)</option>
+                    <option value="REJECTED">REJECTED (Telemetry Outlier / Invalid)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Testing Method</label>
+                <select
+                  name="method"
+                  defaultValue={String(editingReading.method || 'FIELD_SCREENING')}
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                >
+                  <option value="FIELD_SCREENING">Field Reagent Screening</option>
+                  <option value="LAB_SPECTROSCOPY">Laboratory UV-Vis Spectroscopy</option>
+                  <option value="IOT_SENSOR">Continuous IoT Sensor Telemetry</option>
+                  <option value="MANUAL_TITRATION">Manual Chemical Titration</option>
+                </select>
+              </div>
+
+              {/* Quality Parameters */}
+              <div className="p-3 bg-[#080e26] border border-[#1e3470] rounded-xl space-y-2.5">
+                <span className="text-[11px] font-bold text-cyan-300 uppercase tracking-wide block">
+                  Physicochemical Parameters (BIS IS 10500)
+                </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">pH (6.5 – 8.5)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="pH"
+                      defaultValue={getParamNumericValue(editingReading, 'pH') ?? 7.2}
+                      className="w-full px-2.5 py-1 bg-[#0c1538] border border-[#1c295c] rounded-lg text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Turbidity NTU (&lt;1.0)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="turbidity"
+                      defaultValue={getParamNumericValue(editingReading, 'turbidity') ?? 0.9}
+                      className="w-full px-2.5 py-1 bg-[#0c1538] border border-[#1c295c] rounded-lg text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">TDS mg/L (&lt;500)</label>
+                    <input
+                      type="number"
+                      step="1"
+                      name="tds"
+                      defaultValue={getParamNumericValue(editingReading, 'TDS') ?? 450}
+                      className="w-full px-2.5 py-1 bg-[#0c1538] border border-[#1c295c] rounded-lg text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Residual Chlorine mg/L (&gt;0.2)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="chlorine"
+                      defaultValue={getParamNumericValue(editingReading, 'Chlorine') ?? 0.35}
+                      className="w-full px-2.5 py-1 bg-[#0c1538] border border-[#1c295c] rounded-lg text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingReading(null)}
+                  className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  <span>Save &amp; Verify</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Delete Reading Confirmation Modal */}
+      {deletingReading && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-rose-900/60 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-900/50 text-rose-400 flex items-center justify-center border border-rose-700/60 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-100">Delete Telemetry Reading</h3>
+                <p className="text-[11px] text-rose-300 font-mono">
+                  {String(deletingReading.readingKey || deletingReading.readingId)}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-3.5 text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to delete this water quality reading recorded for source{' '}
+              <span className="font-mono text-cyan-300">{String(deletingReading.sourceId)}</span>? This action removes
+              the reading from historical trend calculations.
+            </p>
+
+            <div className="mt-5 pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeletingReading(null)}
+                className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Confirm Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

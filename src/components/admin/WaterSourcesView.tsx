@@ -7,11 +7,14 @@ import {
   CheckCircle2,
   Download,
   Droplets,
+  Edit,
   Loader2,
   MapPin,
   Map as MapIcon,
+  Plus,
   RotateCcw,
   Search,
+  Trash2,
   X,
 } from 'lucide-react';
 import type { Alert, Source } from '../../types/water';
@@ -27,6 +30,9 @@ export interface WaterSourcesViewProps {
   loading?: boolean;
   onRefresh?: () => Promise<void>;
   onSelectSource?: (sourceId: string) => void;
+  onCreateSource?: (newSource: Partial<Source>) => Promise<Source>;
+  onUpdateSource?: (sourceId: string, updates: Partial<Source>) => Promise<Source>;
+  onDeleteSource?: (sourceId: string) => Promise<void>;
 }
 
 type SourceTab = 'all' | 'active' | 'caution' | 'offline' | 'map';
@@ -38,6 +44,9 @@ export const WaterSourcesView: FC<WaterSourcesViewProps> = ({
   loading = false,
   onRefresh,
   onSelectSource,
+  onCreateSource,
+  onUpdateSource,
+  onDeleteSource,
 }) => {
   const [activeTab, setActiveTab] = useState<SourceTab>('all');
   const [search, setSearch] = useState('');
@@ -46,6 +55,83 @@ export const WaterSourcesView: FC<WaterSourcesViewProps> = ({
   const [selectedZone, setSelectedZone] = useState('All zones');
   const [selectedId, setSelectedId] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // CRUD Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingSource, setEditingSource] = useState<Source | null>(null);
+  const [deletingSource, setDeletingSource] = useState<Source | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+
+  const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!onCreateSource) return;
+    setIsSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    const newSrc: Partial<Source> = {
+      sourceId: String(form.get('sourceId') || `SRC-${Date.now().toString(36).toUpperCase()}`),
+      name: String(form.get('name') || 'New Water Source'),
+      sourceType: String(form.get('sourceType') || 'HAND_PUMP') as any,
+      district: String(form.get('district') || 'Gwalior'),
+      locality: String(form.get('locality') || 'Municipal Zone'),
+      latitude: Number(form.get('latitude') || 26.2183),
+      longitude: Number(form.get('longitude') || 78.1828),
+      publicStatus: String(form.get('publicStatus') || 'ACTIVE') as any,
+      lastReadingAt: new Date().toISOString(),
+    };
+    try {
+      await onCreateSource(newSrc);
+      setActionFeedback(`Water Source ${newSrc.sourceId} created successfully!`);
+      setShowAddModal(false);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!onUpdateSource || !editingSource) return;
+    setIsSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    const updates: Partial<Source> = {
+      name: String(form.get('name') || editingSource.name),
+      sourceType: String(form.get('sourceType') || editingSource.sourceType) as any,
+      district: String(form.get('district') || editingSource.district),
+      locality: String(form.get('locality') || editingSource.locality),
+      latitude: Number(form.get('latitude') || editingSource.latitude),
+      longitude: Number(form.get('longitude') || editingSource.longitude),
+      publicStatus: String(form.get('publicStatus') || editingSource.publicStatus) as any,
+    };
+    try {
+      await onUpdateSource(editingSource.sourceId, updates);
+      setActionFeedback(`Water Source ${editingSource.sourceId} updated successfully!`);
+      setEditingSource(null);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!onDeleteSource || !deletingSource) return;
+    setIsSubmitting(true);
+    try {
+      await onDeleteSource(deletingSource.sourceId);
+      setActionFeedback(`Water Source ${deletingSource.sourceId} decommissioned & removed.`);
+      if (selectedId === deletingSource.sourceId) setSelectedId('');
+      setDeletingSource(null);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Group readings by sourceId for quick latest parameter lookups
   const latestReadingsBySource = useMemo(() => {
@@ -396,8 +482,33 @@ export const WaterSourcesView: FC<WaterSourcesViewProps> = ({
                 <span className="hidden md:inline">Refresh</span>
               </button>
             )}
+
+            {/* Add Source Button */}
+            {onCreateSource && (
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Add Water Source</span>
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Action feedback notice */}
+        {actionFeedback && (
+          <div className="mt-2.5 px-3 py-2 bg-emerald-900/60 border border-emerald-500/50 text-emerald-200 rounded-xl text-xs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>{actionFeedback}</span>
+            </div>
+            <button onClick={() => setActionFeedback(null)} className="text-emerald-400 hover:text-emerald-200">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── MAP VIEW TOGGLED ── */}
@@ -558,20 +669,48 @@ export const WaterSourcesView: FC<WaterSourcesViewProps> = ({
                             )}
                           </td>
 
-                          {/* Action Button */}
+                          {/* Action Buttons */}
                           <td className="p-3 text-right">
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation();
-                                if (onSelectSource) onSelectSource(source.sourceId);
-                                else setSelectedId(source.sourceId);
-                              }}
-                              className="text-slate-400 group-hover:text-blue-600 p-1 hover:bg-slate-100 rounded-lg transition"
-                              title="Open Source Station Details"
-                            >
-                              <ArrowUpRight className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end gap-1">
+                              {onUpdateSource && (
+                                <button
+                                  type="button"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    setEditingSource(source);
+                                  }}
+                                  className="text-slate-400 hover:text-cyan-300 p-1 hover:bg-[#162758] rounded-lg transition"
+                                  title="Edit Source Parameters"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {onDeleteSource && (
+                                <button
+                                  type="button"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    setDeletingSource(source);
+                                  }}
+                                  className="text-slate-400 hover:text-rose-400 p-1 hover:bg-[#381622] rounded-lg transition"
+                                  title="Decommission / Delete Water Source"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  if (onSelectSource) onSelectSource(source.sourceId);
+                                  else setSelectedId(source.sourceId);
+                                }}
+                                className="text-slate-400 hover:text-blue-400 p-1 hover:bg-[#162758] rounded-lg transition"
+                                title="Open Source Station Details"
+                              >
+                                <ArrowUpRight className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -682,6 +821,29 @@ export const WaterSourcesView: FC<WaterSourcesViewProps> = ({
 
                 {/* Actions */}
                 <div className="border-t border-slate-100 pt-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {onUpdateSource && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingSource(selectedSource)}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#132754] hover:bg-[#1a3574] text-cyan-300 font-bold rounded-xl text-xs border border-[#22448f] transition cursor-pointer"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                        <span>Edit Facility</span>
+                      </button>
+                    )}
+                    {onDeleteSource && (
+                      <button
+                        type="button"
+                        onClick={() => setDeletingSource(selectedSource)}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#33111e] hover:bg-[#48182b] text-rose-300 font-bold rounded-xl text-xs border border-rose-800/60 transition cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Decommission</span>
+                      </button>
+                    )}
+                  </div>
+
                   {onSelectSource && (
                     <button
                       type="button"
@@ -733,6 +895,327 @@ export const WaterSourcesView: FC<WaterSourcesViewProps> = ({
             <MapExplorer sources={sources} highlightSources={pins} showStationCard={false} />
           </div>
         </section>
+      )}
+
+      {/* ========================================================================= */}
+      {/* CRUD MODALS FOR WATER SOURCES                                             */}
+      {/* ========================================================================= */}
+
+      {/* 1. Add Water Source Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-[#1c295c] rounded-2xl shadow-2xl max-w-xl w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1c295c]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-blue-600/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">Add New Water Source</h3>
+                  <p className="text-[11px] text-slate-400">Register a municipal monitoring station or delivery point</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#162758] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubmit} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Source ID</label>
+                  <input
+                    name="sourceId"
+                    defaultValue={`SRC-${Date.now().toString(36).toUpperCase()}`}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Facility Name</label>
+                  <input
+                    name="name"
+                    placeholder="e.g. Bada Post Office Hand Pump"
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Source Type</label>
+                  <select
+                    name="sourceType"
+                    defaultValue="HAND_PUMP"
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="HAND_PUMP">Hand Pump</option>
+                    <option value="TUBE_WELL">Tube Well</option>
+                    <option value="OVERHEAD_TANK">Overhead Reservoir Tank</option>
+                    <option value="TREATMENT_PLANT">Water Treatment Plant</option>
+                    <option value="BOREWELL">Community Borewell</option>
+                    <option value="TAP">Public Tap Standpost</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Status</label>
+                  <select
+                    name="publicStatus"
+                    defaultValue="ACTIVE"
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="ACTIVE">ACTIVE (Potable / Clear)</option>
+                    <option value="CAUTION">CAUTION (Under Advisory)</option>
+                    <option value="MAINTENANCE">MAINTENANCE (Remediation)</option>
+                    <option value="OFFLINE">OFFLINE (Isolated Supply)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">District</label>
+                  <input
+                    name="district"
+                    defaultValue="Gwalior"
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Locality / Ward</label>
+                  <input
+                    name="locality"
+                    placeholder="e.g. Ward 14 - Maharaj Bada"
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">GPS Latitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    name="latitude"
+                    defaultValue={26.2183}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">GPS Longitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    name="longitude"
+                    defaultValue={78.1828}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  <span>Save Water Source</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Edit Water Source Modal */}
+      {editingSource && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-[#1c295c] rounded-2xl shadow-2xl max-w-xl w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1c295c]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-cyan-600/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                  <Edit className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">Edit Water Source ({editingSource.sourceId})</h3>
+                  <p className="text-[11px] text-slate-400">Modify station classification, coordinates or status</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingSource(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#162758] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="mt-4 space-y-3.5 text-xs">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Facility Name</label>
+                <input
+                  name="name"
+                  defaultValue={editingSource.name}
+                  required
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Source Type</label>
+                  <select
+                    name="sourceType"
+                    defaultValue={String(editingSource.sourceType || 'HAND_PUMP')}
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="HAND_PUMP">Hand Pump</option>
+                    <option value="TUBE_WELL">Tube Well</option>
+                    <option value="OVERHEAD_TANK">Overhead Reservoir Tank</option>
+                    <option value="TREATMENT_PLANT">Water Treatment Plant</option>
+                    <option value="BOREWELL">Community Borewell</option>
+                    <option value="TAP">Public Tap Standpost</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Public Status</label>
+                  <select
+                    name="publicStatus"
+                    defaultValue={String(editingSource.publicStatus || 'ACTIVE')}
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="ACTIVE">ACTIVE (Potable / Clear)</option>
+                    <option value="CAUTION">CAUTION (Under Advisory)</option>
+                    <option value="MAINTENANCE">MAINTENANCE (Remediation)</option>
+                    <option value="OFFLINE">OFFLINE (Isolated Supply)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">District</label>
+                  <input
+                    name="district"
+                    defaultValue={editingSource.district || 'Gwalior'}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Locality / Ward</label>
+                  <input
+                    name="locality"
+                    defaultValue={editingSource.locality || ''}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">GPS Latitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    name="latitude"
+                    defaultValue={editingSource.latitude || 26.2183}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">GPS Longitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    name="longitude"
+                    defaultValue={editingSource.longitude || 78.1828}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingSource(null)}
+                  className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Decommission / Delete Water Source Confirmation Modal */}
+      {deletingSource && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-rose-900/60 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-900/50 text-rose-400 flex items-center justify-center border border-rose-700/60 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-100">Decommission Water Source</h3>
+                <p className="text-[11px] text-rose-300 font-mono">{deletingSource.sourceId}</p>
+              </div>
+            </div>
+
+            <p className="mt-3.5 text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to decommission and remove{' '}
+              <strong className="text-white">{deletingSource.name}</strong> ({deletingSource.sourceId})? Active
+              telemetry ingestion will cease and the facility will be archived from the municipal registry.
+            </p>
+
+            <div className="mt-5 pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeletingSource(null)}
+                className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Confirm Decommission</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

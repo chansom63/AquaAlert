@@ -2,15 +2,18 @@ import { useMemo, useState } from 'react';
 import type { FC } from 'react';
 import {
   AlertTriangle,
+  CheckCircle2,
   ClipboardList,
   Download,
   Droplets,
+  Edit,
   Eye,
   FileCheck,
   Loader2,
   Plus,
   RotateCcw,
   Search,
+  Trash2,
   UserCheck,
   Users,
   X,
@@ -27,6 +30,8 @@ export interface ResponseActionsViewProps {
   onRecordAction?: () => void;
   onRefresh?: () => Promise<void>;
   onSelectAlert?: (alertId: string) => void;
+  onUpdateAction?: (actionId: string, updates: ApiRecord) => Promise<void>;
+  onDeleteAction?: (actionId: string) => Promise<void>;
 }
 
 type ActionCategoryTab = 'all' | 'dosing' | 'flushing' | 'inspection';
@@ -39,6 +44,8 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
   onRecordAction,
   onRefresh,
   onSelectAlert,
+  onUpdateAction,
+  onDeleteAction,
 }) => {
   const [activeTab, setActiveTab] = useState<ActionCategoryTab>('all');
   const [search, setSearch] = useState('');
@@ -47,6 +54,53 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
   const [selectedAlertFilter, setSelectedAlertFilter] = useState('All alerts');
   const [selectedId, setSelectedId] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // CRUD states
+  const [editingAction, setEditingAction] = useState<ApiRecord | null>(null);
+  const [deletingAction, setDeletingAction] = useState<ApiRecord | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!onUpdateAction || !editingAction) return;
+    setIsSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    const actionId = String(editingAction.actionId || editingAction.actionKey || '');
+    const updates: ApiRecord = {
+      actionType: String(form.get('actionType') || editingAction.actionType),
+      summary: String(form.get('summary') || editingAction.summary),
+      actorRole: String(form.get('actorRole') || editingAction.actorRole),
+    };
+
+    try {
+      await onUpdateAction(actionId, updates);
+      setActionFeedback(`Response action ${actionId} updated successfully!`);
+      setEditingAction(null);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!onDeleteAction || !deletingAction) return;
+    setIsSubmitting(true);
+    const actionId = String(deletingAction.actionId || deletingAction.actionKey || '');
+    try {
+      await onDeleteAction(actionId);
+      setActionFeedback(`Action log ${actionId} removed from audit ledger.`);
+      if (selectedId === actionId) setSelectedId('');
+      setDeletingAction(null);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Map of alerts and sources
   const alertMap = useMemo(() => {
@@ -392,6 +446,19 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
             )}
           </div>
         </div>
+
+        {/* Action feedback notice */}
+        {actionFeedback && (
+          <div className="mt-2.5 px-3 py-2 bg-emerald-900/60 border border-emerald-500/50 text-emerald-200 rounded-xl text-xs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>{actionFeedback}</span>
+            </div>
+            <button onClick={() => setActionFeedback(null)} className="text-emerald-400 hover:text-emerald-200">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── 8/4 SPLIT LAYOUT: LEFT TABLE & RIGHT INSPECTION CARD ── */}
@@ -514,19 +581,47 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
                           {displayDate(action.createdAt)}
                         </td>
 
-                        {/* Action Button */}
+                        {/* Action Buttons */}
                         <td className="p-3 text-right">
-                          <button
-                            type="button"
-                            onClick={e => {
-                              e.stopPropagation();
-                              setSelectedId(actionIdStr);
-                            }}
-                            className="text-slate-400 group-hover:text-blue-600 p-1 hover:bg-slate-100 rounded-lg transition"
-                            title="Inspect Action Dossier"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            {onUpdateAction && (
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setEditingAction(action);
+                                }}
+                                className="text-slate-400 hover:text-cyan-300 p-1 hover:bg-[#162758] rounded-lg transition"
+                                title="Edit Response Action"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {onDeleteAction && (
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setDeletingAction(action);
+                                }}
+                                className="text-slate-400 hover:text-rose-400 p-1 hover:bg-[#381622] rounded-lg transition"
+                                title="Delete Action Log"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                setSelectedId(actionIdStr);
+                              }}
+                              className="text-slate-400 hover:text-blue-400 p-1 hover:bg-[#162758] rounded-lg transition"
+                              title="Inspect Action Dossier"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -651,8 +746,31 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
                 </div>
               </div>
 
-              {/* Download / Print Audit Slip */}
-              <div className="border-t border-slate-100 pt-3">
+              {/* Actions & Audit Certificate */}
+              <div className="border-t border-slate-100 pt-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {onUpdateAction && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingAction(selectedAction)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#132754] hover:bg-[#1a3574] text-cyan-300 font-bold rounded-xl text-xs border border-[#22448f] transition cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>Edit Action</span>
+                    </button>
+                  )}
+                  {onDeleteAction && (
+                    <button
+                      type="button"
+                      onClick={() => setDeletingAction(selectedAction)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#33111e] hover:bg-[#48182b] text-rose-300 font-bold rounded-xl text-xs border border-rose-800/60 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  )}
+                </div>
+
                 <a
                   href="/sample-reports/ward28_chlorine_depletion_investigation.pdf"
                   target="_blank"
@@ -672,6 +790,144 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* CRUD MODALS FOR RESPONSE ACTIONS                                          */}
+      {/* ========================================================================= */}
+
+      {/* 1. Edit Response Action Modal */}
+      {editingAction && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-[#1c295c] rounded-2xl shadow-2xl max-w-xl w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1c295c]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-cyan-600/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                  <Edit className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">
+                    Edit Response Action ({String(editingAction.actionId || editingAction.actionKey)})
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Update operational intervention details or category</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingAction(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#162758] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Action Category</label>
+                  <select
+                    name="actionType"
+                    defaultValue={String(editingAction.actionType || 'FIELD_INVESTIGATION')}
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="CHLORINE_DOSING">Chlorine Dosing / Disinfection</option>
+                    <option value="SCOUR_FLUSH">Main Line Scour Flushing</option>
+                    <option value="FIELD_INVESTIGATION">Field On-site Investigation</option>
+                    <option value="PIPE_REPAIR">Pipeline Repair &amp; Rehabilitation</option>
+                    <option value="BOIL_WATER_NOTICE">Public Boil Water Notice</option>
+                    <option value="ISOLATION_VALVE">Feeder Isolation Valve Closure</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Authorized Role</label>
+                  <select
+                    name="actorRole"
+                    defaultValue={String(editingAction.actorRole || 'MUNICIPAL_OFFICER')}
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="MUNICIPAL_OFFICER">Municipal Health Officer</option>
+                    <option value="CHIEF_CHEMIST">Chief Quality Chemist</option>
+                    <option value="FIELD_ENGINEER">Distribution Field Engineer</option>
+                    <option value="ZONE_SUPERINTENDENT">Zone Water Superintendent</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Engineering Summary / Justification</label>
+                <textarea
+                  name="summary"
+                  defaultValue={String(editingAction.summary || '')}
+                  rows={3}
+                  required
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingAction(null)}
+                  className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Delete Response Action Confirmation Modal */}
+      {deletingAction && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-rose-900/60 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-900/50 text-rose-400 flex items-center justify-center border border-rose-700/60 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-100">Delete Response Action Log</h3>
+                <p className="text-[11px] text-rose-300 font-mono">
+                  {String(deletingAction.actionId || deletingAction.actionKey)}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-3.5 text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to remove this intervention record from the audit ledger? This log records an
+              action taken by{' '}
+              <strong className="text-white">{humanize(deletingAction.actorRole)}</strong> for alert{' '}
+              <span className="font-mono text-cyan-300">{String(deletingAction.alertId)}</span>.
+            </p>
+
+            <div className="mt-5 pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeletingAction(null)}
+                className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Confirm Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

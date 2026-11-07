@@ -6,13 +6,16 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Download,
+  Edit,
   Flame,
   Layers,
   Loader2,
   MapPin,
+  Plus,
   RotateCcw,
   Search,
   ShieldAlert,
+  Trash2,
   X,
 } from 'lucide-react';
 import type { Alert, Source } from '../../types/water';
@@ -25,6 +28,9 @@ export interface AlertsIncidentsViewProps {
   loading: boolean;
   onSelectAlert?: (alertId: string) => void;
   onRefresh?: () => Promise<void>;
+  onCreateAlert?: (alert: Partial<Alert>) => Promise<Alert>;
+  onUpdateAlert?: (alertId: string, updates: Partial<Alert>) => Promise<Alert>;
+  onDeleteAlert?: (alertId: string) => Promise<void>;
 }
 
 type AlertTab = 'all' | 'critical' | 'active' | 'resolved';
@@ -35,6 +41,9 @@ export const AlertsIncidentsView: FC<AlertsIncidentsViewProps> = ({
   loading = false,
   onSelectAlert,
   onRefresh,
+  onCreateAlert,
+  onUpdateAlert,
+  onDeleteAlert,
 }) => {
   const [activeTab, setActiveTab] = useState<AlertTab>('all');
   const [search, setSearch] = useState('');
@@ -43,6 +52,86 @@ export const AlertsIncidentsView: FC<AlertsIncidentsViewProps> = ({
   const [selectedSourceId, setSelectedSourceId] = useState('All sources');
   const [selectedId, setSelectedId] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // CRUD states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingAlert, setEditingAlert] = useState<Alert | null>(null);
+  const [deletingAlert, setDeletingAlert] = useState<Alert | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+
+  const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!onCreateAlert) return;
+    setIsSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    const sourceId = String(form.get('sourceId') || (sources[0]?.sourceId ?? 'SRC-001'));
+    const severity = String(form.get('severity') || 'WARNING') as Alert['severity'];
+    const state = String(form.get('state') || 'OPEN') as Alert['state'];
+    const reason = String(form.get('reason') || 'Manual municipal incident declared');
+    const publicMessage = String(form.get('publicMessage') || reason);
+
+    const newAlt: Partial<Alert> = {
+      alertId: `ALT-${Date.now().toString(36).toUpperCase()}`,
+      sourceId,
+      severity,
+      state,
+      reason,
+      publicMessage,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await onCreateAlert(newAlt);
+      setActionFeedback(`Incident alert ${newAlt.alertId} declared successfully!`);
+      setShowAddModal(false);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!onUpdateAlert || !editingAlert) return;
+    setIsSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    const updates: Partial<Alert> = {
+      severity: String(form.get('severity') || editingAlert.severity) as Alert['severity'],
+      state: String(form.get('state') || editingAlert.state) as Alert['state'],
+      reason: String(form.get('reason') || editingAlert.reason),
+      publicMessage: String(form.get('publicMessage') || editingAlert.publicMessage),
+    };
+
+    try {
+      await onUpdateAlert(editingAlert.alertId, updates);
+      setActionFeedback(`Alert ${editingAlert.alertId} updated successfully!`);
+      setEditingAlert(null);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!onDeleteAlert || !deletingAlert) return;
+    setIsSubmitting(true);
+    try {
+      await onDeleteAlert(deletingAlert.alertId);
+      setActionFeedback(`Alert ${deletingAlert.alertId} dismissed & archived.`);
+      if (selectedId === deletingAlert.alertId) setSelectedId('');
+      setDeletingAlert(null);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Source map for quick lookups
   const sourceMap = useMemo(() => {
@@ -358,8 +447,33 @@ export const AlertsIncidentsView: FC<AlertsIncidentsViewProps> = ({
                 <span className="hidden md:inline">Refresh</span>
               </button>
             )}
+
+            {/* Declare Incident Button */}
+            {onCreateAlert && (
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Declare Incident</span>
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Action feedback notice */}
+        {actionFeedback && (
+          <div className="mt-2.5 px-3 py-2 bg-emerald-900/60 border border-emerald-500/50 text-emerald-200 rounded-xl text-xs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>{actionFeedback}</span>
+            </div>
+            <button onClick={() => setActionFeedback(null)} className="text-emerald-400 hover:text-emerald-200">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── 8/4 SPLIT LAYOUT: LEFT TABLE & RIGHT INSPECTION CARD ── */}
@@ -487,20 +601,48 @@ export const AlertsIncidentsView: FC<AlertsIncidentsViewProps> = ({
                           {displayDate(alert.createdAt ?? alert.issuedAt)}
                         </td>
 
-                        {/* Action */}
+                        {/* Action Buttons */}
                         <td className="p-3 text-right">
-                          <button
-                            type="button"
-                            onClick={e => {
-                              e.stopPropagation();
-                              if (onSelectAlert) onSelectAlert(alert.alertId);
-                              else setSelectedId(alert.alertId);
-                            }}
-                            className="text-slate-400 group-hover:text-blue-600 p-1 hover:bg-slate-100 rounded-lg transition"
-                            title="Open Incident Drawer"
-                          >
-                            <ArrowUpRight className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            {onUpdateAlert && (
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setEditingAlert(alert);
+                                }}
+                                className="text-slate-400 hover:text-cyan-300 p-1 hover:bg-[#162758] rounded-lg transition"
+                                title="Update Incident Status"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {onDeleteAlert && (
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setDeletingAlert(alert);
+                                }}
+                                className="text-slate-400 hover:text-rose-400 p-1 hover:bg-[#381622] rounded-lg transition"
+                                title="Dismiss / Delete Incident Alert"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (onSelectAlert) onSelectAlert(alert.alertId);
+                                else setSelectedId(alert.alertId);
+                              }}
+                              className="text-slate-400 hover:text-blue-400 p-1 hover:bg-[#162758] rounded-lg transition"
+                              title="Open Incident Drawer"
+                            >
+                              <ArrowUpRight className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -621,6 +763,29 @@ export const AlertsIncidentsView: FC<AlertsIncidentsViewProps> = ({
 
               {/* Actions */}
               <div className="border-t border-slate-100 pt-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {onUpdateAlert && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingAlert(selectedAlert)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#132754] hover:bg-[#1a3574] text-cyan-300 font-bold rounded-xl text-xs border border-[#22448f] transition cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>Update Status</span>
+                    </button>
+                  )}
+                  {onDeleteAlert && (
+                    <button
+                      type="button"
+                      onClick={() => setDeletingAlert(selectedAlert)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#33111e] hover:bg-[#48182b] text-rose-300 font-bold rounded-xl text-xs border border-rose-800/60 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Dismiss Alert</span>
+                    </button>
+                  )}
+                </div>
+
                 {onSelectAlert && (
                   <button
                     type="button"
@@ -650,6 +815,254 @@ export const AlertsIncidentsView: FC<AlertsIncidentsViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* CRUD MODALS FOR ALERTS & INCIDENTS                                        */}
+      {/* ========================================================================= */}
+
+      {/* 1. Declare Incident / Create Alert Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-[#1c295c] rounded-2xl shadow-2xl max-w-xl w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1c295c]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-rose-600/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
+                  <Flame className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">Declare Municipal Incident / Water Advisory</h3>
+                  <p className="text-[11px] text-slate-400">Initiate immediate response protocol & public health bulletin</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#162758] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubmit} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Target Water Source</label>
+                  <select
+                    name="sourceId"
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    {sources.map(s => (
+                      <option key={s.sourceId} value={s.sourceId}>
+                        {s.name} ({s.sourceId})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Severity Level</label>
+                  <select
+                    name="severity"
+                    defaultValue="WARNING"
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="CRITICAL">CRITICAL (Direct Contamination / Red Alert)</option>
+                    <option value="HIGH">HIGH (Advisory Threshold Breach)</option>
+                    <option value="WARNING">WARNING (Precautionary Surveillance)</option>
+                    <option value="INFO">INFO (Operational Notice)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Incident State</label>
+                <select
+                  name="state"
+                  defaultValue="OPEN"
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                >
+                  <option value="OPEN">OPEN (Under immediate triage)</option>
+                  <option value="INVESTIGATING">INVESTIGATING (Field team deployed)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Anomaly Reason / Root Cause</label>
+                <input
+                  name="reason"
+                  placeholder="e.g. Free Residual Chlorine dropped to 0.05 mg/L at Ward 28 Feeder"
+                  required
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Public Health Advisory Message</label>
+                <textarea
+                  name="publicMessage"
+                  rows={2}
+                  placeholder="e.g. Precautionary boil water advisory active. Distribution flushing underway."
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Flame className="w-3.5 h-3.5" />}
+                  <span>Publish Alert &amp; Notify Dispatch</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Update Alert Modal */}
+      {editingAlert && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-[#1c295c] rounded-2xl shadow-2xl max-w-xl w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1c295c]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-cyan-600/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                  <Edit className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">Update Incident Advisory ({editingAlert.alertId})</h3>
+                  <p className="text-[11px] text-slate-400">Modify lifecycle status, severity and engineering notes</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingAlert(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#162758] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Severity</label>
+                  <select
+                    name="severity"
+                    defaultValue={editingAlert.severity || 'WARNING'}
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="CRITICAL">CRITICAL</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="WARNING">WARNING</option>
+                    <option value="INFO">INFO</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Lifecycle State</label>
+                  <select
+                    name="state"
+                    defaultValue={editingAlert.state || 'OPEN'}
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="OPEN">OPEN (Active Hazard)</option>
+                    <option value="INVESTIGATING">INVESTIGATING (Mitigation Underway)</option>
+                    <option value="RESOLVED">RESOLVED (Quality Restored)</option>
+                    <option value="DISMISSED">DISMISSED (False Alarm / Archive)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Reason / Diagnosis</label>
+                <input
+                  name="reason"
+                  defaultValue={editingAlert.reason}
+                  required
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Public Health Bulletin Message</label>
+                <textarea
+                  name="publicMessage"
+                  defaultValue={editingAlert.publicMessage || editingAlert.reason}
+                  rows={2}
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingAlert(null)}
+                  className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  <span>Save Status</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Dismiss / Delete Alert Confirmation Modal */}
+      {deletingAlert && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-rose-900/60 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-900/50 text-rose-400 flex items-center justify-center border border-rose-700/60 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-100">Dismiss &amp; Archive Incident Alert</h3>
+                <p className="text-[11px] text-rose-300 font-mono">{deletingAlert.alertId}</p>
+              </div>
+            </div>
+
+            <p className="mt-3.5 text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to dismiss alert <strong className="text-white">{deletingAlert.alertId}</strong>?
+              This will remove the active advisory notice for source{' '}
+              <span className="font-mono text-cyan-300">{deletingAlert.sourceId}</span> and archive the incident from
+              the operational dashboard.
+            </p>
+
+            <div className="mt-5 pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeletingAlert(null)}
+                className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Confirm Dismissal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

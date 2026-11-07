@@ -729,6 +729,9 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               loading={adminTables.loadingAlerts}
               onSelectAlert={handleSelectAlert}
               onRefresh={() => adminTables.fetchAlerts(true)}
+              onCreateAlert={adminTables.createAlert}
+              onUpdateAlert={adminTables.updateAlert}
+              onDeleteAlert={adminTables.deleteAlert}
             />
           )}
 
@@ -741,6 +744,9 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               loading={adminTables.loadingSources}
               onRefresh={() => adminTables.fetchSources(true)}
               onSelectSource={(sourceId) => setDrawerSourceId(sourceId)}
+              onCreateSource={adminTables.createSource}
+              onUpdateSource={adminTables.updateSource}
+              onDeleteSource={adminTables.deleteSource}
             />
           )}
 
@@ -752,6 +758,8 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               loading={adminTables.loadingReadings}
               onSubmitReading={() => setActiveModal('submit-reading')}
               onRefresh={() => adminTables.fetchReadings(true)}
+              onUpdateReading={adminTables.updateReading}
+              onDeleteReading={adminTables.deleteReading}
             />
           )}
 
@@ -765,6 +773,8 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               loading={adminTables.loadingReports}
               onRefresh={() => adminTables.fetchReports(true)}
               initialTab="registry"
+              onUpdateReport={adminTables.updateReport}
+              onDeleteReport={adminTables.deleteReport}
             />
           )}
 
@@ -804,6 +814,8 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               onRecordAction={() => setActiveModal('record-action')}
               onRefresh={() => adminTables.fetchActions(true)}
               onSelectAlert={handleSelectAlert}
+              onUpdateAction={adminTables.updateAction}
+              onDeleteAction={adminTables.deleteAction}
             />
           )}
 
@@ -818,6 +830,12 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               loading={adminTables.loadingRules || adminTables.loadingThresholds}
               onNavigateToTab={handleNavChange}
               onRefresh={adminTables.reloadAll}
+              onSaveRule={(rule) => adminTables.updateRule(rule.ruleId, rule)}
+              onCreateRule={adminTables.createRule}
+              onDeleteRule={adminTables.deleteRule}
+              onSaveThreshold={(threshold) => adminTables.updateThreshold(threshold.id, threshold)}
+              onCreateThreshold={adminTables.createThreshold}
+              onDeleteThreshold={adminTables.deleteThreshold}
             />
           )}
 

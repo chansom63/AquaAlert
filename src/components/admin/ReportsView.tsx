@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Edit,
   Eye,
   FileCheck,
   FileText,
@@ -19,6 +20,7 @@ import {
   Search,
   Share2,
   ShieldCheck,
+  Trash2,
   Upload,
   X,
 } from 'lucide-react';
@@ -177,6 +179,8 @@ export interface ReportsViewProps {
   loading?: boolean;
   onRefresh?: () => Promise<void>;
   initialTab?: MainTab;
+  onUpdateReport?: (reportId: string, updates: Partial<LabReportRecord>) => Promise<void>;
+  onDeleteReport?: (reportId: string) => Promise<void>;
 }
 
 export const ReportsView: FC<ReportsViewProps> = ({
@@ -187,6 +191,8 @@ export const ReportsView: FC<ReportsViewProps> = ({
   loading = false,
   onRefresh,
   initialTab = 'registry',
+  onUpdateReport,
+  onDeleteReport,
 }) => {
   const navigate = useNavigate();
   // Main view switcher: Registry vs Upload Center vs Folders/Analytics
@@ -203,8 +209,49 @@ export const ReportsView: FC<ReportsViewProps> = ({
 
   // Modals & Feedback
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [editingReport, setEditingReport] = useState<ReportRow | null>(null);
+  const [deletingReport, setDeletingReport] = useState<ReportRow | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [shareToast, setShareToast] = useState<string | null>(null);
+
+  const handleEditReportSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!onUpdateReport || !editingReport) return;
+    setIsSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    const updates: Partial<LabReportRecord> = {
+      title: String(form.get('name') || editingReport.name),
+      chemistName: String(form.get('chemistName') || editingReport.generatedBy),
+      verificationStatus: (form.get('verificationStatus') || 'LAB_VERIFIED') as 'LAB_VERIFIED' | 'PENDING_REVIEW' | 'REJECTED_ANOMALY',
+    };
+    try {
+      await onUpdateReport(editingReport.reportId, updates);
+      setShareToast(`Report ${editingReport.reportId} metadata & sign-off updated!`);
+      setEditingReport(null);
+      setTimeout(() => setShareToast(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteReportConfirm = async () => {
+    if (!onDeleteReport || !deletingReport) return;
+    setIsSubmitting(true);
+    try {
+      await onDeleteReport(deletingReport.reportId);
+      setShareToast(`Report ${deletingReport.reportId} removed from archive.`);
+      if (selectedId === deletingReport.reportId) setSelectedId('');
+      setDeletingReport(null);
+      setTimeout(() => setShareToast(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // ── DOCUMENT UPLOAD STATE ──
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -1401,6 +1448,24 @@ export const ReportsView: FC<ReportsViewProps> = ({
                           </td>
                           <td className="py-2.5 px-3" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
+                              {onUpdateReport && (
+                                <button
+                                  onClick={() => setEditingReport(r)}
+                                  className="p-1 rounded text-slate-400 hover:text-cyan-400 hover:bg-[#162758] transition cursor-pointer"
+                                  title="Edit Report Metadata / Sign-off"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {onDeleteReport && (
+                                <button
+                                  onClick={() => setDeletingReport(r)}
+                                  className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-[#381622] transition cursor-pointer"
+                                  title="Delete Evidence Report"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => {
                                   setSelectedId(r.reportId);
@@ -1537,6 +1602,22 @@ export const ReportsView: FC<ReportsViewProps> = ({
 
               {/* Action Buttons */}
               <div className="px-4 py-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                {onUpdateReport && (
+                  <button
+                    onClick={() => setEditingReport(selected)}
+                    className="flex items-center gap-1.5 text-[11px] font-bold bg-[#132754] hover:bg-[#1a3574] text-cyan-300 border border-[#22448f] px-3 py-1.5 rounded-lg transition cursor-pointer"
+                  >
+                    <Edit className="w-3.5 h-3.5" /> Edit Sign-off
+                  </button>
+                )}
+                {onDeleteReport && (
+                  <button
+                    onClick={() => setDeletingReport(selected)}
+                    className="flex items-center gap-1.5 text-[11px] font-bold bg-[#33111e] hover:bg-[#48182b] text-rose-300 border border-rose-800/60 px-3 py-1.5 rounded-lg transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
+                )}
                 <button
                   onClick={() => handleOpenPdfInTab(selected)}
                   className="flex items-center gap-1.5 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition cursor-pointer shadow-xs"
@@ -1648,6 +1729,130 @@ export const ReportsView: FC<ReportsViewProps> = ({
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Download Report Asset</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT REPORT METADATA MODAL ── */}
+      {editingReport && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-[#1c295c] rounded-2xl shadow-2xl max-w-xl w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1c295c]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-cyan-600/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                  <Edit className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">
+                    Edit Report Metadata &amp; Sign-off ({editingReport.reportId})
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Update laboratory certification and authorized signatory</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingReport(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#162758] transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditReportSubmit} className="mt-4 space-y-3.5 text-xs">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Document Title</label>
+                <input
+                  name="name"
+                  defaultValue={editingReport.name}
+                  required
+                  className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Certified Signatory / Chemist
+                  </label>
+                  <input
+                    name="chemistName"
+                    defaultValue={editingReport.generatedBy}
+                    required
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Audit Verification Status</label>
+                  <select
+                    name="verificationStatus"
+                    defaultValue={editingReport.status === 'Completed' ? 'LAB_VERIFIED' : 'PENDING'}
+                    className="w-full px-3 py-1.5 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="LAB_VERIFIED">LAB_VERIFIED (Certified Accredited Assay)</option>
+                    <option value="PENDING">PENDING (Under Incubation Review)</option>
+                    <option value="REJECTED">REJECTED (Contaminated Specimen)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingReport(null)}
+                  className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  <span>Save Report Sign-off</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE REPORT CONFIRMATION MODAL ── */}
+      {deletingReport && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-rose-900/60 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-900/50 text-rose-400 flex items-center justify-center border border-rose-700/60 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-100">Delete Evidence Report</h3>
+                <p className="text-[11px] text-rose-300 font-mono">{deletingReport.reportId}</p>
+              </div>
+            </div>
+
+            <p className="mt-3.5 text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to delete report <strong className="text-white">{deletingReport.name}</strong>?
+              This will remove the certified lab assay certificate from the municipal archive.
+            </p>
+
+            <div className="mt-5 pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeletingReport(null)}
+                className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteReportConfirm}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Confirm Delete</span>
               </button>
             </div>
           </div>

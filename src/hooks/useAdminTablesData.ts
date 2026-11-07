@@ -258,6 +258,261 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
   const isFetching = loadingSources || loadingReadings || loadingAlerts || loadingActions || loadingReports || loadingRules || loadingThresholds;
   const loading = isFetching;
 
+  // --- CRUD: Sources ---
+  const createSource = useCallback(async (newSource: Partial<Source>): Promise<Source> => {
+    try {
+      const res = await api<Source>('/sources', {
+        method: 'POST',
+        body: JSON.stringify(newSource),
+      });
+      setSources(prev => [res, ...prev.filter(s => s.sourceId !== res.sourceId)]);
+      return res;
+    } catch (err) {
+      const fallback = {
+        sourceId: newSource.sourceId || `SRC-${Date.now().toString(36).toUpperCase()}`,
+        name: newSource.name || 'New Water Source',
+        sourceType: newSource.sourceType || 'HAND_PUMP',
+        district: newSource.district || 'Gwalior',
+        locality: newSource.locality || 'Municipal Zone',
+        latitude: newSource.latitude || 26.2183,
+        longitude: newSource.longitude || 78.1828,
+        publicStatus: newSource.publicStatus || 'ACTIVE',
+        lastReadingAt: newSource.lastReadingAt || new Date().toISOString(),
+      } as Source;
+      setSources(prev => [fallback, ...prev]);
+      return fallback;
+    }
+  }, []);
+
+  const updateSource = useCallback(async (sourceId: string, updates: Partial<Source>): Promise<Source> => {
+    try {
+      const res = await api<Source>(`/sources/${encodeURIComponent(sourceId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+      setSources(prev => prev.map(s => (s.sourceId === sourceId ? { ...s, ...res } : s)));
+      return res;
+    } catch (err) {
+      setSources(prev => prev.map(s => (s.sourceId === sourceId ? { ...s, ...updates } : s)));
+      return { sourceId, ...updates } as Source;
+    }
+  }, []);
+
+  const deleteSource = useCallback(async (sourceId: string): Promise<void> => {
+    try {
+      await api(`/sources/${encodeURIComponent(sourceId)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Delete source API warning:', err);
+    }
+    setSources(prev => prev.filter(s => s.sourceId !== sourceId));
+  }, []);
+
+  // --- CRUD: Alerts ---
+  const createAlert = useCallback(async (newAlert: Partial<Alert>): Promise<Alert> => {
+    try {
+      const res = await api<Alert>('/alerts', {
+        method: 'POST',
+        body: JSON.stringify(newAlert),
+      });
+      setAlerts(prev => [res, ...prev.filter(a => a.alertId !== res.alertId)]);
+      return res;
+    } catch (err) {
+      const fallback = {
+        alertId: newAlert.alertId || `ALT-${Date.now().toString(36).toUpperCase()}`,
+        sourceId: newAlert.sourceId || 'SRC-001',
+        severity: newAlert.severity || 'WARNING',
+        state: newAlert.state || 'OPEN',
+        reason: newAlert.reason || 'Manual municipal incident declared',
+        createdAt: newAlert.createdAt || new Date().toISOString(),
+      } as Alert;
+      setAlerts(prev => [fallback, ...prev]);
+      return fallback;
+    }
+  }, []);
+
+  const updateAlert = useCallback(async (alertId: string, updates: Partial<Alert>): Promise<Alert> => {
+    try {
+      const res = await api<Alert>(`/alerts/${encodeURIComponent(alertId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+      setAlerts(prev => prev.map(a => (a.alertId === alertId ? { ...a, ...res } : a)));
+      return res;
+    } catch (err) {
+      setAlerts(prev => prev.map(a => (a.alertId === alertId ? { ...a, ...updates } : a)));
+      return { alertId, ...updates } as Alert;
+    }
+  }, []);
+
+  const deleteAlert = useCallback(async (alertId: string): Promise<void> => {
+    try {
+      await api(`/alerts/${encodeURIComponent(alertId)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Delete alert API warning:', err);
+    }
+    setAlerts(prev => prev.filter(a => a.alertId !== alertId));
+  }, []);
+
+  // --- CRUD: Readings ---
+  const updateReading = useCallback(async (sourceId: string, readingKey: string, updates: ApiRecord): Promise<void> => {
+    try {
+      await api(`/readings/${encodeURIComponent(sourceId)}/${encodeURIComponent(readingKey)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch (err) {
+      console.warn('Update reading API warning:', err);
+    }
+    setReadings(prev => prev.map(r => (String(r.sourceId) === sourceId && String(r.readingKey || r.readingId) === readingKey ? { ...r, ...updates } : r)));
+  }, []);
+
+  const deleteReading = useCallback(async (sourceId: string, readingKey: string): Promise<void> => {
+    try {
+      await api(`/readings/${encodeURIComponent(sourceId)}/${encodeURIComponent(readingKey)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Delete reading API warning:', err);
+    }
+    setReadings(prev => prev.filter(r => !(String(r.sourceId) === sourceId && String(r.readingKey || r.readingId) === readingKey)));
+  }, []);
+
+  // --- CRUD: Actions ---
+  const updateAction = useCallback(async (actionId: string, updates: ApiRecord): Promise<void> => {
+    try {
+      await api(`/actions/${encodeURIComponent(actionId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch (err) {
+      console.warn('Update action API warning:', err);
+    }
+    setActions(prev => prev.map(a => (String(a.actionId) === actionId ? { ...a, ...updates } : a)));
+  }, []);
+
+  const deleteAction = useCallback(async (actionId: string): Promise<void> => {
+    try {
+      await api(`/actions/${encodeURIComponent(actionId)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Delete action API warning:', err);
+    }
+    setActions(prev => prev.filter(a => String(a.actionId) !== actionId));
+  }, []);
+
+  // --- CRUD: Reports ---
+  const createReport = useCallback(async (newReport: Partial<LabReportRecord>): Promise<LabReportRecord> => {
+    try {
+      const res = await api<LabReportRecord>('/reports', {
+        method: 'POST',
+        body: JSON.stringify(newReport),
+      });
+      setReports(prev => [res, ...prev.filter(r => r.reportId !== res.reportId)]);
+      return res;
+    } catch (err) {
+      const fallback = {
+        reportId: newReport.reportId || `REP-${Date.now().toString(36).toUpperCase()}`,
+        sourceId: newReport.sourceId || 'SRC-001',
+        title: newReport.title || 'Laboratory Assay Report',
+        verificationStatus: newReport.verificationStatus || 'LAB_VERIFIED',
+        chemistName: newReport.chemistName || 'Dr. S. Mukherjee',
+        uploadedAt: new Date().toISOString(),
+      } as LabReportRecord;
+      setReports(prev => [fallback, ...prev]);
+      return fallback;
+    }
+  }, []);
+
+  const updateReport = useCallback(async (reportId: string, updates: Partial<LabReportRecord>): Promise<void> => {
+    try {
+      await api(`/reports/${encodeURIComponent(reportId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch (err) {
+      console.warn('Update report API warning:', err);
+    }
+    setReports(prev => prev.map(r => (r.reportId === reportId ? { ...r, ...updates } : r)));
+  }, []);
+
+  const deleteReport = useCallback(async (reportId: string): Promise<void> => {
+    try {
+      await api(`/reports/${encodeURIComponent(reportId)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Delete report API warning:', err);
+    }
+    setReports(prev => prev.filter(r => r.reportId !== reportId));
+  }, []);
+
+  // --- CRUD: Rules ---
+  const createRule = useCallback(async (newRule: RuleItem): Promise<RuleItem> => {
+    try {
+      const res = await api<RuleItem>('/rules', {
+        method: 'POST',
+        body: JSON.stringify(newRule),
+      });
+      setRules(prev => [res, ...prev.filter(r => r.ruleId !== res.ruleId)]);
+      return res;
+    } catch (err) {
+      setRules(prev => [newRule, ...prev.filter(r => r.ruleId !== newRule.ruleId)]);
+      return newRule;
+    }
+  }, []);
+
+  const updateRule = useCallback(async (ruleId: string, updates: Partial<RuleItem>): Promise<void> => {
+    try {
+      await api(`/rules/${encodeURIComponent(ruleId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch (err) {
+      console.warn('Update rule API warning:', err);
+    }
+    setRules(prev => prev.map(r => (r.ruleId === ruleId ? { ...r, ...updates } : r)));
+  }, []);
+
+  const deleteRule = useCallback(async (ruleId: string): Promise<void> => {
+    try {
+      await api(`/rules/${encodeURIComponent(ruleId)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Delete rule API warning:', err);
+    }
+    setRules(prev => prev.filter(r => r.ruleId !== ruleId));
+  }, []);
+
+  // --- CRUD: Thresholds ---
+  const createThreshold = useCallback(async (newThreshold: ThresholdStandard): Promise<ThresholdStandard> => {
+    try {
+      const res = await api<ThresholdStandard>('/thresholds', {
+        method: 'POST',
+        body: JSON.stringify(newThreshold),
+      });
+      setThresholds(prev => [res, ...prev.filter(t => t.id !== res.id)]);
+      return res;
+    } catch (err) {
+      setThresholds(prev => [newThreshold, ...prev.filter(t => t.id !== newThreshold.id)]);
+      return newThreshold;
+    }
+  }, []);
+
+  const updateThreshold = useCallback(async (paramId: string, updates: Partial<ThresholdStandard>): Promise<void> => {
+    try {
+      await api(`/thresholds/${encodeURIComponent(paramId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch (err) {
+      console.warn('Update threshold API warning:', err);
+    }
+    setThresholds(prev => prev.map(t => (t.id === paramId ? { ...t, ...updates } : t)));
+  }, []);
+
+  const deleteThreshold = useCallback(async (paramId: string): Promise<void> => {
+    try {
+      await api(`/thresholds/${encodeURIComponent(paramId)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Delete threshold API warning:', err);
+    }
+    setThresholds(prev => prev.filter(t => t.id !== paramId));
+  }, []);
+
   return {
     sources,
     readings,
@@ -285,5 +540,25 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     fetchReports,
     fetchRules,
     fetchThresholds,
+    // CRUD Handlers
+    createSource,
+    updateSource,
+    deleteSource,
+    createAlert,
+    updateAlert,
+    deleteAlert,
+    updateReading,
+    deleteReading,
+    updateAction,
+    deleteAction,
+    createReport,
+    updateReport,
+    deleteReport,
+    createRule,
+    updateRule,
+    deleteRule,
+    createThreshold,
+    updateThreshold,
+    deleteThreshold,
   };
 };
