@@ -663,41 +663,41 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
               </div>
 
               {/* Engineering Justification */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1.5">
-                <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+              <div className="p-3.5 bg-[#091533] rounded-xl border border-[#1e3470] space-y-1.5">
+                <div className="text-[11px] font-semibold text-cyan-300 uppercase tracking-wide">
                   Engineering Justification &amp; Notes
                 </div>
-                <p className="text-xs text-slate-800 leading-relaxed font-normal">
+                <p className="text-xs text-slate-200 leading-relaxed font-normal">
                   {stringValue(selectedAction.summary)}
                 </p>
               </div>
 
               {/* Correlated Alert Card */}
               {Boolean(selectedAction.alertId) && (
-                <div className="p-3 bg-gradient-to-r from-blue-50/60 to-indigo-50/60 rounded-xl border border-blue-200/80 space-y-2">
+                <div className="p-3.5 bg-[#091533] rounded-xl border border-[#1e3470] space-y-2.5 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-800">Correlated Incident Alert</span>
-                    <span className="text-[10px] font-mono font-bold text-blue-700 bg-white px-2 py-0.5 rounded-md border border-blue-200">
+                    <span className="text-[11px] font-bold text-white tracking-wide">Correlated Incident Alert</span>
+                    <span className="text-[10px] font-mono font-bold text-cyan-300 bg-[#122452] px-2.5 py-0.5 rounded-md border border-cyan-500/40">
                       {stringValue(selectedAction.alertId)}
                     </span>
                   </div>
 
                   {Boolean(alertMap.get(String(selectedAction.alertId))) && (
-                    <div className="space-y-1 text-xs">
-                      <div className="flex justify-between text-slate-600">
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between items-center text-slate-300">
                         <span>Incident Severity:</span>
-                        <span className="font-bold text-rose-600">
+                        <span className="font-bold text-rose-400 bg-rose-950/70 px-2 py-0.5 rounded border border-rose-800/60 font-mono">
                           {humanize(alertMap.get(String(selectedAction.alertId))?.severity)}
                         </span>
                       </div>
-                      <div className="flex justify-between text-slate-600">
+                      <div className="flex justify-between items-center text-slate-300">
                         <span>Target Water Source:</span>
-                        <span className="font-medium text-slate-900">
+                        <span className="font-semibold text-white">
                           {sourceMap.get(String(alertMap.get(String(selectedAction.alertId))?.sourceId ?? ''))?.name ||
                             stringValue(alertMap.get(String(selectedAction.alertId))?.sourceId)}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-500 pt-1">
+                      <div className="text-[11px] text-slate-300 pt-1 leading-relaxed bg-[#060e24] p-2.5 rounded-lg border border-[#162758]">
                         {stringValue(
                           alertMap.get(String(selectedAction.alertId))?.publicMessage,
                           stringValue(alertMap.get(String(selectedAction.alertId))?.reason),
@@ -710,39 +710,40 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onSelectAlert?.(String(selectedAction.alertId))}
-                      className="w-full text-center text-xs font-bold text-blue-700 hover:text-blue-800 bg-white py-1.5 rounded-lg border border-blue-200 shadow-2xs transition mt-1 cursor-pointer"
+                      className="w-full text-center text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 py-2.5 rounded-xl border border-blue-400/40 shadow-md shadow-blue-500/30 transition mt-1.5 cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      Open Full Incident Drawer &rarr;
+                      <span>Open Full Incident Drawer</span>
+                      <span>&rarr;</span>
                     </button>
                   )}
                 </div>
               )}
 
               {/* Personnel & Sign-off Metadata */}
-              <div className="border-t border-slate-100 pt-3 space-y-2 text-xs">
-                <div className="text-[11px] font-semibold text-slate-500">Authorized Signatory &amp; Ledger Audit</div>
-                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="border-t border-[#1c295c] pt-3 space-y-2 text-xs">
+                <div className="text-[11px] font-semibold text-slate-400">Authorized Signatory &amp; Ledger Audit</div>
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#091533] border border-[#1e3470]">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                    <div className="w-7 h-7 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-700/60 flex items-center justify-center font-bold text-xs">
                       <UserCheck className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="font-bold text-slate-900 text-xs">{humanize(selectedAction.actorRole)}</div>
+                      <div className="font-bold text-white text-xs">{humanize(selectedAction.actorRole)}</div>
                       <div className="text-[10px] text-slate-400">Gwalior Municipal Water Surveillance Unit</div>
                     </div>
                   </div>
-                  <span className="text-[10px] font-mono font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-600/60 px-2 py-0.5 rounded">
                     AUTHORIZED
                   </span>
                 </div>
 
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-slate-400">
                   <span>Execution Timestamp:</span>
-                  <span className="font-medium text-slate-800">{displayDate(selectedAction.createdAt)}</span>
+                  <span className="font-medium text-slate-200">{displayDate(selectedAction.createdAt)}</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-slate-400">
                   <span>Compliance Framework:</span>
-                  <span className="font-medium text-slate-800">BIS IS 10500:2012 Drinking Water</span>
+                  <span className="font-medium text-slate-200">BIS IS 10500:2012 Drinking Water</span>
                 </div>
               </div>
 
