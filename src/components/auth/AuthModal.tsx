@@ -189,7 +189,7 @@ export const AuthModal: FC<AuthModalProps> = ({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-lg bg-[#091533] border border-[#1e3470] rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="auth-modal-root relative w-full max-w-lg bg-[#091533] border border-[#1e3470] rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Modal Top Header */}
         <div className="p-5 bg-gradient-to-r from-[#0c1c45] via-[#091533] to-[#0a204e] border-b border-[#1c295c] flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
@@ -211,7 +211,8 @@ export const AuthModal: FC<AuthModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            className="p-1.5 rounded-lg bg-[#0d1f47] hover:bg-[#152e68] text-slate-400 hover:text-white border border-[#1e3470] transition cursor-pointer"
+            aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>
@@ -219,14 +220,14 @@ export const AuthModal: FC<AuthModalProps> = ({
 
         {/* Tab Selector (Sign In vs Register) */}
         {(mode === 'signin' || mode === 'register') && (
-          <div className="flex border-b border-[#1c295c] bg-[#07112b]">
+          <div className="flex border-b border-[#1c295c] bg-[#060e24]">
             <button
               type="button"
               onClick={() => handleTabChange('signin')}
               className={`flex-1 py-3 text-xs font-bold transition-all text-center border-b-2 cursor-pointer ${
                 mode === 'signin'
-                  ? 'border-blue-500 text-white bg-[#0a1a42]'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-blue-500 text-white bg-[#0d1f47]'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 bg-[#060e24] hover:bg-[#091533]'
               }`}
             >
               Sign In
@@ -236,8 +237,8 @@ export const AuthModal: FC<AuthModalProps> = ({
               onClick={() => handleTabChange('register')}
               className={`flex-1 py-3 text-xs font-bold transition-all text-center border-b-2 cursor-pointer ${
                 mode === 'register'
-                  ? 'border-blue-500 text-white bg-[#0a1a42]'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-blue-500 text-white bg-[#0d1f47]'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 bg-[#060e24] hover:bg-[#091533]'
               }`}
             >
               Register Account
@@ -290,7 +291,7 @@ export const AuthModal: FC<AuthModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleTabChange('forgot_request')}
-                    className="text-[11px] text-cyan-400 hover:text-cyan-300 transition cursor-pointer"
+                    className="text-[11px] text-cyan-400 hover:text-cyan-300 transition cursor-pointer bg-transparent border-0 p-0"
                   >
                     Forgot Password?
                   </button>
@@ -307,7 +308,7 @@ export const AuthModal: FC<AuthModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowPassword(p => !p)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200 cursor-pointer"
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200 cursor-pointer bg-transparent border-0 p-0"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -352,7 +353,7 @@ export const AuthModal: FC<AuthModalProps> = ({
                         setEmail(STATIC_ADMIN.email);
                         setPassword(STATIC_ADMIN.password);
                       }}
-                      className="text-cyan-300 hover:text-cyan-200 font-bold ml-2 underline cursor-pointer text-[10px]"
+                      className="text-cyan-300 hover:text-cyan-200 font-bold ml-2 underline cursor-pointer text-[10px] bg-transparent border-0 p-0"
                     >
                       Fill Admin Credentials
                     </button>
@@ -542,7 +543,7 @@ export const AuthModal: FC<AuthModalProps> = ({
                 <button
                   type="button"
                   onClick={handleResend}
-                  className="text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Resend Code</span>
@@ -550,7 +551,7 @@ export const AuthModal: FC<AuthModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setMode('signin')}
-                  className="text-slate-400 hover:text-white cursor-pointer"
+                  className="text-slate-400 hover:text-white cursor-pointer bg-transparent border-0 p-0"
                 >
                   Back to Sign In
                 </button>
@@ -578,7 +579,7 @@ export const AuthModal: FC<AuthModalProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition border border-blue-400/40 shadow-lg shadow-blue-600/30 cursor-pointer disabled:opacity-50"
               >
                 {loading ? 'Sending code…' : 'Send Password Reset Code →'}
               </button>
@@ -586,7 +587,7 @@ export const AuthModal: FC<AuthModalProps> = ({
               <button
                 type="button"
                 onClick={() => setMode('signin')}
-                className="w-full text-center text-xs text-slate-400 hover:text-white cursor-pointer"
+                className="w-full text-center text-xs text-slate-400 hover:text-white cursor-pointer bg-transparent border-0 py-1"
               >
                 Cancel and return to Sign In
               </button>
@@ -637,7 +638,7 @@ export const AuthModal: FC<AuthModalProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition border border-blue-400/40 shadow-lg shadow-blue-600/30 cursor-pointer disabled:opacity-50"
               >
                 {loading ? 'Updating…' : 'Set New Password & Sign In'}
               </button>

@@ -6,7 +6,7 @@
    0. SCOPED RESET FOR MAP CONTROLS & FORM ELEMENTS
    ========================================================================== */
 
-:where(.map-explorer) button {
+:where(.map-explorer, .auth-modal-root, .auth-gatekeeper-root) button {
   appearance: none;
   -webkit-appearance: none;
   background-color: transparent;
@@ -22,8 +22,8 @@
   outline: none;
 }
 
-:where(.map-explorer) input,
-:where(.map-explorer) select {
+:where(.map-explorer, .auth-modal-root, .auth-gatekeeper-root) input,
+:where(.map-explorer, .auth-modal-root, .auth-gatekeeper-root) select {
   appearance: none;
   -webkit-appearance: none;
   background-color: transparent;

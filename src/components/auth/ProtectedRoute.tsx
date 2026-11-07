@@ -42,14 +42,15 @@ export const RequireAuth: FC<ProtectedRouteProps> = ({ children }) => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#060e24] flex flex-col justify-between p-6 sm:p-12 text-white font-sans">
+      <div className="auth-gatekeeper-root min-h-screen bg-[#060e24] flex flex-col justify-between p-6 sm:p-12 text-white font-sans">
         {/* Top Header */}
         <header className="flex items-center justify-between border-b border-[#1c295c] pb-4">
           <button
+            type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition cursor-pointer"
+            className="flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#0d1f47] hover:bg-[#12285a] px-3.5 py-2 rounded-xl border border-[#1e3470] shadow-sm transition cursor-pointer"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-4 h-4 text-cyan-400" />
             <span>Back to Home</span>
           </button>
           <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-blue-950 text-cyan-300 border border-blue-800/60">
@@ -148,13 +149,14 @@ export const RequireAdmin: FC<ProtectedRouteProps> = ({ children }) => {
   // Not authenticated at all -> Show Admin Gatekeeper
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#080e26] flex flex-col justify-between p-6 sm:p-12 text-white font-sans">
+      <div className="auth-gatekeeper-root min-h-screen bg-[#080e26] flex flex-col justify-between p-6 sm:p-12 text-white font-sans">
         <header className="flex items-center justify-between border-b border-[#1c295c] pb-4">
           <button
+            type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition cursor-pointer"
+            className="flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#0d1f47] hover:bg-[#12285a] px-3.5 py-2 rounded-xl border border-[#1e3470] shadow-sm transition cursor-pointer"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-4 h-4 text-cyan-400" />
             <span>Back to Home</span>
           </button>
           <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-rose-950 text-rose-300 border border-rose-800/60">
@@ -236,13 +238,14 @@ export const RequireAdmin: FC<ProtectedRouteProps> = ({ children }) => {
   // Authenticated, but NOT an admin (e.g. Citizen user) -> Show Access Denied
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-[#080e26] flex flex-col justify-between p-6 sm:p-12 text-white font-sans">
+      <div className="auth-gatekeeper-root min-h-screen bg-[#080e26] flex flex-col justify-between p-6 sm:p-12 text-white font-sans">
         <header className="flex items-center justify-between border-b border-[#1c295c] pb-4">
           <button
+            type="button"
             onClick={() => navigate('/user')}
-            className="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition cursor-pointer"
+            className="flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#0d1f47] hover:bg-[#12285a] px-3.5 py-2 rounded-xl border border-[#1e3470] shadow-sm transition cursor-pointer"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-4 h-4 text-cyan-400" />
             <span>Go to Citizen Portal</span>
           </button>
           <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-amber-950 text-amber-300 border border-amber-800/60">
