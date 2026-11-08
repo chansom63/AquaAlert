@@ -12,7 +12,13 @@ const HomePage: FC = () => {
     <div className="app">
       <CinematicHero
         onLoginSelect={portal => {
-          navigate(portal === 'admin' ? '/admin' : '/user');
+          if (portal === 'admin') {
+            navigate('/admin');
+          } else if (portal === 'lab') {
+            navigate('/lab');
+          } else {
+            navigate('/user');
+          }
         }}
       />
       <section className="water-section" id="water-testing">

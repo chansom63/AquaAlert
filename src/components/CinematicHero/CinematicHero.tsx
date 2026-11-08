@@ -309,12 +309,31 @@ const Particle: FC<{ x:number; y:number; size:number; duration:number; delay:num
 /* ─────────────────────────────────────────────────────────────────────────────
    MAIN HERO COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
-const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin') => void }> = ({ onLoginSelect }) => {
+const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin' | 'lab') => void }> = ({ onLoginSelect }) => {
   const [currentScene, setCurrentScene] = useState(0);
   const [textPhase,    setTextPhase]    = useState<'entering' | 'exiting'>('entering');
   const [paused,       setPaused]       = useState(false);
   const [progress,     setProgress]     = useState(0);
   const [loginOpen, setLoginOpen] = useState(false);
+  const loginWrapRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (!loginOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (loginWrapRef.current && !loginWrapRef.current.contains(e.target as Node)) {
+        setLoginOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLoginOpen(false);
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [loginOpen]);
 
   const mousePos      = useMouseParallax();
   const heroRef       = useRef<HTMLElement>(null);
@@ -438,12 +457,21 @@ const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin') => void 
               <a className="hero__nav-link" href={link.href}>{link.label}</a>
             </li>
           ))}
-          <li className="hero__login-wrap">
+          <li ref={loginWrapRef} className="hero__login-wrap">
             <button className="hero__login-button" aria-expanded={loginOpen} onClick={() => setLoginOpen(open => !open)}>Login <span>⌄</span></button>
-            {loginOpen && <div className="hero__login-menu" role="menu">
-              <button role="menuitem" onClick={() => { setLoginOpen(false); onLoginSelect?.('citizen'); }}>Login as a user</button>
-              <button role="menuitem" onClick={() => { setLoginOpen(false); onLoginSelect?.('admin'); }}>Login as admin</button>
-            </div>}
+            {loginOpen && (
+              <div className="hero__login-menu" role="menu">
+                <button role="menuitem" onClick={() => { setLoginOpen(false); onLoginSelect?.('citizen'); }}>
+                  Login as a user
+                </button>
+                <button role="menuitem" onClick={() => { setLoginOpen(false); onLoginSelect?.('admin'); }}>
+                  Login as admin
+                </button>
+                <button role="menuitem" onClick={() => { setLoginOpen(false); onLoginSelect?.('lab'); }}>
+                  Login as lab personnel
+                </button>
+              </div>
+            )}
           </li>
         </ul>
       </nav>
