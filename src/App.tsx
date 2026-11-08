@@ -3,8 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import AdminPage from './pages/AdminPage';
 import CitizenPage from './pages/CitizenPage';
 import HomePage from './pages/HomePage';
+import LabPortalPage from './pages/LabPortalPage';
 import UploadReportsPage from './pages/UploadReportsPage';
-import { RequireAuth, RequireAdmin } from './components/auth/ProtectedRoute';
+import { RequireAuth, RequireAdmin, RequireLab } from './components/auth/ProtectedRoute';
 import './App.css';
 
 const App: FC = () => (
@@ -32,27 +33,61 @@ const App: FC = () => (
       }
     />
 
-    {/* Protected Upload Document / Evidence View - Strictly Restricted to Predefined Administrator */}
+    {/* Protected Laboratory Analytical Portal - Restricted to Accredited Lab Personnel & Admins */}
+    <Route
+      path="/lab"
+      element={
+        <RequireLab>
+          <LabPortalPage />
+        </RequireLab>
+      }
+    />
+    <Route
+      path="/lab-portal"
+      element={
+        <RequireLab>
+          <LabPortalPage />
+        </RequireLab>
+      }
+    />
+    <Route
+      path="/lab/login"
+      element={
+        <RequireLab>
+          <LabPortalPage />
+        </RequireLab>
+      }
+    />
+    <Route
+      path="/lab/upload"
+      element={
+        <RequireLab>
+          <LabPortalPage />
+        </RequireLab>
+      }
+    />
+
+    {/* Protected Upload Document / Evidence View - Accessible to Lab Analysts & Admins */}
     <Route
       path="/upload-document"
       element={
-        <RequireAdmin>
+        <RequireLab>
           <UploadReportsPage />
-        </RequireAdmin>
+        </RequireLab>
       }
     />
     <Route
       path="/upload-reports"
       element={
-        <RequireAdmin>
+        <RequireLab>
           <UploadReportsPage />
-        </RequireAdmin>
+        </RequireLab>
       }
     />
 
     {/* Redirects */}
-    <Route path="/upload-report" element={<Navigate to="/upload-document" replace />} />
-    <Route path="/lab-reports" element={<Navigate to="/upload-document" replace />} />
+    <Route path="/upload-report" element={<Navigate to="/lab" replace />} />
+    <Route path="/lab-reports" element={<Navigate to="/lab" replace />} />
     <Route path="/admin/upload-document" element={<Navigate to="/upload-document" replace />} />
     <Route path="/admin/upload-reports" element={<Navigate to="/upload-document" replace />} />
     <Route path="*" element={<Navigate to="/" replace />} />

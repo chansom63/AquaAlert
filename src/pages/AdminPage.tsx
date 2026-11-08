@@ -554,11 +554,21 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
           </nav>
         </div>
 
-        {/* Bottom Switch to Public Portal Link */}
-        <div className="p-3 border-t border-slate-800/80">
+        {/* Bottom Switch to Portals Links */}
+        <div className="p-3 border-t border-slate-800/80 space-y-1">
+          <button
+            onClick={() => navigate('/lab')}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-semibold text-purple-300 hover:text-white hover:bg-purple-950/40 transition cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <FlaskConical className="w-3.5 h-3.5 text-purple-400" />
+              <span>Lab Portal View</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={() => navigate('/user')}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition cursor-pointer"
           >
             <span>Citizen Portal View</span>
             <ChevronRight className="w-3.5 h-3.5" />

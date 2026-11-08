@@ -17,7 +17,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
-import { STATIC_ADMIN } from '../../services/cognitoAuth';
+import { STATIC_ADMIN, STATIC_ANALYST } from '../../services/cognitoAuth';
 
 export interface AuthModalProps {
   isOpen: boolean;
@@ -376,28 +376,39 @@ export const AuthModal: FC<AuthModalProps> = ({
                   </span>
                   <span className="text-[10px] text-cyan-400 font-mono">1-Click</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => handleQuickDemo('ADMIN')}
-                    className="p-2.5 rounded-xl bg-[#0d1f47] hover:bg-[#12285a] border border-[#1e3470] text-left transition cursor-pointer"
+                    className="p-2 rounded-xl bg-[#0d1f47] hover:bg-[#12285a] border border-[#1e3470] text-left transition cursor-pointer"
                   >
-                    <div className="text-[11px] font-bold text-rose-300 flex items-center justify-between">
-                      <span>Static Admin</span>
-                      <span className="text-[10px] font-mono">Full CRUD</span>
+                    <div className="text-[10px] font-bold text-rose-300 flex items-center justify-between">
+                      <span>Admin</span>
+                      <span className="text-[9px] font-mono">Full CRUD</span>
                     </div>
-                    <div className="text-[10px] text-slate-400 truncate">{STATIC_ADMIN.email}</div>
+                    <div className="text-[9px] text-slate-400 truncate">{STATIC_ADMIN.email}</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemo('ANALYST')}
+                    className="p-2 rounded-xl bg-[#0d1f47] hover:bg-[#12285a] border border-[#1e3470] text-left transition cursor-pointer"
+                  >
+                    <div className="text-[10px] font-bold text-purple-300 flex items-center justify-between">
+                      <span>Lab Analyst</span>
+                      <span className="text-[9px] font-mono">NABL Lab</span>
+                    </div>
+                    <div className="text-[9px] text-slate-400 truncate">{STATIC_ANALYST.email}</div>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickDemo('CITIZEN')}
-                    className="p-2.5 rounded-xl bg-[#0d1f47] hover:bg-[#12285a] border border-[#1e3470] text-left transition cursor-pointer"
+                    className="p-2 rounded-xl bg-[#0d1f47] hover:bg-[#12285a] border border-[#1e3470] text-left transition cursor-pointer"
                   >
-                    <div className="text-[11px] font-bold text-emerald-300 flex items-center justify-between">
-                      <span>Citizen User</span>
-                      <span className="text-[10px] font-mono">Public Portal</span>
+                    <div className="text-[10px] font-bold text-emerald-300 flex items-center justify-between">
+                      <span>Citizen</span>
+                      <span className="text-[9px] font-mono">Public</span>
                     </div>
-                    <div className="text-[10px] text-slate-400 truncate">citizen@gwalior.in</div>
+                    <div className="text-[9px] text-slate-400 truncate">citizen@gwalior.in</div>
                   </button>
                 </div>
               </div>

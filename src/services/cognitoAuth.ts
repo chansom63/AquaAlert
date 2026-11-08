@@ -35,6 +35,17 @@ export const STATIC_ADMIN = {
   groups: ['Admins'],
 };
 
+/**
+ * Predefined static laboratory analyst credentials
+ */
+export const STATIC_ANALYST = {
+  email: 'analyst@aquaalert.gov.in',
+  password: 'AquaAlert@Lab2026!',
+  name: 'Dr. S. Mukherjee (Lead Analytical Chemist)',
+  role: 'ANALYST' as const,
+  groups: ['Analysts'],
+};
+
 const COGNITO_ENDPOINT = `https://cognito-idp.${REGION}.amazonaws.com/`;
 
 /**
@@ -171,6 +182,25 @@ export const cognitoSignIn = async (
       };
     } else {
       throw new Error('Invalid password for predefined administrator account.');
+    }
+  }
+
+  // 2. Static Predefined Laboratory Analyst Authentication
+  if (normalizedEmail === STATIC_ANALYST.email.toLowerCase()) {
+    if (password === STATIC_ANALYST.password) {
+      return {
+        email: STATIC_ANALYST.email,
+        name: STATIC_ANALYST.name,
+        sub: 'static-analyst-sub-002',
+        groups: ['Analysts'],
+        role: 'ANALYST',
+        idToken: `static-analyst-token-${Date.now()}`,
+        accessToken: `static-analyst-access-${Date.now()}`,
+        refreshToken: `static-analyst-refresh-${Date.now()}`,
+        expiresAt: Date.now() + 86400 * 1000,
+      };
+    } else {
+      throw new Error('Invalid password for accredited lab analyst account.');
     }
   }
 

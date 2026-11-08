@@ -10,10 +10,12 @@ import {
   ChevronLeft,
   Sparkles,
   KeyRound,
+  FlaskConical,
+  FileCheck,
 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { AuthModal } from './AuthModal';
-import { STATIC_ADMIN } from '../../services/cognitoAuth';
+import { STATIC_ADMIN, STATIC_ANALYST } from '../../services/cognitoAuth';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -309,3 +311,201 @@ export const RequireAdmin: FC<ProtectedRouteProps> = ({ children }) => {
 
   return <>{children}</>;
 };
+
+/**
+ * 3. RequireLab: Ensures user is authenticated AND has the Lab Analyst or Admin role.
+ * If not authenticated, renders the dedicated Laboratory Personnel Login Portal.
+ * If authenticated as Citizen, renders Access Restricted for Lab Personnel only.
+ */
+export const RequireLab: FC<ProtectedRouteProps> = ({ children }) => {
+  const { isAuthenticated, isAnalyst, user, loading, logout, demoLogin } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const navigate = useNavigate();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#070d24] flex items-center justify-center p-6 text-white font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-purple-500/30 border-t-purple-400 rounded-full animate-spin" />
+          <span className="text-xs text-slate-400 font-mono">Verifying laboratory personnel credentials…</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Not authenticated at all -> Dedicated Laboratory Login Portal
+  if (!isAuthenticated) {
+    return (
+      <div className="auth-gatekeeper-root min-h-screen bg-[#070d24] flex flex-col justify-between p-6 sm:p-12 text-white font-sans">
+        {/* Top Header */}
+        <header className="flex items-center justify-between border-b border-[#1c295c] pb-4">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#0d1f47] hover:bg-[#12285a] px-3.5 py-2 rounded-xl border border-[#1e3470] shadow-sm transition cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4 text-purple-400" />
+            <span>Back to Home</span>
+          </button>
+          <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-purple-950 text-purple-300 border border-purple-800/60 flex items-center gap-1.5">
+            <FlaskConical className="w-3.5 h-3.5 text-purple-400" />
+            <span>ACCREDITED TESTING LABORATORY PORTAL</span>
+          </span>
+        </header>
+
+        {/* Lab Gatekeeper Card */}
+        <div className="max-w-lg mx-auto w-full py-10 text-center space-y-6">
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-purple-600/20 border border-purple-400/40 text-purple-300 flex items-center justify-center shadow-xl shadow-purple-500/10">
+            <FlaskConical className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[11px] font-mono font-bold tracking-widest text-purple-400 uppercase">
+              NABL ACCREDITED LAB &bull; PHED CENTRAL ANALYTICAL FACILITY
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              Laboratory Analytical Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+              Dedicated portal for accredited water quality chemists, laboratory analysts, and certification officers to upload certified test reports, log chemical assays, and verify BIS IS 10500:2012 compliance.
+            </p>
+          </div>
+
+          {/* Predefined Lab Personnel Credentials Box */}
+          <div className="p-5 rounded-2xl bg-[#0b1433] border border-[#232f6b] text-left space-y-3.5 shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#1c295c] pb-2">
+              <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <FileCheck className="w-4 h-4 text-purple-400" />
+                <span>Accredited Lab Personnel Credentials</span>
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800/50">
+                LAB ANALYST
+              </span>
+            </div>
+
+            <div className="space-y-2 text-xs font-mono">
+              <div className="flex justify-between items-center bg-[#060e24] p-2.5 rounded-lg border border-[#162758]">
+                <span className="text-slate-400">Analyst Email:</span>
+                <span className="text-purple-300 font-bold select-all">{STATIC_ANALYST.email}</span>
+              </div>
+              <div className="flex justify-between items-center bg-[#060e24] p-2.5 rounded-lg border border-[#162758]">
+                <span className="text-slate-400">Password:</span>
+                <span className="text-slate-300 select-all">{STATIC_ANALYST.password}</span>
+              </div>
+              <div className="flex justify-between items-center bg-[#060e24] px-2.5 py-1.5 rounded-lg border border-[#162758] text-[11px]">
+                <span className="text-slate-400">Accredited Chemist:</span>
+                <span className="text-slate-200">{STATIC_ANALYST.name}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => demoLogin('ANALYST')}
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition border border-purple-400/40 shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>1-Click Sign In as Lab Analyst</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                className="py-3 px-4 bg-[#0d1f47] hover:bg-[#12285a] text-slate-200 font-semibold rounded-xl text-xs transition border border-[#1e3470] cursor-pointer"
+              >
+                Enter Credentials
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="text-center text-[11px] text-slate-500 pt-6 border-t border-[#1c295c]">
+          National Accreditation Board for Testing and Calibration Laboratories (NABL TC-8491) &bull; ISO/IEC 17025 Compliance
+        </footer>
+
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          initialMode="signin"
+        />
+      </div>
+    );
+  }
+
+  // Authenticated, but NOT an Analyst or Admin (e.g. Citizen user) -> Show Access Denied
+  if (!isAnalyst) {
+    return (
+      <div className="auth-gatekeeper-root min-h-screen bg-[#070d24] flex flex-col justify-between p-6 sm:p-12 text-white font-sans">
+        <header className="flex items-center justify-between border-b border-[#1c295c] pb-4">
+          <button
+            type="button"
+            onClick={() => navigate('/user')}
+            className="flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#0d1f47] hover:bg-[#12285a] px-3.5 py-2 rounded-xl border border-[#1e3470] shadow-sm transition cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4 text-purple-400" />
+            <span>Go to Citizen Portal</span>
+          </button>
+          <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-purple-950 text-purple-300 border border-purple-800/60">
+            ACCESS RESTRICTED
+          </span>
+        </header>
+
+        <div className="max-w-md mx-auto w-full py-12 text-center space-y-6">
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-purple-600/20 border border-purple-400/40 text-purple-400 flex items-center justify-center shadow-xl shadow-purple-500/10">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[11px] font-mono font-bold tracking-widest text-purple-400 uppercase">
+              CITIZEN ROLE DETECTED &bull; ACCESS FORBIDDEN
+            </span>
+            <h1 className="text-2xl font-bold tracking-tight text-white">
+              Laboratory Analyst Authorization Required
+            </h1>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              You are signed in as <strong className="text-purple-300">{user?.email}</strong> with a Citizen Resident account. Uploading certified laboratory reports and updating analytical parameters requires Accredited Lab Analyst credentials.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-[#0b1433] border border-[#232f6b] space-y-3 shadow-xl">
+            <button
+              type="button"
+              onClick={() => navigate('/user')}
+              className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition border border-purple-400/40 shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Return to Citizen Portal</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+                setAuthModalOpen(true);
+              }}
+              className="w-full py-2.5 bg-[#0d1f47] hover:bg-[#12285a] text-purple-300 font-semibold rounded-xl text-xs transition border border-[#1e3470] flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out &amp; Log In as Lab Analyst</span>
+            </button>
+          </div>
+        </div>
+
+        <footer className="text-center text-[11px] text-slate-500 pt-6 border-t border-[#1c295c]">
+          NABL ISO/IEC 17025 Standard Compliance &bull; Gwalior Municipal Water Quality Laboratory
+        </footer>
+
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          initialMode="signin"
+        />
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+export const RequireAnalyst = RequireLab;

@@ -18,6 +18,7 @@ export interface AuthContextType {
   user: CognitoUserSession | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isAnalyst: boolean;
   isStaff: boolean;
   isCitizen: boolean;
   loading: boolean;
@@ -349,8 +350,14 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       (user?.role === 'ADMIN' ||
         user?.groups.some(g => g.toLowerCase() === 'admins' || g.toLowerCase() === 'admin'))
   );
+  const isAnalyst = Boolean(
+    isAuthenticated &&
+      (isAdmin ||
+        user?.role === 'ANALYST' ||
+        user?.groups.some(g => g.toLowerCase() === 'analysts' || g.toLowerCase() === 'analyst'))
+  );
   const isStaff = Boolean(
-    isAuthenticated && (isAdmin || user?.role === 'ANALYST' || user?.role === 'OPERATOR')
+    isAuthenticated && (isAdmin || isAnalyst || user?.role === 'OPERATOR')
   );
   const isCitizen = Boolean(isAuthenticated && !isStaff);
 
@@ -419,6 +426,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         user,
         isAuthenticated,
         isAdmin,
+        isAnalyst,
         isStaff,
         isCitizen,
         loading,

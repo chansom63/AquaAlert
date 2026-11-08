@@ -53,10 +53,10 @@ const HomePage: FC = () => {
             </article>
             <article className="water-card">
               <WaterIllustration type="test" />
-              <h3>Lab Reports &amp; Archive</h3>
-              <p>Upload certified lab evidence and regulatory reports to secure encrypted document archive.</p>
-              <button onClick={() => navigate('/upload-document')}>
-                Upload Reports <b>→</b>
+              <h3>Laboratory Analytical Portal</h3>
+              <p>Dedicated workspace for accredited lab chemists to certify test reports, upload assays, and verify IS 10500 compliance.</p>
+              <button onClick={() => navigate('/lab')}>
+                Enter Lab Portal <b>→</b>
               </button>
             </article>
           </div>

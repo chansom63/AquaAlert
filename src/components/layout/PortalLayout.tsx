@@ -116,8 +116,8 @@ const PortalLayout: FC<PortalLayoutProps> = ({
             </button>
           )}
 
-          <button className="back-link" onClick={() => navigate('/upload-document')}>
-            Upload Reports ↗
+          <button className="back-link" onClick={() => navigate('/lab')}>
+            Lab Portal ↗
           </button>
           <button className="back-link" onClick={() => navigate('/')}>
             ← Home
