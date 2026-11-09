@@ -227,7 +227,8 @@
 .portal-top-right {
   display: flex;
   align-items: center;
-  gap: 22px
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .demo-pill {
@@ -241,12 +242,25 @@
 }
 
 .back-link {
-  background: none;
-  border: 0;
-  color: #cfdae4;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  color: #e2e8f0;
   font: inherit;
-  font-size: .78rem;
-  cursor: pointer
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.back-link:hover {
+  background: rgba(30, 41, 59, 0.9);
+  color: #ffffff;
+  border-color: rgba(100, 116, 139, 0.8);
 }
 
 .portal-content {
