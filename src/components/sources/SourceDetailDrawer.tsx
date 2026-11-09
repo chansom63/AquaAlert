@@ -11,7 +11,8 @@ import {
   Download,
   Info,
   Printer,
-  Users
+  Users,
+  CheckCircle2
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { DEMO_SOURCES } from '../../data/demoDataset';
@@ -20,6 +21,7 @@ import type { Reading, Source } from '../../types/water';
 import { HistoricalParameterChart } from '../charts/HistoricalParameterChart';
 import { OverviewParametersView } from '../parameters/OverviewParametersView';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { downloadLaboratoryCertificate } from '../../services/labCertificatePdfService';
 
 export interface SourceDetailDrawerProps {
   sourceId?: string | null;
@@ -125,6 +127,32 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
       signedUrl: `https://water-evidence.gwl-municipal.in/${objectKey}?token=AUTH256-TOKEN-SECURE&expires=300`,
       expiresInSeconds: 300,
     });
+  };
+
+  const [isDownloadingEvidence, setIsDownloadingEvidence] = useState(false);
+  const [evidenceDownloaded, setEvidenceDownloaded] = useState(false);
+
+  const handleDownloadEvidence = async () => {
+    setIsDownloadingEvidence(true);
+    try {
+      await downloadLaboratoryCertificate(
+        {
+          wardNumber: source?.wardNumber || 14,
+          sourceId: source?.sourceId || sourceId,
+          sourceName: source?.name,
+          s3Key: 'evidence/lab-reports/2026-10/gmc-ph-cert-491.pdf',
+          reportId: `GWL-LAB-2026-S${source?.sourceId?.replace(/\D/g, '') || '014'}`,
+          issuedDate: '24 October 2026',
+        },
+        signedUrlData?.signedUrl
+      );
+      setEvidenceDownloaded(true);
+      setTimeout(() => setEvidenceDownloaded(false), 3000);
+    } catch (e) {
+      console.error('Evidence download failed:', e);
+    } finally {
+      setIsDownloadingEvidence(false);
+    }
   };
 
   return (
@@ -425,10 +453,30 @@ export const SourceDetailDrawer: FC<SourceDetailDrawerProps> = ({
                 )}
 
                 {signedUrlData && (
-                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs space-y-2">
-                    <div className="font-semibold text-emerald-300 flex items-center space-x-2">
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>Authorized Pre-Signed URL Issued (Expires in {signedUrlData.expiresInSeconds}s)</span>
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs space-y-2.5">
+                    <div className="font-semibold text-emerald-300 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <span>Authorized Pre-Signed URL Issued (Expires in {signedUrlData.expiresInSeconds}s)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDownloadEvidence}
+                        disabled={isDownloadingEvidence}
+                        className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition cursor-pointer border-0 shadow-sm"
+                      >
+                        {evidenceDownloaded ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                            <span>Downloaded PDF</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3.5 h-3.5 text-white" />
+                            <span>{isDownloadingEvidence ? 'Downloading...' : 'Download Certificate (.pdf)'}</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                     <div className="font-mono text-slate-300 break-all bg-slate-950 p-2.5 rounded border border-slate-800 text-[11px]">
                       {signedUrlData.signedUrl}

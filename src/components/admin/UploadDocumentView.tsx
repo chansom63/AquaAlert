@@ -1001,6 +1001,7 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
                         </button>
                         <a
                           href={resolveSamplePdfUrl(doc)}
+                          download={`${doc.reportId}_certificate.pdf`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition"
@@ -1090,6 +1091,7 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
               </button>
               <a
                 href={resolveSamplePdfUrl(selected)}
+                download={`${selected.reportId}_certificate.pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-blue-500/30 border border-blue-400/40"

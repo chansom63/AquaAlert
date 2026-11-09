@@ -925,6 +925,7 @@ export const ReadingsView: FC<ReadingsViewProps> = ({
 
                 <a
                   href="/sample-reports/ward14_spectroscopic_assay_2026.pdf"
+                  download="ward14_lab_specimen_certificate.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl text-xs transition"

@@ -856,6 +856,7 @@ export const WaterSourcesView: FC<WaterSourcesViewProps> = ({
 
                   <a
                     href="/sample-reports/ward01_tubewell_casing_integrity.pdf"
+                    download="ward01_station_certificate.pdf"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl text-xs transition"

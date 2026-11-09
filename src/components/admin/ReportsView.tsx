@@ -532,7 +532,11 @@ export const ReportsView: FC<ReportsViewProps> = ({
     }
 
     // 2. Real signed URL from backend
-    if (report.downloadUrl && (report.downloadUrl.startsWith('http://') || report.downloadUrl.startsWith('https://'))) {
+    if (
+      report.downloadUrl &&
+      (report.downloadUrl.startsWith('http://') || report.downloadUrl.startsWith('https://')) &&
+      !report.downloadUrl.includes('water-evidence.gwl-municipal.in')
+    ) {
       window.open(report.downloadUrl, '_blank');
       return;
     }
@@ -547,7 +551,11 @@ export const ReportsView: FC<ReportsViewProps> = ({
 
   // Open PDF in tab
   const handleOpenPdfInTab = (report: ReportRow) => {
-    if (report.downloadUrl && (report.downloadUrl.startsWith('http://') || report.downloadUrl.startsWith('https://'))) {
+    if (
+      report.downloadUrl &&
+      (report.downloadUrl.startsWith('http://') || report.downloadUrl.startsWith('https://')) &&
+      !report.downloadUrl.includes('water-evidence.gwl-municipal.in')
+    ) {
       window.open(report.downloadUrl, '_blank');
       return;
     }

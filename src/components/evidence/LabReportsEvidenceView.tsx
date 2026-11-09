@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FC } from 'react';
 import { api } from '../../api/client';
+import { downloadLaboratoryCertificate } from '../../services/labCertificatePdfService';
 import {
   FileText,
   ShieldCheck,
@@ -10,7 +11,8 @@ import {
   CheckCircle2,
   ExternalLink,
   Copy,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 
 export interface LabReportsEvidenceViewProps {
@@ -30,6 +32,8 @@ export const LabReportsEvidenceView: FC<LabReportsEvidenceViewProps> = ({
   const [expiresIn, setExpiresIn] = useState<number>(300);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   const certKey = `evidence/lab-reports/2026-10/gmc-phed-cert-w${String(wardNumber).padStart(2, '0')}.pdf`;
 
@@ -50,6 +54,31 @@ export const LabReportsEvidenceView: FC<LabReportsEvidenceViewProps> = ({
     const sampleUrl = `https://water-evidence.gwl-municipal.in/${certKey}?token=AUTH256-HMAC-SECURE&expires=300&sig=8a4f91b6c82d3...`;
     setIssuedUrl(sampleUrl);
     setExpiresIn(300);
+  };
+
+  const handleDownloadCertificate = async () => {
+    setIsDownloading(true);
+    setError('');
+    try {
+      await downloadLaboratoryCertificate(
+        {
+          wardNumber,
+          sourceId,
+          sourceName,
+          s3Key: certKey,
+          reportId: `GWL-LAB-2026-W${String(wardNumber).padStart(2, '0')}`,
+          issuedDate: '24 October 2026',
+        },
+        issuedUrl
+      );
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3500);
+    } catch (err) {
+      console.error('Download certificate error:', err);
+      setError('Unable to initiate report download. Please retry.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleCopy = () => {
@@ -118,6 +147,31 @@ export const LabReportsEvidenceView: FC<LabReportsEvidenceViewProps> = ({
               <Download className="w-3.5 h-3.5" />
               <span>{isStaff ? 'Issue Pre-Signed Download URL' : 'Request Pre-Signed URL'}</span>
             </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadCertificate}
+              disabled={isDownloading}
+              title="Download laboratory analysis certificate PDF directly"
+              className="px-3.5 py-2.5 bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 hover:text-white font-bold rounded-xl text-xs transition flex items-center space-x-1.5 border border-sky-500/30 cursor-pointer disabled:opacity-50"
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                  <span>Downloading...</span>
+                </>
+              ) : downloadSuccess ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-300">Downloaded</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download PDF</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -143,17 +197,29 @@ export const LabReportsEvidenceView: FC<LabReportsEvidenceViewProps> = ({
             </div>
             <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
               <span>Security Token: SHA-256 HMAC &bull; Document Vault: gmc-water-evidence-archive</span>
-              <a
-                href="#download"
-                onClick={e => {
-                  e.preventDefault();
-                  alert(`Starting authenticated PDF download for ${certKey}...`);
-                }}
-                className="text-sky-400 hover:underline flex items-center space-x-1 font-semibold"
+              <button
+                type="button"
+                onClick={handleDownloadCertificate}
+                disabled={isDownloading}
+                className="text-sky-400 hover:text-sky-300 hover:underline flex items-center space-x-1 font-semibold cursor-pointer bg-transparent border-0 p-0 transition"
               >
-                <span>Download Certificate</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
+                {downloadSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-300">Certificate Downloaded</span>
+                  </>
+                ) : isDownloading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                    <span>Downloading...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Download Certificate</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </>
+                )}
+              </button>
             </div>
           </div>
         )}
