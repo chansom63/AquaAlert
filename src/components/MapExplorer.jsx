@@ -659,34 +659,82 @@ export const MapExplorer = ({
     const sourceCoords = [26.2160, 78.0200]; // Tigra Dam Intake & Water Treatment Headworks
     const targetCoords = [queriedTarget.lat, queriedTarget.lng];
 
-    // Compute realistic municipal piped conduit corridor
-    const route = [
-      sourceCoords,
-      [26.2185, 78.0750], // Tigra Transmission Main
-      [26.2155, 78.1320], // Gol Pahariya / Lashkar Gateway WTP
-    ];
+    // Compute realistic municipal piped conduit corridor (strictly forward-flowing from Tigra Dam)
+    const route = [sourceCoords];
+    const tigraMain = [26.2185, 78.0750];
+    const golPahariya = [26.2155, 78.1320];
 
-    if (queriedTarget.lat > 26.230) {
-      route.push([26.2280, 78.1550]);
-      if (queriedTarget.lng > 78.180) {
-        route.push([26.2380, 78.1780]);
+    const tLat = queriedTarget.lat;
+    const tLng = queriedTarget.lng;
+
+    // 1. West-to-East transmission from Tigra Dam Headworks towards Tigra Main Hub
+    if (tLng > 78.040) {
+      if (tLng < 78.0750) {
+        const ratio = (tLng - 78.0200) / (78.0750 - 78.0200);
+        const interLat = sourceCoords[0] + (tigraMain[0] - sourceCoords[0]) * ratio;
+        route.push([Number(interLat.toFixed(4)), tLng]);
+      } else {
+        route.push(tigraMain);
       }
-    } else if (queriedTarget.lat < 26.195) {
-      route.push([26.2050, 78.1480]);
-      route.push([26.1920, 78.1580]);
-    } else if (queriedTarget.lng > 78.185) {
-      route.push([26.2120, 78.1650]);
-      route.push([26.2140, 78.1880]);
-    } else {
-      route.push([26.2110, 78.1580]);
-      route.push([26.2135, 78.1660]);
     }
-    route.push(targetCoords);
+
+    // 2. Gateway feeder to Gol Pahariya / Lashkar Western WTP Gateway
+    if (tLng > 78.090) {
+      if (tLng < 78.1320) {
+        const ratio = (tLng - 78.0750) / (78.1320 - 78.0750);
+        const interLat = tigraMain[0] + (golPahariya[0] - tigraMain[0]) * ratio;
+        route.push([Number(interLat.toFixed(4)), tLng]);
+      } else {
+        route.push(golPahariya);
+      }
+    }
+
+    // 3. Directional municipal distribution from Gol Pahariya towards queried target:
+    if (tLng > 78.1320) {
+      // North sector (Hazira, Gwalior Fort north, Morar north)
+      if (tLat > 26.225) {
+        if (tLng > 78.150) {
+          route.push([26.2280, Math.min(78.1550, tLng)]);
+          if (tLng > 78.175) {
+            route.push([26.2360, Math.min(78.1780, tLng)]);
+          }
+        }
+      }
+      // South sector (Lashkar south, Kampoo, Maharaj Bada, Amkhoh)
+      else if (tLat < 26.205) {
+        if (tLng > 78.140) {
+          route.push([26.2060, Math.min(78.1460, tLng)]);
+          if (tLat < 26.195 && tLng > 78.152) {
+            route.push([26.1960, Math.min(78.1560, tLng)]);
+          }
+        }
+      }
+      // Far East sector (Thatipur, Morar East, City Center)
+      else if (tLng > 78.165) {
+        route.push([26.2120, 78.1580]);
+        if (tLng > 78.180) {
+          route.push([26.2140, 78.1800]);
+        }
+      }
+      // Central sector (Motimahal, Jayendraganj, Laxmi Ganj)
+      else if (tLng > 78.145) {
+        route.push([26.2130, Math.min(78.1520, tLng)]);
+      }
+    }
+
+    // Append target coords if not redundant with last waypoint
+    const lastPt = route[route.length - 1];
+    if (Math.abs(lastPt[0] - targetCoords[0]) > 0.0002 || Math.abs(lastPt[1] - targetCoords[1]) > 0.0002) {
+      route.push(targetCoords);
+    }
+    if (route.length < 2) {
+      route.push(targetCoords);
+    }
 
     // 1. Base pipeline trench
     const pipeBase = L.polyline(route, {
       color: '#075985',
-      weight: 6,
+      weight: 5,
       opacity: 0.5,
       lineCap: 'round',
       lineJoin: 'round'
@@ -696,10 +744,12 @@ export const MapExplorer = ({
     // 2. High-contrast moving flow line with continuous dashed animation
     const movingLine = L.polyline(route, {
       color: '#00f0ff',
-      weight: 4,
+      weight: 3.5,
       dashArray: '12, 14',
       className: 'leaflet-conduit-flow-active',
-      opacity: 0.95
+      opacity: 0.95,
+      lineCap: 'round',
+      lineJoin: 'round'
     });
     movingLine.bindTooltip(`
       <div style="font-family: 'Inter', system-ui; font-size: 11px; padding: 2px;">
