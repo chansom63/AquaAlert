@@ -1,14 +1,44 @@
 import type { FC } from 'react';
 
-const WaterIllustration: FC<{ type: 'test' | 'alert' | 'response' }> = ({ type }) => (
+export type WaterIllustrationType = 'test' | 'alert' | 'response' | 'citizen' | 'admin' | 'lab';
+
+const WaterIllustration: FC<{ type: WaterIllustrationType }> = ({ type }) => (
   <svg className={`journey-art journey-art-${type}`} viewBox="0 0 320 210" aria-hidden="true">
     <defs>
       <linearGradient id={`water-${type}`} x1="0" x2="0" y1="0" y2="1">
-        <stop stopColor="#43e5ff" />
-        <stop offset="1" stopColor="#087bb8" />
+        <stop
+          stopColor={
+            type === 'admin'
+              ? '#ff637e'
+              : type === 'lab'
+              ? '#c084fc'
+              : '#43e5ff'
+          }
+        />
+        <stop
+          offset="1"
+          stopColor={
+            type === 'admin'
+              ? '#be123c'
+              : type === 'lab'
+              ? '#7e22ce'
+              : '#087bb8'
+          }
+        />
       </linearGradient>
       <radialGradient id={`glow-${type}`}>
-        <stop stopColor={type === 'alert' ? '#ff4267' : type === 'response' ? '#00f5c8' : '#00d9ff'} stopOpacity=".32" />
+        <stop
+          stopColor={
+            type === 'alert' || type === 'admin'
+              ? '#ff4267'
+              : type === 'lab'
+              ? '#c084fc'
+              : type === 'response'
+              ? '#00f5c8'
+              : '#00d9ff'
+          }
+          stopOpacity=".35"
+        />
         <stop offset="1" stopColor="#00d9ff" stopOpacity="0" />
       </radialGradient>
     </defs>
@@ -63,7 +93,147 @@ const WaterIllustration: FC<{ type: 'test' | 'alert' | 'response' }> = ({ type }
         <path d="m190 145 5 5 11-12" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       </>
     )}
+    {type === 'citizen' && (
+      <>
+        {/* Glow backdrop */}
+        <circle cx="160" cy="105" r="95" fill={`url(#glow-${type})`} />
+
+        {/* Mobile Telemetry Panel Frame */}
+        <rect x="95" y="28" width="130" height="155" rx="18" fill="#071b34" stroke="#22d3ee" strokeWidth="2.5" />
+        <rect x="135" y="34" width="50" height="4" rx="2" fill="#0f3d64" />
+
+        {/* Radar & GIS grid rings */}
+        <circle cx="160" cy="85" r="38" fill="none" stroke="#06b6d4" strokeWidth="1" strokeDasharray="3 3" opacity=".4" />
+        <circle cx="160" cy="85" r="22" fill="#0891b222" stroke="#22d3ee" strokeWidth="1.5" />
+
+        {/* Map Location Pin for Gwalior Ward */}
+        <path d="M160 67a10 10 0 0 0-10 10c0 7 10 16 10 16s10-9 10-16a10 10 0 0 0-10-10z" fill="#06b6d4" stroke="#67e8f9" strokeWidth="1.5" />
+        <circle cx="160" cy="77" r="3.5" fill="#fff" />
+
+        {/* Telemetry Status Pill */}
+        <rect x="108" y="112" width="104" height="26" rx="8" fill="#042340" stroke="#0284c7" strokeWidth="1.5" />
+        <circle cx="120" cy="125" r="4" fill="#10b981" />
+        <text x="130" y="128" fill="#a5f3fc" fontSize="9" fontWeight="bold" fontFamily="monospace">
+          WARD 14 · SAFE
+        </text>
+        <rect x="108" y="145" width="104" height="18" rx="6" fill="#0f2b4c" />
+        <text x="116" y="157" fill="#7dd3fc" fontSize="8" fontFamily="monospace">
+          pH 7.2 · Turb 0.4 NTU
+        </text>
+
+        {/* Floating Citizen Protection Shield on Left */}
+        <circle cx="68" cy="135" r="24" fill="#061e38" stroke="#38bdf8" strokeWidth="2" />
+        <path d="M68 120c-5 8-9 13-9 18a9 9 0 0 0 18 0c0-5-4-10-9-18z" fill={`url(#water-${type})`} />
+        <circle cx="83" cy="148" r="8" fill="#10b981" stroke="#6ee7b7" strokeWidth="1.5" />
+        <path d="m80 148 2 2 4-4" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+      </>
+    )}
+    {type === 'admin' && (
+      <>
+        {/* Glow backdrop */}
+        <circle cx="160" cy="105" r="95" fill={`url(#glow-${type})`} />
+
+        {/* Municipal Console Frame */}
+        <rect x="58" y="38" width="204" height="136" rx="14" fill="#09142e" stroke="#f43f5e" strokeWidth="2.5" />
+        <path d="M58 66h204" stroke="#1e2954" strokeWidth="2" />
+
+        {/* 3 Console Status Lights */}
+        <circle cx="74" cy="52" r="3.5" fill="#f43f5e" />
+        <circle cx="86" cy="52" r="3.5" fill="#f59e0b" />
+        <circle cx="98" cy="52" r="3.5" fill="#10b981" />
+        <text x="112" y="55" fill="#94a3b8" fontSize="8" fontWeight="bold" fontFamily="monospace">
+          MUNICIPAL CONTROL ROOM
+        </text>
+
+        {/* Central Shield with Key / Lock */}
+        <path d="M125 78h30l5 22c0 22-20 32-20 32s-20-10-20-32z" fill="#1e1b4b" stroke="#f43f5e" strokeWidth="2" />
+        <circle cx="140" cy="98" r="7" fill="#fbbf24" />
+        <rect x="138" y="103" width="4" height="12" rx="1" fill="#fbbf24" />
+        <rect x="140" y="110" width="5" height="3" fill="#fbbf24" />
+
+        {/* Sliders / Threshold limits on the right */}
+        {[0, 1, 2].map(n => (
+          <g key={n}>
+            <rect x="175" y={82 + n * 24} width="72" height="5" rx="2.5" fill="#1e2954" />
+            <rect
+              x="175"
+              y={82 + n * 24}
+              width={n === 0 ? 52 : n === 1 ? 38 : 60}
+              height="5"
+              rx="2.5"
+              fill={n === 0 ? '#f43f5e' : n === 1 ? '#38bdf8' : '#10b981'}
+            />
+            <circle
+              cx={175 + (n === 0 ? 52 : n === 1 ? 38 : 60)}
+              cy={84.5 + n * 24}
+              r="5"
+              fill="#fff"
+              stroke="#f43f5e"
+              strokeWidth="1.5"
+            />
+          </g>
+        ))}
+
+        {/* Pulse Telemetry Wave on bottom */}
+        <path d="M72 154h30l6-12 8 20 8-16 6 8h35" fill="none" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="165" cy="154" r="3" fill="#10b981" />
+        <text x="173" y="157" fill="#6ee7b7" fontSize="8" fontFamily="monospace">
+          ALL 66 WARDS ONLINE
+        </text>
+      </>
+    )}
+    {type === 'lab' && (
+      <>
+        {/* Glow backdrop */}
+        <circle cx="160" cy="105" r="95" fill={`url(#glow-${type})`} />
+
+        {/* Erlenmeyer Flask on Left */}
+        {/* Neck */}
+        <rect x="76" y="52" width="22" height="34" rx="2" fill="#0d1436" stroke="#c084fc" strokeWidth="2.5" />
+        <rect x="72" y="48" width="30" height="6" rx="2" fill="#7e22ce" stroke="#c084fc" strokeWidth="1.5" />
+        {/* Conical Flask Body */}
+        <path d="M76 84 46 152a8 8 0 0 0 7 11h68a8 8 0 0 0 7-11l-30-68z" fill="#0d1436" stroke="#c084fc" strokeWidth="2.5" />
+        {/* Liquid inside flask with meniscus */}
+        <path d="M57 126 47 149a6 6 0 0 0 5 9h70a6 6 0 0 0 5-9l-10-23c-11 5-23 0-35 4s-24-4-35-4z" fill={`url(#water-${type})`} opacity=".85" />
+        {/* Graduation lines */}
+        <path d="M84 100h10M81 114h14M77 130h16M74 144h18" stroke="#e9d5ff" strokeWidth="1.5" strokeLinecap="round" opacity=".7" />
+        {/* Effervescent bubbles */}
+        <circle cx="82" cy="142" r="2.5" fill="#fff" opacity=".8" />
+        <circle cx="94" cy="134" r="3.5" fill="#fff" opacity=".7" />
+        <circle cx="86" cy="120" r="2" fill="#fff" opacity=".9" />
+
+        {/* Analytical Assay Certificate Card on Right */}
+        <rect x="146" y="44" width="134" height="128" rx="12" fill="#091330" stroke="#818cf8" strokeWidth="2" />
+        {/* NABL Badge header */}
+        <rect x="156" y="54" width="84" height="16" rx="4" fill="#3b0764" stroke="#a855f7" strokeWidth="1" />
+        <text x="162" y="66" fill="#e9d5ff" fontSize="8" fontWeight="bold" fontFamily="monospace">
+          NABL TC-8491
+        </text>
+
+        {/* Chemical Parameter Test Rows */}
+        <text x="156" y="86" fill="#cbd5e1" fontSize="9" fontWeight="600">
+          Chemical Assay
+        </text>
+        <text x="156" y="102" fill="#a5b4fc" fontSize="8">
+          pH 7.35 · Free Cl 0.4mg/L
+        </text>
+        <text x="156" y="116" fill="#a5b4fc" fontSize="8">
+          Turbidity 0.6 NTU (Nominal)
+        </text>
+        <text x="156" y="130" fill="#a5b4fc" fontSize="8">
+          Faecal Coliform: 0 CFU
+        </text>
+
+        {/* Certified Stamp */}
+        <circle cx="250" cy="142" r="16" fill="#581c87" stroke="#c084fc" strokeWidth="2" />
+        <path d="m243 142 4 4 9-9" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <text x="250" y="166" textAnchor="middle" fill="#c084fc" fontSize="7" fontWeight="bold" fontFamily="monospace">
+          ISO 17025
+        </text>
+      </>
+    )}
   </svg>
 );
 
 export default WaterIllustration;
+

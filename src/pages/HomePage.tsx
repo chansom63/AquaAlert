@@ -57,18 +57,87 @@ const HomePage: FC = () => {
                 View response <b>→</b>
               </button>
             </article>
-            <article className="water-card">
-              <WaterIllustration type="test" />
-              <h3>Laboratory Analytical Portal</h3>
-              <p>Dedicated workspace for accredited lab chemists to certify test reports, upload assays, and verify IS 10500 compliance.</p>
-              <button onClick={() => navigate('/lab')}>
-                Enter Lab Portal <b>→</b>
-              </button>
-            </article>
           </div>
           <div className="water-footnote">
             <span>DEMO DATA · Illustrative readings</span>
             <span>Screening results do not certify water safety.</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 2. DEDICATED STAKEHOLDER PORTAL ACCESS & LOGIN SECTION       */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <section className="water-section login-portals-section" id="login-portals">
+        <div className="water-shell">
+          <header className="water-heading">
+            <span className="portal-kicker">ROLE-BASED AUTHENTICATION · THREE DEDICATED PORTALS</span>
+            <h2>
+              Portal login,
+              <br />
+              <em>secure access for every stakeholder.</em>
+            </h2>
+            <p>
+              Select your authorized workspace below to access live public telemetry, statutory municipal administration consoles, or accredited analytical laboratory desks.
+            </p>
+          </header>
+
+          <div className="water-grid login-portals-grid">
+            {/* Card 1: Citizen & Resident Portal Login */}
+            <article className="water-card login-card login-card-citizen">
+              <div className="login-card-badge citizen-badge">PUBLIC CITIZEN ACCESS</div>
+              <WaterIllustration type="citizen" />
+              <h3>Citizen Portal Login</h3>
+              <p>
+                Explore real-time Gwalior ward tap potability, interactive GIS contamination maps, published safety advisories, and file municipal water complaints directly with the city surveillance desk.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/user')}
+                className="login-card-btn citizen-btn"
+              >
+                <span>Login as a user</span> <b>→</b>
+              </button>
+            </article>
+
+            {/* Card 2: Municipal Administrator Console Login */}
+            <article className="water-card login-card login-card-admin">
+              <div className="login-card-badge admin-badge">RESTRICTED MUNICIPAL ADMIN</div>
+              <WaterIllustration type="admin" />
+              <h3>Admin Console Login</h3>
+              <p>
+                Configure BIS IS 10500 regulatory thresholds, evaluate automated anomaly alerts, dispatch ward inspection crews, track grievance triages, and log immutable response action ledgers.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/admin')}
+                className="login-card-btn admin-btn"
+              >
+                <span>Login as admin</span> <b>→</b>
+              </button>
+            </article>
+
+            {/* Card 3: Laboratory Personnel Login */}
+            <article className="water-card login-card login-card-lab">
+              <div className="login-card-badge lab-badge">NABL ACCREDITED TESTING DESK</div>
+              <WaterIllustration type="lab" />
+              <h3>Lab Personnel Login</h3>
+              <p>
+                Accredited analytical testing desk for certified chemists to upload PDF test certificates, record spectrometry assays, validate coliform CFU parameters, and manage AES-256 S3 evidence archives.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/lab')}
+                className="login-card-btn lab-btn"
+              >
+                <span>Login as lab personnel</span> <b>→</b>
+              </button>
+            </article>
+          </div>
+
+          <div className="water-footnote">
+            <span>CENTRAL AWS COGNITO AUTHENTICATION · ROLE-BASED ACCESS CONTROL (RBAC)</span>
+            <span>NABL ISO/IEC 17025 &amp; BIS IS 10500:2012 Statutory Compliance</span>
           </div>
         </div>
       </section>

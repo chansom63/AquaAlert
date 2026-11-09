@@ -65,7 +65,8 @@ const SCENE_DURATION = 7000; // ms
 
 const NAV_LINKS = [
   { label: 'Home',            href: '#home' },
-  { label: 'Live Monitoring', href: '#monitoring' },
+  { label: 'Live Monitoring', href: '#water-testing' },
+  { label: 'Portals Login',   href: '#login-portals' },
   { label: 'Water Quality',   href: '#quality' },
   { label: 'Our Technology',  href: '#technology' },
   { label: 'About Us',        href: '#about' },

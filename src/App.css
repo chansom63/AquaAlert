@@ -5280,3 +5280,174 @@
 .coverage-card button{margin-top:22px;border:0;background:none;padding:0;color:#087f9b;font:700 .75rem Inter,system-ui,sans-serif;cursor:pointer}
 .coverage-card button b{padding-left:8px}
 @media(max-width:760px){.quality-grid{grid-template-columns:1fr}.quality-grid article{min-height:0}.quality-note{align-items:flex-start;flex-direction:column;gap:4px}.technology-layout,.about-layout{grid-template-columns:1fr;gap:35px}.coverage-card{max-width:440px}}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Dedicated Stakeholder Login & Portals Section
+───────────────────────────────────────────────────────────────────────────── */
+.login-portals-section {
+  position: relative;
+  border-top: 1px solid rgba(56, 189, 248, 0.12);
+  background: radial-gradient(ellipse at 50% 0%, rgba(14, 55, 95, 0.45) 0%, transparent 65%),
+              linear-gradient(180deg, #061527 0%, #081d36 50%, #051222 100%);
+  padding: clamp(70px, 8vw, 110px) 24px;
+}
+
+.login-portals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 20px;
+  margin-top: 36px;
+}
+
+.login-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+  padding: 24px 22px;
+  border-radius: 18px;
+  background: linear-gradient(155deg, rgba(10, 43, 75, 0.85), rgba(7, 27, 50, 0.95));
+  border: 1px solid rgba(182, 234, 255, 0.16);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.28s ease;
+  overflow: hidden;
+}
+
+.login-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+}
+
+.login-card-citizen:hover {
+  border-color: rgba(34, 211, 238, 0.55);
+}
+
+.login-card-admin:hover {
+  border-color: rgba(244, 63, 94, 0.55);
+}
+
+.login-card-lab:hover {
+  border-color: rgba(192, 132, 252, 0.55);
+}
+
+.login-card-badge {
+  align-self: flex-start;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.09em;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.citizen-badge {
+  background: rgba(6, 182, 212, 0.18);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.admin-badge {
+  background: rgba(244, 63, 94, 0.18);
+  color: #fda4af;
+  border: 1px solid rgba(244, 63, 94, 0.4);
+}
+
+.lab-badge {
+  background: rgba(168, 85, 247, 0.18);
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.login-card h3 {
+  font-family: 'Barlow Condensed', Inter, sans-serif;
+  text-transform: uppercase;
+  font-size: 1.55rem;
+  letter-spacing: 0.02em;
+  margin: 10px 0 8px;
+  color: #ffffff;
+}
+
+.login-card > p {
+  color: #9eb4c8;
+  font-size: 0.78rem;
+  line-height: 1.65;
+  margin: 0 0 20px;
+}
+
+.login-card-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  font-family: Inter, system-ui, sans-serif;
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+
+.login-card-btn b {
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.login-card-btn:hover b {
+  transform: translateX(4px);
+}
+
+.citizen-btn {
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: #083354;
+  color: #e0f2fe;
+}
+
+.citizen-btn:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
+}
+
+.admin-btn {
+  border: 1px solid rgba(244, 63, 94, 0.45);
+  background: #391122;
+  color: #ffe4e6;
+}
+
+.admin-btn:hover {
+  background: #e11d48;
+  color: #ffffff;
+  border-color: #fb7185;
+  box-shadow: 0 6px 20px rgba(225, 29, 72, 0.45);
+}
+
+.lab-btn {
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  background: #2b114d;
+  color: #f3e8ff;
+}
+
+.lab-btn:hover {
+  background: #7e22ce;
+  color: #ffffff;
+  border-color: #c084fc;
+  box-shadow: 0 6px 20px rgba(126, 34, 206, 0.45);
+}
+
+@media (max-width: 900px) {
+  .login-portals-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .login-card {
+    min-height: auto;
+  }
+}
+
