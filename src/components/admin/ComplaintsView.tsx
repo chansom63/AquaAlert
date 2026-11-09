@@ -719,32 +719,44 @@ export const ComplaintsView: FC<ComplaintsViewProps> = ({
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#1e3470]">
+            <div className="flex items-center justify-between pt-3 border-t border-[#1e3470]">
               <button
                 type="button"
-                onClick={() => setIsDossierOpen(false)}
-                className="px-4 py-2 bg-[#12234e] hover:bg-[#1a316b] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer border border-[#1e3470]"
+                onClick={() => handleDelete(selectedComplaint)}
+                className="px-3.5 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white rounded-xl text-xs font-semibold transition cursor-pointer border border-rose-800/50 flex items-center gap-1.5"
+                title="Dismiss and purge this complaint record"
               >
-                Cancel
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Dismiss Grievance</span>
               </button>
-              <button
-                type="button"
-                onClick={handleSaveDossier}
-                disabled={isSubmitting}
-                className="px-5 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-blue-600/25 cursor-pointer disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Saving Updates…</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Save Updates to Complaints Table</span>
-                  </>
-                )}
-              </button>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsDossierOpen(false)}
+                  className="px-4 py-2 bg-[#12234e] hover:bg-[#1a316b] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer border border-[#1e3470]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDossier}
+                  disabled={isSubmitting}
+                  className="px-5 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-blue-600/25 cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Saving Updates…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Save Updates to Complaints Table</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

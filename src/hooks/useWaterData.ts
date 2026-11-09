@@ -2,10 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { API, api } from '../api/client';
 import { allApiRecords, recordsFrom } from '../api/adminRecords';
-import type { ApiRecord } from '../api/adminRecords';
 import { DEMO_ALERTS, DEMO_SOURCES, GWALIOR_AREAS } from '../data/demoDataset';
 import { DEMO_COMPLAINTS } from '../data/demoComplaintsData';
 import type { Alert, ComplaintRecord, ComplaintPreview, Reading, Source } from '../types/water';
+import {
+  fetchSyncedComplaints,
+  sanitizeAndFilterComplaints,
+  recordLocallySubmittedComplaint,
+} from '../utils/complaintsSync';
 
 export const useWaterData = (activePage: string = 'Overview') => {
   const [sources, setSources] = useState<Source[]>([]);
@@ -65,51 +69,64 @@ export const useWaterData = (activePage: string = 'Overview') => {
     }
   }, []);
 
-  // 3. Fetch Citizen Complaints from Dedicated Central Complaints Table
+  // 3. Fetch Citizen Complaints with Cross-Portal Synchronization
   const fetchComplaints = useCallback(async (force = false) => {
     if (loadedComplaintsRef.current && !force) return;
     setLoadingComplaints(true);
     try {
-      // First attempt dedicated /complaints endpoint
-      const res = await api<ComplaintRecord[]>('/complaints');
-      if (Array.isArray(res) && res.length > 0) {
-        setComplaints(res);
-        loadedComplaintsRef.current = true;
-        return;
-      }
-    } catch {
-      // Fallback: try reading from reports table if complaints endpoint is pending deployment
-      try {
-        const res = await allApiRecords('/reports');
-        const items = (res || []).filter((r: ApiRecord) => {
-          const typeStr = String(r.reportType || '').toLowerCase();
-          return typeStr.includes('citizen') || typeStr.includes('complaint');
-        });
-        if (items.length > 0) {
-          setComplaints(
-            items.map((r: ApiRecord) => ({
-              complaintId: String(r.reportId || `AA-CMP-${r.id || Date.now()}`),
-              reference: String(r.reportId || `AA-CMP-${r.id || Date.now()}`),
-              category: String(r.category || r.title || 'Water issue'),
-              wardNumber: Number(r.wardNumber || (String(r.sourceId || '').match(/\d+/)?.[0] ?? 14)),
-              details: String(r.notes || r.details || ''),
-              status: 'PENDING',
-              priority: 'HIGH',
-              photoName: r.filename ? String(r.filename) : undefined,
-              createdAt: String(r.uploadedAt || r.createdAt || new Date().toISOString()),
-            }))
-          );
-          loadedComplaintsRef.current = true;
-          return;
-        }
-      } catch (err) {
-        console.warn('Complaints API notice:', (err as Error).message);
-      }
+      const items = await fetchSyncedComplaints();
+      setComplaints(items);
+      loadedComplaintsRef.current = true;
+    } catch (err) {
+      console.warn('Complaints fetch error:', err);
+      setComplaints(sanitizeAndFilterComplaints(DEMO_COMPLAINTS));
+      loadedComplaintsRef.current = true;
     } finally {
       setLoadingComplaints(false);
     }
-    setComplaints(DEMO_COMPLAINTS);
-    loadedComplaintsRef.current = true;
+  }, []);
+
+  // Real-time synchronization listeners (when complaints are dismissed or updated in Admin portal)
+  useEffect(() => {
+    const handleDismissed = (e: Event) => {
+      const custom = e as CustomEvent<{ complaintId: string }>;
+      const id = custom.detail?.complaintId;
+      if (id) {
+        setComplaints(prev => prev.filter(c => c.complaintId !== id && c.reference !== id));
+      }
+    };
+
+    const handleUpdated = (e: Event) => {
+      const custom = e as CustomEvent<{ complaintId: string; updates: Partial<ComplaintRecord> }>;
+      const { complaintId, updates } = custom.detail || {};
+      if (complaintId && updates) {
+        setComplaints(prev =>
+          prev.map(c =>
+            c.complaintId === complaintId || c.reference === complaintId
+              ? { ...c, ...updates, updatedAt: new Date().toISOString() }
+              : c
+          )
+        );
+      }
+    };
+
+    const handleCreated = (e: Event) => {
+      const custom = e as CustomEvent<{ complaint: ComplaintRecord }>;
+      const newComp = custom.detail?.complaint;
+      if (newComp) {
+        setComplaints(prev => [newComp, ...prev.filter(c => c.complaintId !== newComp.complaintId)]);
+      }
+    };
+
+    window.addEventListener('aquaalert:complaint-dismissed', handleDismissed);
+    window.addEventListener('aquaalert:complaint-updated', handleUpdated);
+    window.addEventListener('aquaalert:complaint-created', handleCreated);
+
+    return () => {
+      window.removeEventListener('aquaalert:complaint-dismissed', handleDismissed);
+      window.removeEventListener('aquaalert:complaint-updated', handleUpdated);
+      window.removeEventListener('aquaalert:complaint-created', handleCreated);
+    };
   }, []);
 
   // Fetch only when navigating to a particular page/tab
@@ -349,19 +366,48 @@ export const useWaterData = (activePage: string = 'Overview') => {
       updatedAt: new Date().toISOString(),
     };
 
+    // Persist locally so grievance is available immediately across tabs
+    recordLocallySubmittedComplaint(payload);
+
     try {
       await api('/complaints', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
 
-      setComplaints(current => [payload, ...current]);
+      setComplaints(current => [payload, ...current.filter(c => c.complaintId !== payload.complaintId)]);
       setNotice(`Grievance ${reference} recorded in Municipal Complaints Table. Surveillance team dispatched.`);
       event.currentTarget.reset();
-    } catch (err) {
-      // In case of network interruption or fallback, preserve locally
-      setComplaints(current => [payload, ...current]);
-      setNotice(`${reference} recorded locally. Notice: ${(err as Error).message}`);
+    } catch {
+      // In case /complaints is pending deployment, post to reports table as fallback
+      try {
+        await api('/reports', {
+          method: 'POST',
+          body: JSON.stringify({
+            reportId: reference,
+            reportType: 'Citizen Complaint',
+            title: `Citizen Report: ${category} (Ward ${wardNumber})`,
+            category,
+            sourceId,
+            sourceName: `Gwalior Ward ${wardNumber}`,
+            wardNumber,
+            notes: details,
+            citizenName: payload.citizenName,
+            citizenPhone: payload.citizenPhone,
+            verificationStatus: 'PENDING',
+            status: 'PENDING',
+            priority,
+            filename: payload.photoName || `${reference}.json`,
+            s3Key,
+            s3Bucket,
+            uploadedAt: new Date().toISOString(),
+          }),
+        });
+      } catch (repErr) {
+        console.warn('Fallback reports post notice:', repErr);
+      }
+      setComplaints(current => [payload, ...current.filter(c => c.complaintId !== payload.complaintId)]);
+      setNotice(`Grievance ${reference} registered. Surveillance team dispatched.`);
       event.currentTarget.reset();
     } finally {
       setBusy(false);

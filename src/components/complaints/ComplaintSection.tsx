@@ -9,7 +9,8 @@ import {
   Phone,
   ShieldAlert,
   User,
-  Users
+  Users,
+  XCircle,
 } from 'lucide-react';
 
 export interface ComplaintSectionProps {
@@ -45,6 +46,14 @@ const getStatusBadge = (status?: string) => {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-950/80 text-blue-300 border border-blue-500/50">
           <span>TRIAGED</span>
+        </span>
+      );
+    case 'REJECTED':
+    case 'DISMISSED':
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-950/80 text-rose-300 border border-rose-600/50">
+          <XCircle className="w-2.5 h-2.5" />
+          <span>DISMISSED</span>
         </span>
       );
     default:

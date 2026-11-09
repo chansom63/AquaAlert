@@ -6,6 +6,13 @@ import { DEMO_SOURCES, DEMO_ALERTS } from '../data/demoDataset';
 import { DEMO_ADMIN_READINGS, DEMO_ADMIN_ACTIONS } from '../data/demoAdminData';
 import { DEMO_COMPLAINTS } from '../data/demoComplaintsData';
 import type { RuleItem, ThresholdStandard } from '../components/admin/RulesThresholdsView';
+import {
+  fetchSyncedComplaints,
+  sanitizeAndFilterComplaints,
+  dismissComplaintEverywhere,
+  updateComplaintEverywhere,
+  recordLocallySubmittedComplaint,
+} from '../utils/complaintsSync';
 
 export interface LabReportRecord {
   reportId: string;
@@ -235,19 +242,59 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     if (loadedComplaintsRef.current && !force) return;
     setLoadingComplaints(true);
     try {
-      const res = await api<ComplaintRecord[]>('/complaints');
-      if (Array.isArray(res) && res.length > 0) {
-        setComplaints(res);
-        loadedComplaintsRef.current = true;
-        return;
-      }
+      const items = await fetchSyncedComplaints();
+      setComplaints(items);
+      loadedComplaintsRef.current = true;
     } catch (err) {
-      console.warn('Complaints API notice:', (err as Error).message);
+      console.warn('Admin complaints fetch warning:', err);
+      setComplaints(sanitizeAndFilterComplaints(DEMO_COMPLAINTS));
+      loadedComplaintsRef.current = true;
     } finally {
       setLoadingComplaints(false);
     }
-    setComplaints(DEMO_COMPLAINTS);
-    loadedComplaintsRef.current = true;
+  }, []);
+
+  // Real-time synchronization listeners for complaints across portals
+  useEffect(() => {
+    const handleDismissed = (e: Event) => {
+      const custom = e as CustomEvent<{ complaintId: string }>;
+      const id = custom.detail?.complaintId;
+      if (id) {
+        setComplaints(prev => prev.filter(c => c.complaintId !== id && c.reference !== id));
+      }
+    };
+
+    const handleUpdated = (e: Event) => {
+      const custom = e as CustomEvent<{ complaintId: string; updates: Partial<ComplaintRecord> }>;
+      const { complaintId, updates } = custom.detail || {};
+      if (complaintId && updates) {
+        setComplaints(prev =>
+          prev.map(c =>
+            c.complaintId === complaintId || c.reference === complaintId
+              ? { ...c, ...updates, updatedAt: new Date().toISOString() }
+              : c
+          )
+        );
+      }
+    };
+
+    const handleCreated = (e: Event) => {
+      const custom = e as CustomEvent<{ complaint: ComplaintRecord }>;
+      const newComp = custom.detail?.complaint;
+      if (newComp) {
+        setComplaints(prev => [newComp, ...prev.filter(c => c.complaintId !== newComp.complaintId)]);
+      }
+    };
+
+    window.addEventListener('aquaalert:complaint-dismissed', handleDismissed);
+    window.addEventListener('aquaalert:complaint-updated', handleUpdated);
+    window.addEventListener('aquaalert:complaint-created', handleCreated);
+
+    return () => {
+      window.removeEventListener('aquaalert:complaint-dismissed', handleDismissed);
+      window.removeEventListener('aquaalert:complaint-updated', handleUpdated);
+      window.removeEventListener('aquaalert:complaint-created', handleCreated);
+    };
   }, []);
 
   useEffect(() => {
@@ -622,24 +669,42 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
       updatedAt: new Date().toISOString(),
       ...newComplaint,
     };
+
+    recordLocallySubmittedComplaint(payload);
+
     try {
       await api('/complaints', { method: 'POST', body: JSON.stringify(payload) });
-    } catch (err) {
-      console.warn('Create complaint API notice:', err);
+    } catch {
+      try {
+        await api('/reports', {
+          method: 'POST',
+          body: JSON.stringify({
+            reportId: complaintId,
+            reportType: 'Citizen Complaint',
+            title: `Citizen Report: ${payload.category} (Ward ${payload.wardNumber})`,
+            category: payload.category,
+            sourceId: payload.sourceId,
+            sourceName: payload.sourceName,
+            wardNumber: payload.wardNumber,
+            notes: payload.details,
+            citizenName: payload.citizenName,
+            citizenPhone: payload.citizenPhone,
+            verificationStatus: payload.status,
+            status: payload.status,
+            priority: payload.priority,
+            filename: `${complaintId}.json`,
+            uploadedAt: payload.createdAt,
+          }),
+        });
+      } catch (repErr) {
+        console.warn('Fallback reports post notice:', repErr);
+      }
     }
-    setComplaints(prev => [payload, ...prev]);
+    setComplaints(prev => [payload, ...prev.filter(c => c.complaintId !== payload.complaintId)]);
     return payload;
   }, []);
 
   const updateComplaint = useCallback(async (complaintId: string, updates: Partial<ComplaintRecord>): Promise<void> => {
-    try {
-      await api(`/complaints/${encodeURIComponent(complaintId)}`, {
-        method: 'PUT',
-        body: JSON.stringify(updates),
-      });
-    } catch (err) {
-      console.warn('Update complaint API notice:', err);
-    }
     setComplaints(prev =>
       prev.map(c =>
         c.complaintId === complaintId || c.reference === complaintId
@@ -647,15 +712,12 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
           : c
       )
     );
+    await updateComplaintEverywhere(complaintId, updates);
   }, []);
 
   const deleteComplaint = useCallback(async (complaintId: string): Promise<void> => {
-    try {
-      await api(`/complaints/${encodeURIComponent(complaintId)}`, { method: 'DELETE' });
-    } catch (err) {
-      console.warn('Delete complaint API notice:', err);
-    }
     setComplaints(prev => prev.filter(c => c.complaintId !== complaintId && c.reference !== complaintId));
+    await dismissComplaintEverywhere(complaintId);
   }, []);
 
   return {
