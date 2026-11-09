@@ -131,12 +131,14 @@ export const recordLocallySubmittedComplaint = (complaint: ComplaintRecord): voi
 
 /**
  * Normalize and filter a list of complaints:
- * 1. Filter out dismissed complaints
- * 2. Apply status and resolution overrides
- * 3. Merge locally submitted complaints
+ * 1. Seed baseline DEMO_COMPLAINTS so demo data always remains available alongside new submissions
+ * 2. Filter out dismissed complaints
+ * 3. Apply status and resolution overrides
+ * 4. Merge remote items and locally submitted complaints
  */
 export const sanitizeAndFilterComplaints = (
-  items: ComplaintRecord[]
+  items: ComplaintRecord[] = [],
+  includeBaselineDemo: boolean = true
 ): ComplaintRecord[] => {
   const dismissed = getDismissedComplaintIds();
   const overrides = getComplaintOverrides();
@@ -145,7 +147,19 @@ export const sanitizeAndFilterComplaints = (
   // Combine items and locally submitted, deduplicating by complaintId / reference
   const map = new Map<string, ComplaintRecord>();
 
-  // Add remote items first
+  // 1. Seed baseline demo complaints first (so baseline data is never wiped out)
+  if (includeBaselineDemo) {
+    for (const demo of DEMO_COMPLAINTS) {
+      const id = demo.complaintId || demo.reference;
+      if (!id || dismissed.has(id) || (demo.reference && dismissed.has(demo.reference))) {
+        continue;
+      }
+      const override = overrides[id] || (demo.reference ? overrides[demo.reference] : undefined);
+      map.set(id, override ? { ...demo, ...override } : demo);
+    }
+  }
+
+  // 2. Add remote items
   for (const item of items) {
     const id = item.complaintId || item.reference;
     if (!id || dismissed.has(id) || (item.reference && dismissed.has(item.reference))) {
@@ -155,7 +169,7 @@ export const sanitizeAndFilterComplaints = (
     map.set(id, override ? { ...item, ...override } : item);
   }
 
-  // Overlay local items
+  // 3. Overlay local items (highest priority for newly created complaints)
   for (const item of localItems) {
     const id = item.complaintId || item.reference;
     if (!id || dismissed.has(id) || (item.reference && dismissed.has(item.reference))) {
@@ -175,74 +189,76 @@ export const sanitizeAndFilterComplaints = (
  * and automatic synchronization with dismissal / override storage.
  */
 export const fetchSyncedComplaints = async (): Promise<ComplaintRecord[]> => {
+  let remoteRecords: ComplaintRecord[] = [];
+
   // 1. First attempt dedicated /complaints endpoint
   try {
     const res = await api<ComplaintRecord[]>('/complaints');
     if (Array.isArray(res) && res.length > 0) {
-      return sanitizeAndFilterComplaints(res);
+      remoteRecords = res;
     }
   } catch {
     // /complaints route not yet available on remote, fall through to /reports
   }
 
   // 2. Fallback: check /reports table for citizen grievances
-  try {
-    const res = await allApiRecords('/reports');
-    const citizenItems = (res || []).filter((r: ApiRecord) => {
-      const typeStr = String(r.reportType || '').toLowerCase();
-      const titleStr = String(r.title || '').toLowerCase();
-      return (
-        typeStr.includes('citizen') ||
-        typeStr.includes('complaint') ||
-        titleStr.includes('citizen') ||
-        titleStr.includes('complaint')
-      );
-    });
-
-    if (citizenItems.length > 0) {
-      const mapped: ComplaintRecord[] = citizenItems.map((r: ApiRecord) => {
-        const id = String(r.reportId || `AA-CMP-${r.id || Date.now()}`);
-        const rawStatus = String(r.status || r.verificationStatus || 'PENDING').toUpperCase();
-        let status: ComplaintStatus = 'PENDING';
-        if (rawStatus === 'RESOLVED') status = 'RESOLVED';
-        else if (rawStatus === 'IN_PROGRESS' || rawStatus === 'INVESTIGATING') status = 'IN_PROGRESS';
-        else if (rawStatus === 'ASSIGNED') status = 'ASSIGNED';
-        else if (rawStatus === 'REJECTED' || rawStatus === 'DISMISSED' || rawStatus.includes('REJECT')) {
-          status = 'REJECTED';
-        }
-
-        const rawPriority = String(r.priority || 'HIGH').toUpperCase();
-        const priority = rawPriority === 'CRITICAL' ? 'CRITICAL' : rawPriority === 'LOW' ? 'LOW' : 'HIGH';
-
-        return {
-          complaintId: id,
-          reference: id,
-          sourceId: r.sourceId ? String(r.sourceId) : undefined,
-          sourceName: r.sourceName ? String(r.sourceName) : undefined,
-          category: String(r.category || r.title || 'Water quality concern'),
-          wardNumber: Number(r.wardNumber || (String(r.sourceId || '').match(/\d+/)?.[0] ?? 14)),
-          details: String(r.notes || r.details || ''),
-          citizenName: String(r.citizenName || r.uploadedBy || 'Citizen Reporter'),
-          citizenPhone: r.citizenPhone ? String(r.citizenPhone) : undefined,
-          status,
-          priority,
-          photoName: r.filename ? String(r.filename) : undefined,
-          photoUrl: r.downloadUrl ? String(r.downloadUrl) : undefined,
-          s3Key: r.s3Key ? String(r.s3Key) : undefined,
-          s3Bucket: r.s3Bucket ? String(r.s3Bucket) : 'waterq-dev-evidence-files',
-          createdAt: String(r.uploadedAt || r.createdAt || new Date().toISOString()),
-          updatedAt: String(r.updatedAt || r.uploadedAt || new Date().toISOString()),
-        };
+  if (remoteRecords.length === 0) {
+    try {
+      const res = await allApiRecords('/reports');
+      const citizenItems = (res || []).filter((r: ApiRecord) => {
+        const typeStr = String(r.reportType || '').toLowerCase();
+        const titleStr = String(r.title || '').toLowerCase();
+        return (
+          typeStr.includes('citizen') ||
+          typeStr.includes('complaint') ||
+          titleStr.includes('citizen') ||
+          titleStr.includes('complaint')
+        );
       });
 
-      return sanitizeAndFilterComplaints(mapped);
+      if (citizenItems.length > 0) {
+        remoteRecords = citizenItems.map((r: ApiRecord) => {
+          const id = String(r.reportId || `AA-CMP-${r.id || Date.now()}`);
+          const rawStatus = String(r.status || r.verificationStatus || 'PENDING').toUpperCase();
+          let status: ComplaintStatus = 'PENDING';
+          if (rawStatus === 'RESOLVED') status = 'RESOLVED';
+          else if (rawStatus === 'IN_PROGRESS' || rawStatus === 'INVESTIGATING') status = 'IN_PROGRESS';
+          else if (rawStatus === 'ASSIGNED') status = 'ASSIGNED';
+          else if (rawStatus === 'REJECTED' || rawStatus === 'DISMISSED' || rawStatus.includes('REJECT')) {
+            status = 'REJECTED';
+          }
+
+          const rawPriority = String(r.priority || 'HIGH').toUpperCase();
+          const priority = rawPriority === 'CRITICAL' ? 'CRITICAL' : rawPriority === 'LOW' ? 'LOW' : 'HIGH';
+
+          return {
+            complaintId: id,
+            reference: id,
+            sourceId: r.sourceId ? String(r.sourceId) : undefined,
+            sourceName: r.sourceName ? String(r.sourceName) : undefined,
+            category: String(r.category || r.title || 'Water quality concern'),
+            wardNumber: Number(r.wardNumber || (String(r.sourceId || '').match(/\d+/)?.[0] ?? 14)),
+            details: String(r.notes || r.details || ''),
+            citizenName: String(r.citizenName || r.uploadedBy || 'Citizen Reporter'),
+            citizenPhone: r.citizenPhone ? String(r.citizenPhone) : undefined,
+            status,
+            priority,
+            photoName: r.filename ? String(r.filename) : undefined,
+            photoUrl: r.downloadUrl ? String(r.downloadUrl) : undefined,
+            s3Key: r.s3Key ? String(r.s3Key) : undefined,
+            s3Bucket: r.s3Bucket ? String(r.s3Bucket) : 'waterq-dev-evidence-files',
+            createdAt: String(r.uploadedAt || r.createdAt || new Date().toISOString()),
+            updatedAt: String(r.updatedAt || r.uploadedAt || new Date().toISOString()),
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('Fallback reports fetch warning:', err);
     }
-  } catch (err) {
-    console.warn('Fallback reports fetch warning:', err);
   }
 
-  // 3. Fallback to demo complaints
-  return sanitizeAndFilterComplaints(DEMO_COMPLAINTS);
+  // Always merge remote records with baseline DEMO_COMPLAINTS and local submissions!
+  return sanitizeAndFilterComplaints(remoteRecords, true);
 };
 
 /**
