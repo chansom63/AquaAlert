@@ -71,6 +71,7 @@ export const AlertsIncidentsView: FC<AlertsIncidentsViewProps> = ({
     const reason = String(form.get('reason') || 'Manual municipal incident declared');
     const publicMessage = String(form.get('publicMessage') || reason);
 
+    const nowIso = new Date().toISOString();
     const newAlt: Partial<Alert> = {
       alertId: `ALT-${Date.now().toString(36).toUpperCase()}`,
       sourceId,
@@ -78,7 +79,9 @@ export const AlertsIncidentsView: FC<AlertsIncidentsViewProps> = ({
       state,
       reason,
       publicMessage,
-      createdAt: new Date().toISOString(),
+      issuedAt: nowIso,
+      createdAt: nowIso,
+      isDemo: false,
     };
 
     try {

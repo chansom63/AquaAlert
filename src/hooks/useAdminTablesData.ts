@@ -13,6 +13,13 @@ import {
   updateComplaintEverywhere,
   recordLocallySubmittedComplaint,
 } from '../utils/complaintsSync';
+import {
+  fetchSyncedAlerts,
+  sanitizeAndFilterAlerts,
+  recordLocallyCreatedAlert,
+  recordAlertOverride,
+  recordDeletedAlertId,
+} from '../utils/alertsSync';
 
 export interface LabReportRecord {
   reportId: string;
@@ -94,12 +101,11 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     if (loadedAlertsRef.current && !force) return;
     setLoadingAlerts(true);
     try {
-      const res = await allApiRecords('/alerts');
-      const items = res as Alert[];
-      setAlerts(items.length > 0 ? items : DEMO_ALERTS);
+      const items = await fetchSyncedAlerts();
+      setAlerts(items);
       loadedAlertsRef.current = true;
     } catch (err) {
-      setAlerts(DEMO_ALERTS);
+      setAlerts(sanitizeAndFilterAlerts(DEMO_ALERTS, true));
       console.warn('Alerts API notice:', (err as Error).message);
     } finally {
       setLoadingAlerts(false);
@@ -286,14 +292,46 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
       }
     };
 
+    const handleAlertCreated = (e: Event) => {
+      const custom = e as CustomEvent<Alert>;
+      const newAlert = custom.detail;
+      if (newAlert?.alertId) {
+        setAlerts(prev => sanitizeAndFilterAlerts([newAlert, ...prev], true));
+      }
+    };
+
+    const handleAlertUpdated = (e: Event) => {
+      const custom = e as CustomEvent<{ alertId: string; updates: Partial<Alert> }>;
+      const { alertId, updates } = custom.detail || {};
+      if (alertId && updates) {
+        setAlerts(prev =>
+          prev.map(a => (a.alertId === alertId ? { ...a, ...updates } : a))
+        );
+      }
+    };
+
+    const handleAlertDeleted = (e: Event) => {
+      const custom = e as CustomEvent<{ alertId: string }>;
+      const alertId = custom.detail?.alertId;
+      if (alertId) {
+        setAlerts(prev => prev.filter(a => a.alertId !== alertId));
+      }
+    };
+
     window.addEventListener('aquaalert:complaint-dismissed', handleDismissed);
     window.addEventListener('aquaalert:complaint-updated', handleUpdated);
     window.addEventListener('aquaalert:complaint-created', handleCreated);
+    window.addEventListener('aquaalert:alert-created', handleAlertCreated);
+    window.addEventListener('aquaalert:alert-updated', handleAlertUpdated);
+    window.addEventListener('aquaalert:alert-deleted', handleAlertDeleted);
 
     return () => {
       window.removeEventListener('aquaalert:complaint-dismissed', handleDismissed);
       window.removeEventListener('aquaalert:complaint-updated', handleUpdated);
       window.removeEventListener('aquaalert:complaint-created', handleCreated);
+      window.removeEventListener('aquaalert:alert-created', handleAlertCreated);
+      window.removeEventListener('aquaalert:alert-updated', handleAlertUpdated);
+      window.removeEventListener('aquaalert:alert-deleted', handleAlertDeleted);
     };
   }, []);
 
@@ -444,35 +482,46 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
 
   // --- CRUD: Alerts ---
   const createAlert = useCallback(async (newAlert: Partial<Alert>): Promise<Alert> => {
+    const nowIso = new Date().toISOString();
+    const payload: Alert = {
+      alertId: newAlert.alertId || `ALT-${Date.now().toString(36).toUpperCase()}`,
+      sourceId: newAlert.sourceId || 'gmc-ward-14',
+      severity: newAlert.severity || 'WARNING',
+      state: newAlert.state || 'OPEN',
+      reason: newAlert.reason || 'Manual municipal incident declared',
+      publicMessage: newAlert.publicMessage || newAlert.reason || 'Water quality advisory',
+      issuedAt: String(newAlert.issuedAt || newAlert.createdAt || nowIso),
+      createdAt: String(newAlert.createdAt || newAlert.issuedAt || nowIso),
+      isDemo: false,
+    };
+
     try {
       const res = await api<Alert>('/alerts', {
         method: 'POST',
-        body: JSON.stringify(newAlert),
+        body: JSON.stringify(payload),
       });
-      setAlerts(prev => [res, ...prev.filter(a => a.alertId !== res.alertId)]);
-      return res;
+      const created = { ...payload, ...(res || {}) };
+      recordLocallyCreatedAlert(created);
+      setAlerts(prev => sanitizeAndFilterAlerts([created, ...prev], true));
+      return created;
     } catch (err) {
-      const fallback = {
-        alertId: newAlert.alertId || `ALT-${Date.now().toString(36).toUpperCase()}`,
-        sourceId: newAlert.sourceId || 'SRC-001',
-        severity: newAlert.severity || 'WARNING',
-        state: newAlert.state || 'OPEN',
-        reason: newAlert.reason || 'Manual municipal incident declared',
-        createdAt: newAlert.createdAt || new Date().toISOString(),
-      } as Alert;
-      setAlerts(prev => [fallback, ...prev]);
-      return fallback;
+      console.warn('POST /alerts failed, caching alert locally:', err);
+      recordLocallyCreatedAlert(payload);
+      setAlerts(prev => sanitizeAndFilterAlerts([payload, ...prev], true));
+      return payload;
     }
   }, []);
 
   const updateAlert = useCallback(async (alertId: string, updates: Partial<Alert>): Promise<Alert> => {
+    recordAlertOverride(alertId, updates);
     try {
       const res = await api<Alert>(`/alerts/${encodeURIComponent(alertId)}`, {
         method: 'PUT',
         body: JSON.stringify(updates),
       });
-      setAlerts(prev => prev.map(a => (a.alertId === alertId ? { ...a, ...res } : a)));
-      return res;
+      const updated = { ...(res || {}), ...updates, alertId };
+      setAlerts(prev => prev.map(a => (a.alertId === alertId ? { ...a, ...updated } : a)));
+      return updated as Alert;
     } catch (err) {
       setAlerts(prev => prev.map(a => (a.alertId === alertId ? { ...a, ...updates } : a)));
       return { alertId, ...updates } as Alert;
@@ -480,6 +529,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
   }, []);
 
   const deleteAlert = useCallback(async (alertId: string): Promise<void> => {
+    recordDeletedAlertId(alertId);
     try {
       await api(`/alerts/${encodeURIComponent(alertId)}`, { method: 'DELETE' });
     } catch (err) {

@@ -166,7 +166,11 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
         ],
       });
 
-      await Promise.all([adminTables.fetchReadings(true), adminTables.fetchSources(true)]);
+      await Promise.all([
+        adminTables.fetchReadings(true),
+        adminTables.fetchSources(true),
+        adminTables.fetchAlerts(true),
+      ]);
     } catch (err) {
       setAdminError(`Failed to submit reading: ${(err as Error).message}`);
     } finally {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { API, api } from '../api/client';
-import { allApiRecords, recordsFrom } from '../api/adminRecords';
+import { recordsFrom } from '../api/adminRecords';
 import { DEMO_ALERTS, DEMO_SOURCES, GWALIOR_AREAS } from '../data/demoDataset';
 import { DEMO_COMPLAINTS } from '../data/demoComplaintsData';
 import type { Alert, ComplaintRecord, ComplaintPreview, Reading, Source } from '../types/water';
@@ -10,6 +10,10 @@ import {
   sanitizeAndFilterComplaints,
   recordLocallySubmittedComplaint,
 } from '../utils/complaintsSync';
+import {
+  fetchSyncedAlerts,
+  sanitizeAndFilterAlerts,
+} from '../utils/alertsSync';
 
 export const useWaterData = (activePage: string = 'Overview') => {
   const [sources, setSources] = useState<Source[]>([]);
@@ -52,17 +56,16 @@ export const useWaterData = (activePage: string = 'Overview') => {
     }
   }, []);
 
-  // 2. Fetch Alerts from Central Database
+  // 2. Fetch Alerts from Central Database with Cross-Portal Synchronization
   const fetchAlerts = useCallback(async (force = false) => {
     if (loadedAlertsRef.current && !force) return;
     setLoadingAlerts(true);
     try {
-      const res = await allApiRecords('/alerts');
-      const items = res as Alert[];
-      setAlerts(items.length > 0 ? items : DEMO_ALERTS);
+      const items = await fetchSyncedAlerts();
+      setAlerts(items);
       loadedAlertsRef.current = true;
     } catch (err) {
-      setAlerts(DEMO_ALERTS);
+      setAlerts(sanitizeAndFilterAlerts(DEMO_ALERTS, true));
       console.warn('Alerts API notice:', (err as Error).message);
     } finally {
       setLoadingAlerts(false);
@@ -118,14 +121,46 @@ export const useWaterData = (activePage: string = 'Overview') => {
       }
     };
 
+    const handleAlertCreated = (e: Event) => {
+      const custom = e as CustomEvent<Alert>;
+      const newAlert = custom.detail;
+      if (newAlert?.alertId) {
+        setAlerts(prev => sanitizeAndFilterAlerts([newAlert, ...prev], true));
+      }
+    };
+
+    const handleAlertUpdated = (e: Event) => {
+      const custom = e as CustomEvent<{ alertId: string; updates: Partial<Alert> }>;
+      const { alertId, updates } = custom.detail || {};
+      if (alertId && updates) {
+        setAlerts(prev =>
+          prev.map(a => (a.alertId === alertId ? { ...a, ...updates } : a))
+        );
+      }
+    };
+
+    const handleAlertDeleted = (e: Event) => {
+      const custom = e as CustomEvent<{ alertId: string }>;
+      const alertId = custom.detail?.alertId;
+      if (alertId) {
+        setAlerts(prev => prev.filter(a => a.alertId !== alertId));
+      }
+    };
+
     window.addEventListener('aquaalert:complaint-dismissed', handleDismissed);
     window.addEventListener('aquaalert:complaint-updated', handleUpdated);
     window.addEventListener('aquaalert:complaint-created', handleCreated);
+    window.addEventListener('aquaalert:alert-created', handleAlertCreated);
+    window.addEventListener('aquaalert:alert-updated', handleAlertUpdated);
+    window.addEventListener('aquaalert:alert-deleted', handleAlertDeleted);
 
     return () => {
       window.removeEventListener('aquaalert:complaint-dismissed', handleDismissed);
       window.removeEventListener('aquaalert:complaint-updated', handleUpdated);
       window.removeEventListener('aquaalert:complaint-created', handleCreated);
+      window.removeEventListener('aquaalert:alert-created', handleAlertCreated);
+      window.removeEventListener('aquaalert:alert-updated', handleAlertUpdated);
+      window.removeEventListener('aquaalert:alert-deleted', handleAlertDeleted);
     };
   }, []);
 

@@ -67,7 +67,7 @@ export const AlertDetailDrawer: FC<AlertDetailDrawerProps> = ({
         notificationStatus: String(body.notificationStatus ?? ''),
         notificationAttempts: Number(body.notificationAttempts ?? 0),
         reason: String(body.reason ?? ''),
-        updatedAt: String(body.updatedAt ?? body.createdAt ?? ''),
+        updatedAt: String(body.updatedAt ?? body.createdAt ?? body.issuedAt ?? new Date().toISOString()),
         repeatCount: Number(body.repeatCount ?? 0),
         readingId: String(body.readingId ?? body.triggeringReadingKey ?? ''),
         threshold: body.threshold && typeof body.threshold === 'object' ? body.threshold as AlertDetailRecord['threshold'] : undefined,

@@ -49,7 +49,9 @@ const AlertList: FC<{ alerts: Alert[]; sources: Source[]; onSelect: (a: Alert) =
                 <p className="text-xs text-slate-300 mb-1.5 flex items-center gap-1.5 flex-wrap">
                   <span className="font-semibold text-slate-200">{sourceName}</span>
                   <span className="text-slate-500">&bull;</span>
-                  <span className="text-slate-400 font-mono text-[11px]">{date(a.issuedAt)}</span>
+                  <span className="text-slate-400 font-mono text-[11px]">
+                    {date(a.issuedAt || (a.createdAt as string) || (a.updatedAt as string))}
+                  </span>
                 </p>
 
                 {a.reason && a.publicMessage && a.reason !== a.publicMessage && (
