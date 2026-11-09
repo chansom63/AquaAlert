@@ -314,3 +314,52 @@ export const updateComplaintEverywhere = async (
     // Ignore
   }
 };
+
+// Cross-tab synchronization via standard browser 'storage' events
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e: StorageEvent) => {
+    if (e.key === DISMISSED_STORAGE_KEY && e.newValue) {
+      try {
+        const arr = JSON.parse(e.newValue);
+        if (Array.isArray(arr)) {
+          for (const id of arr) {
+            window.dispatchEvent(
+              new CustomEvent('aquaalert:complaint-dismissed', { detail: { complaintId: id } })
+            );
+          }
+        }
+      } catch {
+        // Ignore parse error
+      }
+    } else if (e.key === OVERRIDES_STORAGE_KEY && e.newValue) {
+      try {
+        const overrides = JSON.parse(e.newValue);
+        if (typeof overrides === 'object' && overrides !== null) {
+          for (const [complaintId, updates] of Object.entries(overrides)) {
+            window.dispatchEvent(
+              new CustomEvent('aquaalert:complaint-updated', {
+                detail: { complaintId, updates: updates as Partial<ComplaintRecord> },
+              })
+            );
+          }
+        }
+      } catch {
+        // Ignore parse error
+      }
+    } else if (e.key === SUBMITTED_STORAGE_KEY && e.newValue) {
+      try {
+        const submitted = JSON.parse(e.newValue);
+        if (Array.isArray(submitted) && submitted.length > 0) {
+          for (const item of submitted) {
+            window.dispatchEvent(
+              new CustomEvent('aquaalert:complaint-created', { detail: { complaint: item } })
+            );
+          }
+        }
+      } catch {
+        // Ignore parse error
+      }
+    }
+  });
+}
+

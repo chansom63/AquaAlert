@@ -533,7 +533,7 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
                 <span>Reports</span>
               </div>
               <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-blue-900/80 text-blue-200 border border-blue-700/60">
-                {adminTables.reports.length || 10}
+                {adminTables.reports.length}
               </span>
             </button>
 
