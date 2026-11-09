@@ -38,11 +38,31 @@ export type Reading = {
   [key: string]: unknown;
 };
 
-export type ComplaintPreview = {
+export type ComplaintStatus = 'PENDING' | 'TRIAGED' | 'ASSIGNED' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
+export type ComplaintPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface ComplaintRecord {
+  complaintId: string;
   reference: string;
-  category: string;
   wardNumber: number;
+  sourceId?: string;
+  sourceName?: string;
+  category: string;
   details: string;
+  citizenName?: string;
+  citizenPhone?: string;
+  citizenEmail?: string;
+  status: ComplaintStatus;
+  priority: ComplaintPriority;
+  assignedTo?: string;
+  resolutionNotes?: string;
+  resolvedAt?: string;
+  s3Bucket?: string;
+  s3Key?: string;
   photoName?: string;
+  photoUrl?: string;
   createdAt: string;
-};
+  updatedAt?: string;
+}
+
+export type ComplaintPreview = ComplaintRecord;

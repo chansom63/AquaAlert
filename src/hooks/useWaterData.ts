@@ -4,7 +4,8 @@ import { API, api } from '../api/client';
 import { allApiRecords, recordsFrom } from '../api/adminRecords';
 import type { ApiRecord } from '../api/adminRecords';
 import { DEMO_ALERTS, DEMO_SOURCES, GWALIOR_AREAS } from '../data/demoDataset';
-import type { Alert, ComplaintPreview, Reading, Source } from '../types/water';
+import { DEMO_COMPLAINTS } from '../data/demoComplaintsData';
+import type { Alert, ComplaintRecord, ComplaintPreview, Reading, Source } from '../types/water';
 
 export const useWaterData = (activePage: string = 'Overview') => {
   const [sources, setSources] = useState<Source[]>([]);
@@ -64,34 +65,51 @@ export const useWaterData = (activePage: string = 'Overview') => {
     }
   }, []);
 
-  // 3. Fetch Citizen Complaints / Reports from Central Database
+  // 3. Fetch Citizen Complaints from Dedicated Central Complaints Table
   const fetchComplaints = useCallback(async (force = false) => {
     if (loadedComplaintsRef.current && !force) return;
     setLoadingComplaints(true);
     try {
-      const res = await allApiRecords('/reports');
-      const items = (res || []).filter((r: ApiRecord) => {
-        const typeStr = String(r.reportType || '').toLowerCase();
-        return typeStr.includes('citizen') || typeStr.includes('complaint');
-      });
-      if (items.length > 0) {
-        setComplaints(
-          items.map((r: ApiRecord) => ({
-            reference: String(r.reportId || `AA-CMP-${r.id || Date.now()}`),
-            category: String(r.category || r.title || 'Water issue'),
-            wardNumber: Number(r.wardNumber || (String(r.sourceId || '').match(/\d+/)?.[0] ?? 14)),
-            details: String(r.notes || r.details || ''),
-            photoName: r.filename ? String(r.filename) : undefined,
-            createdAt: String(r.uploadedAt || r.createdAt || new Date().toISOString()),
-          }))
-        );
+      // First attempt dedicated /complaints endpoint
+      const res = await api<ComplaintRecord[]>('/complaints');
+      if (Array.isArray(res) && res.length > 0) {
+        setComplaints(res);
+        loadedComplaintsRef.current = true;
+        return;
       }
-      loadedComplaintsRef.current = true;
-    } catch (err) {
-      console.warn('Complaints API notice:', (err as Error).message);
+    } catch {
+      // Fallback: try reading from reports table if complaints endpoint is pending deployment
+      try {
+        const res = await allApiRecords('/reports');
+        const items = (res || []).filter((r: ApiRecord) => {
+          const typeStr = String(r.reportType || '').toLowerCase();
+          return typeStr.includes('citizen') || typeStr.includes('complaint');
+        });
+        if (items.length > 0) {
+          setComplaints(
+            items.map((r: ApiRecord) => ({
+              complaintId: String(r.reportId || `AA-CMP-${r.id || Date.now()}`),
+              reference: String(r.reportId || `AA-CMP-${r.id || Date.now()}`),
+              category: String(r.category || r.title || 'Water issue'),
+              wardNumber: Number(r.wardNumber || (String(r.sourceId || '').match(/\d+/)?.[0] ?? 14)),
+              details: String(r.notes || r.details || ''),
+              status: 'PENDING',
+              priority: 'HIGH',
+              photoName: r.filename ? String(r.filename) : undefined,
+              createdAt: String(r.uploadedAt || r.createdAt || new Date().toISOString()),
+            }))
+          );
+          loadedComplaintsRef.current = true;
+          return;
+        }
+      } catch (err) {
+        console.warn('Complaints API notice:', (err as Error).message);
+      }
     } finally {
       setLoadingComplaints(false);
     }
+    setComplaints(DEMO_COMPLAINTS);
+    loadedComplaintsRef.current = true;
   }, []);
 
   // Fetch only when navigating to a particular page/tab
@@ -111,6 +129,7 @@ export const useWaterData = (activePage: string = 'Overview') => {
         void fetchSources();
         void fetchAlerts();
         break;
+      case 'Complaints':
       case 'Reports':
         void fetchSources();
         void fetchAlerts();
@@ -276,18 +295,18 @@ export const useWaterData = (activePage: string = 'Overview') => {
     const reference = `AA-CMP-${Date.now().toString(36).toUpperCase()}`;
     const sourceId = `gmc-ward-${String(wardNumber).padStart(2, '0')}`;
 
-    let s3Key = `reports/complaints/${reference}.json`;
+    let s3Key = `complaints/evidence/${reference}.jpg`;
+    let s3Bucket = 'waterq-dev-complaints-evidence';
 
-    // If citizen attached a photo, obtain presigned S3 upload URL and upload
+    // If citizen attached a photo, obtain presigned S3 upload URL from dedicated complaints bucket
     if (photo && photo.size > 0) {
       try {
-        const signed = await api<{ uploadUrl: string; objectKey: string }>('/reports/presigned-url', {
+        const signed = await api<{ uploadUrl: string; objectKey: string; s3Bucket?: string }>('/complaints/presigned-url', {
           method: 'POST',
           body: JSON.stringify({
-            sourceId,
+            complaintId: reference,
             filename: `${reference}_${photo.name}`,
             contentType: photo.type,
-            folder: 'reports/complaints',
           }),
         });
         if (signed.uploadUrl) {
@@ -297,57 +316,52 @@ export const useWaterData = (activePage: string = 'Overview') => {
             body: photo,
           });
           s3Key = signed.objectKey;
+          s3Bucket = signed.s3Bucket || 'waterq-dev-complaints-evidence';
         }
       } catch (err) {
-        console.warn('Complaint image upload skipped or failed:', (err as Error).message);
+        console.warn('Complaint image upload notice:', (err as Error).message);
       }
     }
 
-    const payload = {
-      reportId: reference,
+    const catLower = category.toLowerCase();
+    const priority = catLower.includes('sewage') || catLower.includes('burst') || catLower.includes('poison')
+      ? 'CRITICAL'
+      : catLower.includes('turbid') || catLower.includes('chemical') || catLower.includes('odor')
+      ? 'HIGH'
+      : 'MEDIUM';
+
+    const payload: ComplaintRecord = {
+      complaintId: reference,
+      reference,
       sourceId,
       sourceName: `Gwalior Ward ${wardNumber}`,
-      title: `Citizen Report: ${category} (Ward ${wardNumber})`,
-      reportType: 'Citizen Complaint',
       category,
       wardNumber,
-      notes: details,
-      s3Key,
-      filename: photo && photo.size > 0 ? photo.name : undefined,
-      uploadedBy: 'Citizen Water Reporter',
-      verificationStatus: 'PENDING_REVIEW',
+      details,
+      citizenName: String(form.get('citizenName') || 'Citizen Reporter'),
+      citizenPhone: String(form.get('citizenPhone') || ''),
+      status: 'PENDING',
+      priority,
+      s3Bucket,
+      s3Key: photo && photo.size > 0 ? s3Key : undefined,
+      photoName: photo && photo.size > 0 ? photo.name : undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     try {
-      await api('/reports', {
+      await api('/complaints', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
 
-      const newRecord: ComplaintPreview = {
-        reference,
-        category,
-        wardNumber,
-        details,
-        photoName: photo && photo.size > 0 ? photo.name : undefined,
-        createdAt: new Date().toISOString(),
-      };
-
-      setComplaints(current => [newRecord, ...current]);
-      setNotice(`Grievance ${reference} recorded in Municipal Database. Surveillance engineers notified.`);
+      setComplaints(current => [payload, ...current]);
+      setNotice(`Grievance ${reference} recorded in Municipal Complaints Table. Surveillance team dispatched.`);
       event.currentTarget.reset();
     } catch (err) {
-      // In case of network interruption, preserve locally so user work is never lost
-      const fallbackRecord: ComplaintPreview = {
-        reference,
-        category,
-        wardNumber,
-        details,
-        photoName: photo && photo.size > 0 ? photo.name : undefined,
-        createdAt: new Date().toISOString(),
-      };
-      setComplaints(current => [fallbackRecord, ...current]);
-      setNotice(`${reference} recorded in local session ledger. Notice: ${(err as Error).message}`);
+      // In case of network interruption or fallback, preserve locally
+      setComplaints(current => [payload, ...current]);
+      setNotice(`${reference} recorded locally. Notice: ${(err as Error).message}`);
       event.currentTarget.reset();
     } finally {
       setBusy(false);

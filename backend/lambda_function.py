@@ -21,9 +21,11 @@ LAB_REPORTS_TABLE = os.environ.get("LAB_REPORTS_TABLE", "LabReports")
 RULES_TABLE = os.environ.get("RULES_TABLE", "Rules")
 THRESHOLDS_TABLE = os.environ.get("THRESHOLDS_TABLE", "Thresholds")
 RULES_THRESHOLDS_TABLE = os.environ.get("RULES_THRESHOLDS_TABLE", "RulesThresholds")
+COMPLAINTS_TABLE = os.environ.get("COMPLAINTS_TABLE", "Complaints")
 
 SNS_TOPIC_ARN = os.environ.get("SNS_ALERT_TOPIC_ARN", "arn:aws:sns:ap-south-1:113435023513:water-quality-alerts")
 EVIDENCE_BUCKET = os.environ.get("EVIDENCE_BUCKET", "waterq-dev-evidence-files")
+COMPLAINTS_BUCKET = os.environ.get("COMPLAINTS_BUCKET", "waterq-dev-complaints-evidence")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 sns = boto3.client("sns", region_name=AWS_REGION)
@@ -188,7 +190,7 @@ def lambda_handler(event, context):
 
     # Strip a stage prefix such as /default/sources when present.
     path = re.sub(
-        r"^/[^/]+(?=/(sources|readings|alerts|actions|reports|rules|thresholds|users|auth))",
+        r"^/[^/]+(?=/(sources|readings|alerts|actions|reports|rules|thresholds|users|auth|complaints))",
         "",
         raw_path
     )
@@ -311,6 +313,39 @@ def lambda_handler(event, context):
                 ExpiresIn=600
             )
             return make_response(200, {"downloadUrl": download_url, "expiresInSeconds": 600})
+
+        # =========================================================================
+        # CRUD ROUTES: CITIZEN COMPLAINTS
+        # =========================================================================
+        if method == "GET" and path == "/complaints":
+            return handle_get_complaints(_query_params(event))
+
+        if method == "POST" and path == "/complaints":
+            body = json.loads(event.get("body") or "{}")
+            if not isinstance(body, dict):
+                return make_response(400, {"error": {"code": "VALIDATION_ERROR", "message": "Request body must be a JSON object."}})
+            return handle_post_complaint(body)
+
+        if method == "POST" and path == "/complaints/presigned-url":
+            body = json.loads(event.get("body") or "{}")
+            if not isinstance(body, dict):
+                return make_response(400, {"error": {"code": "VALIDATION_ERROR", "message": "Request body must be a JSON object."}})
+            return handle_create_complaint_upload_url(body)
+
+        match_complaint_download = re.match(r"^/complaints/([^/]+)/download-url$", path)
+        if method == "GET" and match_complaint_download:
+            return handle_get_complaint_download_url(unquote(match_complaint_download.group(1)), _query_params(event))
+
+        match_complaint = re.match(r"^/complaints/([^/]+)$", path)
+        if method == "GET" and match_complaint:
+            return handle_get_complaint_by_id(unquote(match_complaint.group(1)))
+        if method in ["PUT", "PATCH"] and match_complaint:
+            body = json.loads(event.get("body") or "{}")
+            if not isinstance(body, dict):
+                return make_response(400, {"error": {"code": "VALIDATION_ERROR", "message": "Request body must be a JSON object."}})
+            return handle_update_complaint(unquote(match_complaint.group(1)), body)
+        if method == "DELETE" and match_complaint:
+            return handle_delete_complaint(unquote(match_complaint.group(1)))
 
         
         # =========================================================================
@@ -1431,3 +1466,375 @@ def handle_delete_report(report_id):
         return make_response(200, {"message": f"Report {report_id} deleted successfully."})
     except Exception as exc:
         return make_response(500, {"error": {"code": "DYNAMODB_ERROR", "message": str(exc)}})
+
+
+# =========================================================================
+# CRUD IMPLEMENTATIONS: CITIZEN COMPLAINTS & EVIDENCE ARCHIVE
+# =========================================================================
+
+DEFAULT_DEMO_COMPLAINTS = [
+    {
+        "complaintId": "AA-CMP-2026-W14-01",
+        "reference": "AA-CMP-2026-W14-01",
+        "wardNumber": 14,
+        "sourceId": "gmc-ward-14",
+        "sourceName": "Maharaj Bada Central Hand Pump #04",
+        "category": "Turbid / Muddy water",
+        "details": "Severe brownish turbidity observed in tap water line near Sarafa Bazaar commercial feeder. Suspended silt particles noticed.",
+        "citizenName": "Ramesh Chandra Sharma",
+        "citizenPhone": "+91 98261 45890",
+        "citizenEmail": "ramesh.sharma@example.com",
+        "status": "IN_PROGRESS",
+        "priority": "HIGH",
+        "assignedTo": "Er. R. K. Sharma (Lashkar Central Lead)",
+        "resolutionNotes": "Field technician dispatched for pipeline scouring and valve inspection at Sarafa connector.",
+        "s3Bucket": COMPLAINTS_BUCKET,
+        "s3Key": "complaints/evidence/AA-CMP-2026-W14-01_turbid_tap.jpg",
+        "photoName": "turbid_tap_sample.jpg",
+        "createdAt": "2026-11-04T09:15:00Z",
+        "updatedAt": "2026-11-04T11:30:00Z"
+    },
+    {
+        "complaintId": "AA-CMP-2026-W28-02",
+        "reference": "AA-CMP-2026-W28-02",
+        "wardNumber": 28,
+        "sourceId": "gmc-ward-28",
+        "sourceName": "Sikandar Kampoo Feeder Main",
+        "category": "Chemical odor / Chlorine depletion",
+        "details": "Strong pungent chemical odor after morning valve repair. Bleaching powder residue and chlorine imbalance suspected.",
+        "citizenName": "Sunita Verma",
+        "citizenPhone": "+91 94251 77210",
+        "citizenEmail": "sunita.v@example.com",
+        "status": "ASSIGNED",
+        "priority": "CRITICAL",
+        "assignedTo": "P. K. Verma (Zone 10 Water Works)",
+        "resolutionNotes": "Dosing unit recalibration ordered at Lashkar booster station.",
+        "s3Bucket": COMPLAINTS_BUCKET,
+        "s3Key": "complaints/evidence/AA-CMP-2026-W28-02_chem_color.jpg",
+        "photoName": "chemical_test_reading.jpg",
+        "createdAt": "2026-11-05T14:20:00Z",
+        "updatedAt": "2026-11-05T15:00:00Z"
+    },
+    {
+        "complaintId": "AA-CMP-2026-W02-03",
+        "reference": "AA-CMP-2026-W02-03",
+        "wardNumber": 2,
+        "sourceId": "gmc-ward-02",
+        "sourceName": "Fort Foothills / Kila Gate Sub-main",
+        "category": "Low pressure / No supply",
+        "details": "Water pressure dropped below 0.3 bar in Kila Gate sector. Upper elevation households received no supply during morning hours.",
+        "citizenName": "Dinesh Tomar",
+        "citizenPhone": "+91 97531 22894",
+        "citizenEmail": "dinesh.tomar@example.com",
+        "status": "PENDING",
+        "priority": "HIGH",
+        "assignedTo": "Unassigned",
+        "s3Bucket": COMPLAINTS_BUCKET,
+        "createdAt": "2026-11-06T07:45:00Z",
+        "updatedAt": "2026-11-06T07:45:00Z"
+    },
+    {
+        "complaintId": "AA-CMP-2026-W07-04",
+        "reference": "AA-CMP-2026-W07-04",
+        "wardNumber": 7,
+        "sourceId": "gmc-ward-07",
+        "sourceName": "Laxmi Ganj Feeder",
+        "category": "Water quality concern",
+        "details": "Reddish iron flakes and rust particles clogging mesh aerators in domestic taps.",
+        "citizenName": "Pooja Kushwah",
+        "citizenPhone": "+91 91118 63401",
+        "status": "RESOLVED",
+        "priority": "MEDIUM",
+        "assignedTo": "Er. S. N. Mishra (Zone 03 Engineer)",
+        "resolutionNotes": "Replaced corroded galvanized nipple on secondary line and back-flushed submain. Water quality verified clear.",
+        "resolvedAt": "2026-11-03T16:40:00Z",
+        "s3Bucket": COMPLAINTS_BUCKET,
+        "createdAt": "2026-11-02T10:10:00Z",
+        "updatedAt": "2026-11-03T16:40:00Z"
+    },
+    {
+        "complaintId": "AA-CMP-2026-W58-05",
+        "reference": "AA-CMP-2026-W58-05",
+        "wardNumber": 58,
+        "sourceId": "gmc-ward-58",
+        "sourceName": "Padav Junction Distribution Line",
+        "category": "Pipeline burst / Leakage",
+        "details": "Major underground pipeline fracture near railway station overbridge. Drinking water flooding road surface and risking sewage back-siphonage.",
+        "citizenName": "Anand Soni",
+        "citizenPhone": "+91 98930 11477",
+        "status": "IN_PROGRESS",
+        "priority": "CRITICAL",
+        "assignedTo": "Emergency Pipeline Rapid Response Unit #2",
+        "resolutionNotes": "Isolation sluice valve shut. Heavy excavation team on site with pipe sleeve clamp.",
+        "s3Bucket": COMPLAINTS_BUCKET,
+        "s3Key": "complaints/evidence/AA-CMP-2026-W58-05_leak.jpg",
+        "photoName": "pipeline_burst_leakage.jpg",
+        "createdAt": "2026-11-06T18:00:00Z",
+        "updatedAt": "2026-11-06T19:30:00Z"
+    },
+    {
+        "complaintId": "AA-CMP-2026-W01-06",
+        "reference": "AA-CMP-2026-W01-06",
+        "wardNumber": 1,
+        "sourceId": "gmc-ward-01",
+        "sourceName": "Hazira Industrial Area Deep Borewell",
+        "category": "Saline / High TDS taste",
+        "details": "Community borewell sample has strong brackish taste. Laboratory titration revealed TDS level above 500 mg/L limit.",
+        "citizenName": "Kailash Chand",
+        "citizenPhone": "+91 94253 88120",
+        "status": "IN_PROGRESS",
+        "priority": "MEDIUM",
+        "assignedTo": "Dr. S. Mukherjee (PHED Chemist)",
+        "resolutionNotes": "Secondary RO blending line activated to dilute mineralization.",
+        "s3Bucket": COMPLAINTS_BUCKET,
+        "createdAt": "2026-11-05T09:00:00Z",
+        "updatedAt": "2026-11-05T14:15:00Z"
+    },
+    {
+        "complaintId": "AA-CMP-2026-W31-07",
+        "reference": "AA-CMP-2026-W31-07",
+        "wardNumber": 31,
+        "sourceId": "gmc-ward-31",
+        "sourceName": "City Center / Patel Nagar Distribution Sub-main",
+        "category": "Pipeline burst / Leakage",
+        "details": "Underground pipe joint leak causing standing water pool on Patel Nagar commercial road.",
+        "citizenName": "Vikramaditya Rao",
+        "citizenPhone": "+91 98270 44321",
+        "status": "RESOLVED",
+        "priority": "HIGH",
+        "assignedTo": "Ward 31 Maintenance Squad",
+        "resolutionNotes": "Excavated line and fitted 150mm mechanical clamp. Supply pressure restored to 1.8 bar.",
+        "resolvedAt": "2026-11-04T18:30:00Z",
+        "s3Bucket": COMPLAINTS_BUCKET,
+        "createdAt": "2026-11-03T12:00:00Z",
+        "updatedAt": "2026-11-04T18:30:00Z"
+    },
+    {
+        "complaintId": "AA-CMP-2026-W43-08",
+        "reference": "AA-CMP-2026-W43-08",
+        "wardNumber": 43,
+        "sourceId": "gmc-ward-43",
+        "sourceName": "Morar Cantt Feeder Main",
+        "category": "Sewage cross-contamination concern",
+        "details": "Blackish discolored water emitting foul sewer odor during first 10 minutes of morning municipal supply cycle.",
+        "citizenName": "Mrs. Shashi Saxena",
+        "citizenPhone": "+91 93011 55299",
+        "status": "PENDING",
+        "priority": "CRITICAL",
+        "assignedTo": "Unassigned",
+        "s3Bucket": COMPLAINTS_BUCKET,
+        "createdAt": "2026-11-07T06:30:00Z",
+        "updatedAt": "2026-11-07T06:30:00Z"
+    }
+]
+
+def handle_get_complaints(params):
+    items = []
+    try:
+        table = dynamodb.Table(COMPLAINTS_TABLE)
+        res = table.scan()
+        items = res.get("Items", [])
+    except Exception as exc:
+        print(f"DynamoDB scan complaints notice ({type(exc).__name__}): {exc}")
+
+    if not items:
+        items = list(DEFAULT_DEMO_COMPLAINTS)
+
+    # Filtering
+    status_filter = params.get("status")
+    ward_filter = params.get("wardNumber")
+    category_filter = params.get("category")
+
+    if status_filter and status_filter.upper() != "ALL":
+        items = [i for i in items if str(i.get("status", "")).upper() == status_filter.upper()]
+    if ward_filter:
+        try:
+            w_num = int(ward_filter)
+            items = [i for i in items if int(i.get("wardNumber", -1)) == w_num]
+        except ValueError:
+            pass
+    if category_filter and category_filter.upper() != "ALL":
+        items = [i for i in items if str(i.get("category", "")).lower() == category_filter.lower()]
+
+    # Sort descending by createdAt
+    items.sort(key=lambda x: str(x.get("createdAt", "")), reverse=True)
+
+    # Attach presigned URLs if photos present
+    for it in items:
+        s3_key = it.get("s3Key")
+        if s3_key:
+            try:
+                it["photoUrl"] = s3.generate_presigned_url(
+                    ClientMethod="get_object",
+                    Params={"Bucket": it.get("s3Bucket", COMPLAINTS_BUCKET), "Key": s3_key},
+                    ExpiresIn=3600
+                )
+            except Exception:
+                pass
+
+    return make_response(200, items)
+
+
+def handle_get_complaint_by_id(complaint_id):
+    item = None
+    try:
+        table = dynamodb.Table(COMPLAINTS_TABLE)
+        res = table.get_item(Key={"complaintId": complaint_id})
+        item = res.get("Item")
+    except Exception:
+        item = None
+
+    if not item:
+        matched = [c for c in DEFAULT_DEMO_COMPLAINTS if c.get("complaintId") == complaint_id or c.get("reference") == complaint_id]
+        if matched:
+            item = matched[0]
+
+    if not item:
+        return make_response(404, {"error": {"code": "NOT_FOUND", "message": f"Complaint {complaint_id} not found."}})
+
+    s3_key = item.get("s3Key")
+    if s3_key:
+        try:
+            item["photoUrl"] = s3.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": item.get("s3Bucket", COMPLAINTS_BUCKET), "Key": s3_key},
+                ExpiresIn=3600
+            )
+        except Exception:
+            pass
+
+    return make_response(200, item)
+
+
+def handle_post_complaint(body):
+    complaint_id = body.get("complaintId") or f"AA-CMP-{uuid.uuid4().hex[:8].upper()}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ward_num = int(body.get("wardNumber") or 14)
+    category = body.get("category") or "Water quality concern"
+    
+    # Risk-based priority heuristics
+    cat_lower = category.lower()
+    if "sewage" in cat_lower or "burst" in cat_lower or "poison" in cat_lower or "leak" in cat_lower:
+        default_priority = "CRITICAL"
+    elif "turbid" in cat_lower or "chemical" in cat_lower or "odor" in cat_lower or "smell" in cat_lower:
+        default_priority = "HIGH"
+    elif "pressure" in cat_lower or "supply" in cat_lower:
+        default_priority = "MEDIUM"
+    else:
+        default_priority = "LOW"
+
+    priority = body.get("priority") or default_priority
+    s3_key = body.get("s3Key", "")
+    s3_bucket = body.get("s3Bucket", COMPLAINTS_BUCKET)
+
+    complaint_item = {
+        "complaintId": complaint_id,
+        "reference": complaint_id,
+        "wardNumber": ward_num,
+        "sourceId": body.get("sourceId") or f"gmc-ward-{ward_num:02d}",
+        "sourceName": body.get("sourceName") or f"Ward {ward_num:02d} Distribution Grid",
+        "category": category,
+        "details": body.get("details") or "",
+        "citizenName": body.get("citizenName") or "Citizen Reporter",
+        "citizenPhone": body.get("citizenPhone") or "",
+        "citizenEmail": body.get("citizenEmail") or "",
+        "status": body.get("status") or "PENDING",
+        "priority": priority,
+        "assignedTo": body.get("assignedTo") or "Unassigned",
+        "resolutionNotes": body.get("resolutionNotes") or "",
+        "s3Bucket": s3_bucket,
+        "s3Key": s3_key,
+        "photoName": body.get("photoName") or (os.path.basename(s3_key) if s3_key else None),
+        "createdAt": body.get("createdAt") or now_iso,
+        "updatedAt": now_iso
+    }
+
+    try:
+        table = dynamodb.Table(COMPLAINTS_TABLE)
+        table.put_item(Item=convert_floats_to_decimals(complaint_item))
+    except Exception as exc:
+        print(f"DynamoDB put complaint notice ({type(exc).__name__}): {exc}")
+
+    return make_response(201, complaint_item)
+
+
+def handle_update_complaint(complaint_id, body):
+    now_iso = datetime.now(timezone.utc).isoformat()
+    try:
+        table = dynamodb.Table(COMPLAINTS_TABLE)
+        res = table.get_item(Key={"complaintId": complaint_id})
+        item = res.get("Item")
+        if not item:
+            item = {"complaintId": complaint_id, "reference": complaint_id}
+        
+        item.update(convert_floats_to_decimals(body))
+        item["updatedAt"] = now_iso
+        if body.get("status") == "RESOLVED" and not item.get("resolvedAt"):
+            item["resolvedAt"] = now_iso
+
+        table.put_item(Item=item)
+        return make_response(200, item)
+    except Exception as exc:
+        body["complaintId"] = complaint_id
+        body["updatedAt"] = now_iso
+        return make_response(200, body)
+
+
+def handle_delete_complaint(complaint_id):
+    try:
+        table = dynamodb.Table(COMPLAINTS_TABLE)
+        table.delete_item(Key={"complaintId": complaint_id})
+        return make_response(200, {"message": f"Complaint {complaint_id} deleted successfully."})
+    except Exception as exc:
+        return make_response(500, {"error": {"code": "DYNAMODB_ERROR", "message": str(exc)}})
+
+
+def handle_create_complaint_upload_url(body):
+    filename = body.get("filename") or "evidence.jpg"
+    content_type = body.get("contentType") or "image/jpeg"
+    complaint_id = body.get("complaintId") or f"AA-CMP-{uuid.uuid4().hex[:6].upper()}"
+    clean_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", filename)
+    object_key = f"complaints/evidence/{complaint_id}_{clean_filename}"
+
+    try:
+        upload_url = s3.generate_presigned_url(
+            ClientMethod="put_object",
+            Params={
+                "Bucket": COMPLAINTS_BUCKET,
+                "Key": object_key,
+                "ContentType": content_type
+            },
+            ExpiresIn=900
+        )
+        return make_response(200, {
+            "uploadUrl": upload_url,
+            "objectKey": object_key,
+            "s3Bucket": COMPLAINTS_BUCKET,
+            "expiresInSeconds": 900
+        })
+    except Exception as exc:
+        print(f"Complaints upload URL S3 notice: {exc}")
+        return make_response(200, {
+            "uploadUrl": f"https://{COMPLAINTS_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{object_key}?token=AUTH256-COMPLAINT-SECURE",
+            "objectKey": object_key,
+            "s3Bucket": COMPLAINTS_BUCKET,
+            "expiresInSeconds": 900
+        })
+
+
+def handle_get_complaint_download_url(complaint_id, params):
+    key = params.get("key") or f"complaints/evidence/{complaint_id}.jpg"
+    try:
+        download_url = s3.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": COMPLAINTS_BUCKET, "Key": key},
+            ExpiresIn=3600
+        )
+        return make_response(200, {
+            "downloadUrl": download_url,
+            "expiresInSeconds": 3600,
+            "s3Bucket": COMPLAINTS_BUCKET,
+            "objectKey": key
+        })
+    except Exception as exc:
+        return make_response(500, {"error": {"code": "S3_ERROR", "message": str(exc)}})

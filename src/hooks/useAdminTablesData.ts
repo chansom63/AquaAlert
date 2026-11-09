@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { allApiRecords, recordsFrom, type ApiRecord } from '../api/adminRecords';
-import type { Alert, Source } from '../types/water';
+import type { Alert, Source, ComplaintRecord } from '../types/water';
 import { DEMO_SOURCES, DEMO_ALERTS } from '../data/demoDataset';
 import { DEMO_ADMIN_READINGS, DEMO_ADMIN_ACTIONS } from '../data/demoAdminData';
+import { DEMO_COMPLAINTS } from '../data/demoComplaintsData';
 import type { RuleItem, ThresholdStandard } from '../components/admin/RulesThresholdsView';
 
 export interface LabReportRecord {
@@ -45,6 +46,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
   const [reports, setReports] = useState<LabReportRecord[]>([]);
   const [rules, setRules] = useState<RuleItem[]>([]);
   const [thresholds, setThresholds] = useState<ThresholdStandard[]>([]);
+  const [complaints, setComplaints] = useState<ComplaintRecord[]>([]);
 
   const [loadingSources, setLoadingSources] = useState(false);
   const [loadingReadings, setLoadingReadings] = useState(false);
@@ -53,6 +55,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
   const [loadingReports, setLoadingReports] = useState(false);
   const [loadingRules, setLoadingRules] = useState(false);
   const [loadingThresholds, setLoadingThresholds] = useState(false);
+  const [loadingComplaints, setLoadingComplaints] = useState(false);
   const [error, setError] = useState('');
 
   const loadedSourcesRef = useRef(false);
@@ -62,6 +65,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
   const loadedReportsRef = useRef(false);
   const loadedRulesRef = useRef(false);
   const loadedThresholdsRef = useRef(false);
+  const loadedComplaintsRef = useRef(false);
 
   const fetchSources = useCallback(async (force = false) => {
     if (loadedSourcesRef.current && !force) return;
@@ -227,6 +231,25 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     }
   }, []);
 
+  const fetchComplaints = useCallback(async (force = false) => {
+    if (loadedComplaintsRef.current && !force) return;
+    setLoadingComplaints(true);
+    try {
+      const res = await api<ComplaintRecord[]>('/complaints');
+      if (Array.isArray(res) && res.length > 0) {
+        setComplaints(res);
+        loadedComplaintsRef.current = true;
+        return;
+      }
+    } catch (err) {
+      console.warn('Complaints API notice:', (err as Error).message);
+    } finally {
+      setLoadingComplaints(false);
+    }
+    setComplaints(DEMO_COMPLAINTS);
+    loadedComplaintsRef.current = true;
+  }, []);
+
   useEffect(() => {
     // Lazy on-demand fetching: only fetch records required for the currently active tab/page!
     switch (activeNav) {
@@ -238,6 +261,11 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
         void fetchActions();
         void fetchRules();
         void fetchThresholds();
+        void fetchComplaints();
+        break;
+      case 'Complaints':
+        void fetchSources();
+        void fetchComplaints();
         break;
       case 'Water Sources':
         void fetchSources();
@@ -287,6 +315,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     loadedReportsRef.current = false;
     loadedRulesRef.current = false;
     loadedThresholdsRef.current = false;
+    loadedComplaintsRef.current = false;
 
     if (activeNav === 'Readings') {
       await fetchReadings(true);
@@ -294,6 +323,8 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
       await fetchActions(true);
     } else if (activeNav === 'Water Sources') {
       await fetchSources(true);
+    } else if (activeNav === 'Complaints') {
+      await Promise.all([fetchSources(true), fetchComplaints(true)]);
     } else if (activeNav === 'Rules & Thresholds') {
       await Promise.all([fetchRules(true), fetchThresholds(true), fetchAlerts(true), fetchReadings(true)]);
     } else if (activeNav === 'Reports' || activeNav === 'Upload Reports' || activeNav === 'Upload Document' || activeNav === 'Evidence Archive' || activeNav === 'Evidence (S3)') {
@@ -307,11 +338,12 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
         fetchActions(true),
         fetchRules(true),
         fetchThresholds(true),
+        fetchComplaints(true),
       ]);
     }
-  }, [activeNav, fetchSources, fetchAlerts, fetchReadings, fetchActions, fetchReports, fetchRules, fetchThresholds]);
+  }, [activeNav, fetchSources, fetchAlerts, fetchReadings, fetchActions, fetchReports, fetchRules, fetchThresholds, fetchComplaints]);
 
-  const isFetching = loadingSources || loadingReadings || loadingAlerts || loadingActions || loadingReports || loadingRules || loadingThresholds;
+  const isFetching = loadingSources || loadingReadings || loadingAlerts || loadingActions || loadingReports || loadingRules || loadingThresholds || loadingComplaints;
   const loading = isFetching;
 
   // --- CRUD: Sources ---
@@ -569,6 +601,63 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     setThresholds(prev => prev.filter(t => t.id !== paramId));
   }, []);
 
+  const createComplaint = useCallback(async (newComplaint: Partial<ComplaintRecord>): Promise<ComplaintRecord> => {
+    const complaintId = newComplaint.complaintId || `AA-CMP-${Date.now().toString(36).toUpperCase()}`;
+    const payload: ComplaintRecord = {
+      complaintId,
+      reference: complaintId,
+      wardNumber: newComplaint.wardNumber || 14,
+      sourceId: newComplaint.sourceId || `gmc-ward-${newComplaint.wardNumber || 14}`,
+      sourceName: newComplaint.sourceName || `Ward ${newComplaint.wardNumber || 14} Distribution Main`,
+      category: newComplaint.category || 'Water quality concern',
+      details: newComplaint.details || '',
+      citizenName: newComplaint.citizenName || 'Citizen Reporter',
+      citizenPhone: newComplaint.citizenPhone || '',
+      citizenEmail: newComplaint.citizenEmail || '',
+      status: newComplaint.status || 'PENDING',
+      priority: newComplaint.priority || 'HIGH',
+      assignedTo: newComplaint.assignedTo || 'Unassigned',
+      s3Bucket: 'waterq-dev-complaints-evidence',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...newComplaint,
+    };
+    try {
+      await api('/complaints', { method: 'POST', body: JSON.stringify(payload) });
+    } catch (err) {
+      console.warn('Create complaint API notice:', err);
+    }
+    setComplaints(prev => [payload, ...prev]);
+    return payload;
+  }, []);
+
+  const updateComplaint = useCallback(async (complaintId: string, updates: Partial<ComplaintRecord>): Promise<void> => {
+    try {
+      await api(`/complaints/${encodeURIComponent(complaintId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch (err) {
+      console.warn('Update complaint API notice:', err);
+    }
+    setComplaints(prev =>
+      prev.map(c =>
+        c.complaintId === complaintId || c.reference === complaintId
+          ? { ...c, ...updates, updatedAt: new Date().toISOString() }
+          : c
+      )
+    );
+  }, []);
+
+  const deleteComplaint = useCallback(async (complaintId: string): Promise<void> => {
+    try {
+      await api(`/complaints/${encodeURIComponent(complaintId)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Delete complaint API notice:', err);
+    }
+    setComplaints(prev => prev.filter(c => c.complaintId !== complaintId && c.reference !== complaintId));
+  }, []);
+
   return {
     sources,
     readings,
@@ -577,6 +666,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     reports,
     rules,
     thresholds,
+    complaints,
     loading,
     loadingSources,
     loadingReadings,
@@ -585,6 +675,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     loadingReports,
     loadingRules,
     loadingThresholds,
+    loadingComplaints,
     isFetching,
     error,
     setError,
@@ -596,6 +687,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     fetchReports,
     fetchRules,
     fetchThresholds,
+    fetchComplaints,
     // CRUD Handlers
     createSource,
     updateSource,
@@ -616,5 +708,8 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     createThreshold,
     updateThreshold,
     deleteThreshold,
+    createComplaint,
+    updateComplaint,
+    deleteComplaint,
   };
 };

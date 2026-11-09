@@ -21,9 +21,11 @@ import {
   User,
   Users,
   X,
+  MessageSquareWarning,
 } from 'lucide-react';
 import { AdminDashboardView } from '../components/admin/AdminDashboardView';
 import { AlertsIncidentsView } from '../components/admin/AlertsIncidentsView';
+import { ComplaintsView } from '../components/admin/ComplaintsView';
 import { WaterSourcesView } from '../components/admin/WaterSourcesView';
 import { UsersRolesView } from '../components/admin/UsersRolesView';
 import { ReadingsView } from '../components/admin/ReadingsView';
@@ -460,6 +462,24 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               </span>
             </button>
 
+            {/* Citizen Complaints */}
+            <button
+              onClick={() => handleNavChange('Complaints')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                activeNav === 'Complaints'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquareWarning className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>Complaints</span>
+              </div>
+              <span className="bg-amber-600 text-white text-[11px] font-black px-1.5 py-0.2 rounded-full leading-none">
+                {adminTables.complaints.length}
+              </span>
+            </button>
+
             {/* Response Actions */}
             <button
               onClick={() => handleNavChange('Response Actions')}
@@ -589,6 +609,7 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
             <p className="text-xs text-slate-500 mt-0.5">
               {activeNav === 'Admin Dashboard'      && 'Monitor water quality, manage alerts, and take response actions'}
               {activeNav === 'Alerts & Incidents'   && 'View active alerts, track investigation, and manage incident lifecycle'}
+              {activeNav === 'Complaints'           && 'Monitor, triage, and resolve citizen water grievances with S3 photo evidence and field engineer assignment.'}
               {activeNav === 'Water Sources'        && 'Manage and monitor water sources, their details, status, and latest water quality'}
               {activeNav === 'Readings'             && 'View, search, and manage water quality readings'}
               {activeNav === 'Reports'              && 'View, download, and analyze statutory water quality reports and certified documentation'}
@@ -823,6 +844,18 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               onCreateAlert={adminTables.createAlert}
               onUpdateAlert={adminTables.updateAlert}
               onDeleteAlert={adminTables.deleteAlert}
+            />
+          )}
+
+          {/* ── CITIZEN COMPLAINTS ── */}
+          {activeNav === 'Complaints' && (
+            <ComplaintsView
+              complaints={adminTables.complaints}
+              loading={adminTables.loadingComplaints}
+              onRefresh={() => adminTables.fetchComplaints(true)}
+              onUpdateComplaint={adminTables.updateComplaint}
+              onDeleteComplaint={adminTables.deleteComplaint}
+              onCreateComplaint={adminTables.createComplaint}
             />
           )}
 

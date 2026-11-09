@@ -12,7 +12,7 @@ import AlertDetailDrawer from '../components/alerts/AlertDetailDrawer';
 import GwaliorWardOverview from '../components/wards/GwaliorWardOverview';
 import { useWaterData } from '../hooks/useWaterData';
 
-const CITIZEN_NAV = ['Overview', 'Interactive Map', 'Sources', 'Alerts', 'Reports'];
+const CITIZEN_NAV = ['Overview', 'Interactive Map', 'Sources', 'Alerts', 'Complaints'];
 
 const CitizenPage: FC = () => {
   const [page, setPage] = useState('Overview');
@@ -125,7 +125,7 @@ const CitizenPage: FC = () => {
           }}
         />
       )}
-      {page === 'Reports' && (
+      {(page === 'Complaints' || page === 'Reports') && (
         <ComplaintSection
           reports={data.complaints}
           onSubmit={data.submitComplaint}

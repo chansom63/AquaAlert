@@ -9,6 +9,8 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+__pycache__/
+*.py[cod]
 # Generated media drafts kept outside the shipped public assets
 /Air_bubbles_rising_through_water_721a2c51_1080p.mp4
 /Water_pouring_with_splashes_b703166a_t1.2-10.mp4
