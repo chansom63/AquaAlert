@@ -5442,6 +5442,67 @@
   box-shadow: 0 6px 20px rgba(126, 34, 206, 0.45);
 }
 
+.login-card {
+  cursor: pointer;
+  outline: none;
+}
+
+.login-card:focus-visible {
+  box-shadow: 0 0 0 3px #38bdf8 !important;
+}
+
+.login-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.login-card-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.login-card-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fef08a;
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-family: Inter, system-ui, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.login-card-quick-btn:hover {
+  background: rgba(251, 191, 36, 0.25);
+  border-color: #fde047;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.35);
+  transform: translateY(-1px);
+}
+
+.active-session-badge {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(52, 211, 153, 0.5) !important;
+}
+
+.login-card-active {
+  border-color: rgba(52, 211, 153, 0.45) !important;
+  box-shadow: 0 16px 40px rgba(16, 185, 129, 0.15) !important;
+}
+
 @media (max-width: 900px) {
   .login-portals-grid {
     grid-template-columns: 1fr !important;

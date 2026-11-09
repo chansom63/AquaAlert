@@ -63,15 +63,6 @@ const SCENES: HeroScene[] = [
 
 const SCENE_DURATION = 7000; // ms
 
-const NAV_LINKS = [
-  { label: 'Home',            href: '#home' },
-  { label: 'Live Monitoring', href: '#water-testing' },
-  { label: 'Portals Login',   href: '#login-portals' },
-  { label: 'Water Quality',   href: '#quality' },
-  { label: 'Our Technology',  href: '#technology' },
-  { label: 'About Us',        href: '#about' },
-];
-
 /* ─────────────────────────────────────────────────────────────────────────────
    DUAL-VIDEO BACKGROUND (SEQUENTIAL LOOP)
    Plays Video 1 (rising bubbles) -> Video 2 (water pour/splash) -> Video 1 ...
@@ -310,31 +301,11 @@ const Particle: FC<{ x:number; y:number; size:number; duration:number; delay:num
 /* ─────────────────────────────────────────────────────────────────────────────
    MAIN HERO COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
-const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin' | 'lab') => void }> = ({ onLoginSelect }) => {
+const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin' | 'lab') => void }> = () => {
   const [currentScene, setCurrentScene] = useState(0);
   const [textPhase,    setTextPhase]    = useState<'entering' | 'exiting'>('entering');
   const [paused,       setPaused]       = useState(false);
   const [progress,     setProgress]     = useState(0);
-  const [loginOpen, setLoginOpen] = useState(false);
-  const loginWrapRef = useRef<HTMLLIElement>(null);
-
-  useEffect(() => {
-    if (!loginOpen) return;
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (loginWrapRef.current && !loginWrapRef.current.contains(e.target as Node)) {
-        setLoginOpen(false);
-      }
-    };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLoginOpen(false);
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [loginOpen]);
 
   const mousePos      = useMouseParallax();
   const heroRef       = useRef<HTMLElement>(null);
@@ -446,36 +417,13 @@ const CinematicHero: FC<{ onLoginSelect?: (portal: 'citizen' | 'admin' | 'lab') 
         {particles.map(p => <Particle key={p.id} {...p} />)}
       </div>
 
-      {/* ── Navigation ── */}
-      <nav className="hero__nav" aria-label="Site navigation">
+      {/* ── Brand Logo Header (Clean corner branding with no navbar links or login dropdown) ── */}
+      <div className="hero__nav" aria-label="Site branding">
         <div className="hero__logo">
           <span className="hero__logo-name">AquaAlert</span>
           <span className="hero__logo-tagline">Water Quality Alert System</span>
         </div>
-        <ul className="hero__nav-links" role="list">
-          {NAV_LINKS.map(link => (
-            <li key={link.label}>
-              <a className="hero__nav-link" href={link.href}>{link.label}</a>
-            </li>
-          ))}
-          <li ref={loginWrapRef} className="hero__login-wrap">
-            <button className="hero__login-button" aria-expanded={loginOpen} onClick={() => setLoginOpen(open => !open)}>Login <span>⌄</span></button>
-            {loginOpen && (
-              <div className="hero__login-menu" role="menu">
-                <button role="menuitem" onClick={() => { setLoginOpen(false); onLoginSelect?.('citizen'); }}>
-                  Login as a user
-                </button>
-                <button role="menuitem" onClick={() => { setLoginOpen(false); onLoginSelect?.('admin'); }}>
-                  Login as admin
-                </button>
-                <button role="menuitem" onClick={() => { setLoginOpen(false); onLoginSelect?.('lab'); }}>
-                  Login as lab personnel
-                </button>
-              </div>
-            )}
-          </li>
-        </ul>
-      </nav>
+      </div>
 
       {/* ── Foreground content ── */}
       <div className="hero__content">
