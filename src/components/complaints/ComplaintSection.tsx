@@ -5,7 +5,6 @@ import {
   Camera,
   CheckCircle2,
   Clock,
-  ExternalLink,
   Phone,
   ShieldAlert,
   User,
@@ -213,10 +212,10 @@ const ComplaintSection: FC<ComplaintSectionProps> = ({ reports, onSubmit, busy =
       </a>
 
       {/* Logged Complaints Header */}
-      <div className="complaint-history-heading">
+      <div className="complaint-history-heading flex items-center justify-between pb-2 mb-2 border-b border-[#1e3470]/60">
         <div>
-          <div className="panel-eyebrow">COMPLAINTS REGISTRY</div>
-          <h3>Logged Citizen Complaints</h3>
+          <div className="panel-eyebrow text-[10px] tracking-wider text-cyan-400 font-semibold uppercase">COMPLAINTS REGISTRY</div>
+          <h3 className="text-sm font-bold text-white">Logged Citizen Complaints</h3>
         </div>
         <span className="font-mono text-cyan-300 font-bold bg-cyan-950/80 border border-cyan-700/60 px-2 py-0.5 rounded-full text-xs">
           {reports.length}
@@ -224,74 +223,79 @@ const ComplaintSection: FC<ComplaintSectionProps> = ({ reports, onSubmit, busy =
       </div>
 
       {reports.length ? (
-        <div className="complaint-history space-y-3">
+        <div className="complaint-history space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
           {reports.map(report => (
             <article
-              className="complaint-item bg-[#091533] border border-[#1e3470] hover:border-cyan-500/40 p-3.5 rounded-xl transition shadow-xs"
+              className="complaint-item bg-[#091533] border border-[#1e3470] hover:border-cyan-500/50 p-3 rounded-xl transition shadow-xs space-y-2"
               key={report.reference || report.complaintId}
             >
-              <div className="flex items-center justify-between text-xs mb-1.5 gap-2">
-                <b className="text-white font-bold truncate">{report.category}</b>
-                <span className="text-cyan-300 font-mono text-[11px] shrink-0 bg-cyan-950/60 border border-cyan-800/40 px-2 py-0.5 rounded">
-                  Ward {String(report.wardNumber).padStart(2, '0')}
-                </span>
+              {/* Row 1: Category + Ward Pill + Status */}
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <b className="text-white font-bold truncate text-xs">{report.category}</b>
+                  <span className="text-cyan-300 font-mono text-[10px] shrink-0 bg-cyan-950/80 border border-cyan-800/60 px-1.5 py-0.2 rounded">
+                    Ward {String(report.wardNumber).padStart(2, '0')}
+                  </span>
+                </div>
+                <div className="shrink-0">{getStatusBadge(report.status)}</div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1.5">
+              {/* Row 2: Reference + Priority + Date in a sleek single line */}
+              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 border-b border-[#1c295c]/60 pb-1.5">
                 <span className="text-cyan-400 font-semibold">{report.reference || report.complaintId}</span>
-                {getPriorityBadge(report.priority)}
+                <div className="flex items-center gap-2">
+                  {getPriorityBadge(report.priority)}
+                  <span className="text-[10px] text-slate-500 font-sans">
+                    {new Date(report.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               </div>
 
-              <p className="text-xs text-slate-300 leading-relaxed mb-2">
+              {/* Row 3: Description snippet (compact) */}
+              <p className="text-xs text-slate-300 leading-snug line-clamp-2">
                 {report.details}
               </p>
 
-              {/* Citizen info if present */}
-              {report.citizenName && (
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-1.5">
-                  <User className="w-3 h-3 text-slate-500" />
-                  <span>Reported by: <strong className="text-slate-300">{report.citizenName}</strong></span>
-                  {report.citizenPhone && <span className="text-slate-500 font-mono">({report.citizenPhone})</span>}
-                </div>
-              )}
+              {/* Row 4: Compact metadata tags (reporter, evidence, technician) all in one tight wrap row */}
+              <div className="flex items-center gap-1.5 flex-wrap text-[10px] pt-0.5">
+                {report.citizenName && (
+                  <span className="inline-flex items-center gap-1 text-slate-400 bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">
+                    <User className="w-2.5 h-2.5 text-slate-500" />
+                    <span className="text-slate-300">{report.citizenName}</span>
+                    {report.citizenPhone && <span className="text-slate-500 font-mono">({report.citizenPhone})</span>}
+                  </span>
+                )}
 
-              {/* Photo Evidence Attached Indicator */}
-              {(report.photoName || report.s3Key) && (
-                <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-purple-950/40 border border-purple-800/30 text-[11px] text-purple-300 mb-2">
-                  <Camera className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span className="truncate">Evidence: {report.photoName || 'attachment.jpg'}</span>
-                  {report.photoUrl && (
-                    <a
-                      href={report.photoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-auto text-sky-400 hover:text-sky-300 hover:underline flex items-center gap-0.5 text-[10px] font-semibold"
-                    >
-                      <span>View</span>
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                  )}
-                </div>
-              )}
+                {(report.photoName || report.s3Key) && (
+                  <span className="inline-flex items-center gap-1 bg-purple-950/50 border border-purple-800/40 text-purple-300 px-2 py-0.5 rounded font-mono">
+                    <Camera className="w-2.5 h-2.5 text-purple-400" />
+                    <span className="truncate max-w-[120px]">{report.photoName || 'evidence.jpg'}</span>
+                    {report.photoUrl && (
+                      <a
+                        href={report.photoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sky-400 hover:text-white underline ml-1"
+                      >
+                        view
+                      </a>
+                    )}
+                  </span>
+                )}
 
-              {/* Assigned Engineer / Resolution Note */}
-              {report.assignedTo && report.assignedTo !== 'Unassigned' && (
-                <div className="text-[11px] text-indigo-300 bg-indigo-950/40 border border-indigo-800/30 rounded p-1.5 mb-2 flex items-center gap-1">
-                  <Users className="w-3 h-3 shrink-0 text-indigo-400" />
-                  <span>Assigned: <strong>{report.assignedTo}</strong></span>
-                </div>
-              )}
+                {report.assignedTo && report.assignedTo !== 'Unassigned' && (
+                  <span className="inline-flex items-center gap-1 bg-indigo-950/50 border border-indigo-800/40 text-indigo-300 px-2 py-0.5 rounded">
+                    <Users className="w-2.5 h-2.5 text-indigo-400" />
+                    <span>Eng: {report.assignedTo}</span>
+                  </span>
+                )}
 
-              {report.resolutionNotes && (
-                <div className="text-[11px] text-emerald-300 bg-emerald-950/40 border border-emerald-800/30 rounded p-1.5 mb-2">
-                  <strong>Resolution:</strong> {report.resolutionNotes}
-                </div>
-              )}
-
-              {/* Bottom Footer Strip */}
-              <div className="flex items-center justify-between pt-2 border-t border-[#1c295c] text-[10px] text-slate-400">
-                <span>{new Date(report.createdAt).toLocaleString()}</span>
-                {getStatusBadge(report.status)}
+                {report.resolutionNotes && (
+                  <span className="inline-flex items-center gap-1 bg-emerald-950/50 border border-emerald-800/40 text-emerald-300 px-2 py-0.5 rounded">
+                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                    <span className="truncate max-w-[150px]">{report.resolutionNotes}</span>
+                  </span>
+                )}
               </div>
             </article>
           ))}
