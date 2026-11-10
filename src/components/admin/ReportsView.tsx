@@ -29,6 +29,7 @@ import type { ApiRecord } from '../../api/adminRecords';
 import type { LabReportRecord } from '../../hooks/useAdminTablesData';
 import { api } from '../../api/client';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../common/SubmissionSuccessModal';
+import DateRangePicker, { type DateRange } from '../common/DateRangePicker';
 
 export interface ReportRow {
   reportId: string;
@@ -205,6 +206,7 @@ export const ReportsView: FC<ReportsViewProps> = ({
   const [selectedId, setSelectedId] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState('All Types');
   const [sourceFilter, setSourceFilter] = useState('All Sources');
+  const [dateRange, setDateRange] = useState<DateRange>({ startDate: '', endDate: '' });
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -483,9 +485,23 @@ export const ReportsView: FC<ReportsViewProps> = ({
         if (!match) return false;
       }
 
+      // Date Range Filter
+      if (dateRange.startDate) {
+        const start = new Date(dateRange.startDate);
+        start.setHours(0, 0, 0, 0);
+        const reportDate = r.generatedAt ? new Date(r.generatedAt) : null;
+        if (reportDate && !Number.isNaN(reportDate.getTime()) && reportDate < start) return false;
+      }
+      if (dateRange.endDate) {
+        const end = new Date(dateRange.endDate);
+        end.setHours(23, 59, 59, 999);
+        const reportDate = r.generatedAt ? new Date(r.generatedAt) : null;
+        if (reportDate && !Number.isNaN(reportDate.getTime()) && reportDate > end) return false;
+      }
+
       return true;
     });
-  }, [allReports, activeRegistryTab, selectedFolderFilter, typeFilter, sourceFilter, search]);
+  }, [allReports, activeRegistryTab, selectedFolderFilter, typeFilter, sourceFilter, search, dateRange]);
 
   // Dynamic KPI Metrics derived directly from live data
   const kpiMetrics = useMemo(() => {
@@ -1369,14 +1385,13 @@ export const ReportsView: FC<ReportsViewProps> = ({
               </select>
             </div>
 
-            {/* Date Range */}
-            <div className="flex flex-col">
-              <span className="text-[10px] text-slate-400 mb-0.5 ml-0.5">Date Range</span>
-              <div className="flex items-center gap-1.5 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-xs text-slate-600">
-                <span>📅</span>
-                <span>01 Oct 2026 – Present</span>
-              </div>
-            </div>
+            {/* Date Range Calendar Picker */}
+            <DateRangePicker
+              label="Date Range"
+              value={dateRange}
+              onChange={setDateRange}
+              defaultLabel="All Report Dates"
+            />
 
             <button
               onClick={() => {
@@ -1385,6 +1400,7 @@ export const ReportsView: FC<ReportsViewProps> = ({
                 setSourceFilter('All Sources');
                 setActiveRegistryTab('all');
                 setSelectedFolderFilter('all');
+                setDateRange({ startDate: '', endDate: '' });
               }}
               className="text-xs font-semibold text-blue-600 hover:text-blue-700 mt-4 cursor-pointer"
             >

@@ -21,6 +21,7 @@ import type { LabReportRecord } from '../../hooks/useAdminTablesData';
 import { api } from '../../api/client';
 import { recordLocallyUploadedReport } from '../../utils/reportsSync';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../common/SubmissionSuccessModal';
+import DateRangePicker, { type DateRange } from '../common/DateRangePicker';
 
 export interface DocumentRow {
   reportId: string;
@@ -152,6 +153,7 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
   const [selectedFolderFilter, setSelectedFolderFilter] = useState<'all' | 'policies' | 'inspection' | 'claim' | 'verify'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Completed' | 'In Progress' | 'Failed'>('All');
+  const [dateRange, setDateRange] = useState<DateRange>({ startDate: '', endDate: '' });
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name' | 'type'>('newest');
 
   // Selection & Details Drawer
@@ -334,6 +336,21 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
           const matchSource = (doc.sourceName || doc.sourceId || '').toLowerCase().includes(q);
           if (!matchName && !matchId && !matchAuthor && !matchSource) return false;
         }
+
+        // Date Range Filter
+        if (dateRange.startDate) {
+          const start = new Date(dateRange.startDate);
+          start.setHours(0, 0, 0, 0);
+          const docDate = doc.generatedAt ? new Date(doc.generatedAt) : null;
+          if (docDate && !Number.isNaN(docDate.getTime()) && docDate < start) return false;
+        }
+        if (dateRange.endDate) {
+          const end = new Date(dateRange.endDate);
+          end.setHours(23, 59, 59, 999);
+          const docDate = doc.generatedAt ? new Date(doc.generatedAt) : null;
+          if (docDate && !Number.isNaN(docDate.getTime()) && docDate > end) return false;
+        }
+
         return true;
       })
       .sort((a, b) => {
@@ -348,7 +365,7 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
         const timeB = b.generatedAt ? new Date(b.generatedAt).getTime() : 0;
         return timeB - timeA;
       });
-  }, [allDocuments, selectedFolderFilter, statusFilter, searchQuery, sortBy]);
+  }, [allDocuments, selectedFolderFilter, statusFilter, searchQuery, sortBy, dateRange]);
 
   const selected = useMemo(() => {
     return allDocuments.find(d => d.reportId === selectedId) || null;
@@ -944,7 +961,7 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as any)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer"
             >
               <option value="All">All Statuses</option>
               <option value="Completed">Completed</option>
@@ -952,10 +969,16 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
               <option value="Failed">Failed</option>
             </select>
 
+            <DateRangePicker
+              value={dateRange}
+              onChange={setDateRange}
+              defaultLabel="All Upload Dates"
+            />
+
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as any)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer"
             >
               <option value="newest">Sort: Newest</option>
               <option value="oldest">Sort: Oldest</option>

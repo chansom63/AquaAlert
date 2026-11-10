@@ -7,6 +7,7 @@ import type { LabReportRecord } from '../../hooks/useAdminTablesData';
 import { api } from '../../api/client';
 import { recordLocallyUploadedReport } from '../../utils/reportsSync';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../common/SubmissionSuccessModal';
+import DateRangePicker, { type DateRange } from '../common/DateRangePicker';
 import {
   Calendar,
   CheckCircle2,
@@ -296,6 +297,7 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
   const [sourceFilter, setSourceFilter] = useState('All Sources');
   const [alertFilter, setAlertFilter] = useState('All Alerts');
   const [typeFilter, setTypeFilter] = useState('All Types');
+  const [dateRange, setDateRange] = useState<DateRange>({ startDate: '', endDate: '' });
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
@@ -576,6 +578,20 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
     const matchAlert = alertFilter === 'All Alerts' || item.linkedTo.includes(alertFilter);
     const matchType = typeFilter === 'All Types' || item.type === typeFilter;
 
+    // Date range filter
+    if (dateRange.startDate) {
+      const start = new Date(dateRange.startDate);
+      start.setHours(0, 0, 0, 0);
+      const itemDate = new Date(item.uploadedAt);
+      if (!Number.isNaN(itemDate.getTime()) && itemDate < start) return false;
+    }
+    if (dateRange.endDate) {
+      const end = new Date(dateRange.endDate);
+      end.setHours(23, 59, 59, 999);
+      const itemDate = new Date(item.uploadedAt);
+      if (!Number.isNaN(itemDate.getTime()) && itemDate > end) return false;
+    }
+
     return matchSearch && matchSource && matchAlert && matchType;
   });
 
@@ -733,14 +749,13 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
           </div>
         ))}
 
-        {/* Upload Date */}
-        <div className="flex flex-col">
-          <span className="text-[10px] text-slate-400 mb-0.5 ml-0.5">Upload Date</span>
-          <div className="flex items-center gap-1.5 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-xs text-slate-600">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-            <span>01 Oct 2026 – 01 Nov 2026</span>
-          </div>
-        </div>
+        {/* Upload Date Calendar Picker */}
+        <DateRangePicker
+          label="Upload Date"
+          value={dateRange}
+          onChange={setDateRange}
+          defaultLabel="All Upload Dates"
+        />
 
         <button
           onClick={() => {
@@ -748,8 +763,9 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
             setSourceFilter('All Sources');
             setAlertFilter('All Alerts');
             setTypeFilter('All Types');
+            setDateRange({ startDate: '', endDate: '' });
           }}
-          className="text-xs font-semibold text-blue-600 hover:text-blue-700 mt-4 ml-1"
+          className="text-xs font-semibold text-blue-600 hover:text-blue-700 mt-4 ml-1 cursor-pointer"
         >
           Clear
         </button>
