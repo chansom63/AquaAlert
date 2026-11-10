@@ -272,16 +272,20 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
             : typeof alert.reason === 'string'
             ? alert.reason
             : 'pH, TDS, Turbidity';
+        const rawSource =
+          (alert.sourceId && alert.sourceId !== 'undefined' && alert.sourceId !== 'null' ? alert.sourceId : null) ||
+          ((alert as any).sourceName && (alert as any).sourceName !== 'undefined' && (alert as any).sourceName !== 'null' ? (alert as any).sourceName : null) ||
+          'Entire Grid';
         list.push({
           reportId: `REP-${alert.alertId}`,
-          name: `Incident Investigation – ${alert.sourceId || (alert as any).sourceName || 'Entire Grid'} (${paramStr})`,
+          name: `Incident Investigation – ${rawSource} (${paramStr})`,
           type: 'Incident',
           period: dateStr,
           generatedBy: 'Surveillance Alert Engine',
           status: alert.state === 'RESOLVED' ? 'Completed' : 'In Progress',
           generatedAt: alert.issuedAt ? new Date(alert.issuedAt).toLocaleString() : 'Recent',
           sourcesCovered: 1,
-          sourceId: alert.sourceId,
+          sourceId: rawSource === 'Entire Grid' ? undefined : alert.sourceId,
           parameters: paramStr,
           description: `Statutory incident audit correlated against live telemetry sensors.`,
           folderCategory: 'claim',
@@ -1133,7 +1137,11 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
               <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl">
                 <div>
                   <div className="text-[10px] text-slate-400 uppercase font-mono">Station</div>
-                  <div className="font-semibold text-slate-800">{selected.sourceName || selected.sourceId}</div>
+                  <div className="font-semibold text-slate-800">
+                    {(selected.sourceName && selected.sourceName !== 'undefined' && selected.sourceName !== 'null' ? selected.sourceName : null) ||
+                     (selected.sourceId && selected.sourceId !== 'undefined' && selected.sourceId !== 'null' ? selected.sourceId : null) ||
+                     'Entire Grid'}
+                  </div>
                 </div>
                 <div>
                   <div className="text-[10px] text-slate-400 uppercase font-mono">Document Type</div>

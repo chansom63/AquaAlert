@@ -65,7 +65,11 @@ export const AlertsIncidentsView: FC<AlertsIncidentsViewProps> = ({
     if (!onCreateAlert) return;
     setIsSubmitting(true);
     const form = new FormData(e.currentTarget);
-    const sourceId = String(form.get('sourceId') || (sources[0]?.sourceId ?? 'SRC-001'));
+    const rawSourceId = form.get('sourceId');
+    const sourceId =
+      (rawSourceId && rawSourceId !== 'undefined' && rawSourceId !== 'null' ? String(rawSourceId) : null) ||
+      sources[0]?.sourceId ||
+      'SRC-001';
     const severity = String(form.get('severity') || 'WARNING') as Alert['severity'];
     const state = String(form.get('state') || 'OPEN') as Alert['state'];
     const reason = String(form.get('reason') || 'Manual municipal incident declared');

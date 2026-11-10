@@ -366,24 +366,28 @@ export const ReportsView: FC<ReportsViewProps> = ({
             : typeof alert.reason === 'string'
             ? alert.reason
             : 'pH, TDS, Turbidity';
+        const rawSource =
+          (alert.sourceId && alert.sourceId !== 'undefined' && alert.sourceId !== 'null' ? alert.sourceId : null) ||
+          ((alert as any).sourceName && (alert as any).sourceName !== 'undefined' && (alert as any).sourceName !== 'null' ? (alert as any).sourceName : null) ||
+          'Entire Grid';
         const descStr =
-          typeof alert.summary === 'string'
+          typeof alert.summary === 'string' && alert.summary
             ? alert.summary
-            : typeof alert.publicMessage === 'string'
+            : typeof alert.publicMessage === 'string' && alert.publicMessage
             ? alert.publicMessage
-            : typeof alert.reason === 'string'
+            : typeof alert.reason === 'string' && alert.reason
             ? alert.reason
-            : `Statutory alert ${alert.alertId} flagged for ${alert.sourceId} exceeding permissible BIS thresholds.`;
+            : `Statutory alert ${alert.alertId} flagged for ${rawSource} exceeding permissible BIS thresholds.`;
         list.push({
           reportId: `REP-${alert.alertId}`,
-          name: `Incident Investigation – ${alert.sourceId || (alert as any).sourceName || 'Entire Grid'} (${paramStr})`,
+          name: `Incident Investigation – ${rawSource} (${paramStr})`,
           type: 'Incident',
           period: dateStr,
           generatedBy: 'Surveillance Alert Engine',
           status: alert.state === 'RESOLVED' ? 'Completed' : 'In Progress',
           generatedAt: alert.issuedAt ? new Date(alert.issuedAt).toLocaleString() : 'Recent',
           sourcesCovered: 1,
-          sourceId: alert.sourceId,
+          sourceId: rawSource === 'Entire Grid' ? undefined : alert.sourceId,
           parameters: paramStr,
           description: `${descStr} Correlated against ${readings.length} sensor readings in the municipal grid.`,
           folderCategory: 'claim',
@@ -1601,7 +1605,14 @@ export const ReportsView: FC<ReportsViewProps> = ({
                     {
                       icon: '💧',
                       label: 'Monitoring Source',
-                      value: selected.sourceName || selected.sourceId || 'Entire Supply Grid (148 Sources)',
+                      value:
+                        (selected.sourceName && selected.sourceName !== 'undefined' && selected.sourceName !== 'null'
+                          ? selected.sourceName
+                          : null) ||
+                        (selected.sourceId && selected.sourceId !== 'undefined' && selected.sourceId !== 'null'
+                          ? selected.sourceId
+                          : null) ||
+                        'Entire Supply Grid (148 Sources)',
                     },
                     { icon: '🔬', label: 'Parameters', value: selected.parameters },
                   ].map(f => (

@@ -550,7 +550,10 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     const nowIso = new Date().toISOString();
     const payload: Alert = {
       alertId: newAlert.alertId || `ALT-${Date.now().toString(36).toUpperCase()}`,
-      sourceId: newAlert.sourceId || 'gmc-ward-14',
+      sourceId:
+        (newAlert.sourceId && newAlert.sourceId !== 'undefined' && newAlert.sourceId !== 'null'
+          ? newAlert.sourceId
+          : null) || 'gmc-ward-14',
       severity: newAlert.severity || 'WARNING',
       state: newAlert.state || 'OPEN',
       reason: newAlert.reason || 'Manual municipal incident declared',

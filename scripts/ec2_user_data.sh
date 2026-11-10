@@ -8,9 +8,17 @@
 set -e
 export DEBIAN_FRONTEND=noninteractive
 
-echo ">>> [1/5] Updating packages and installing prerequisites..."
+echo ">>> [1/5] Updating packages and configuring 2GB swap for low-memory instance..."
+if [ ! -f /swapfile ]; then
+    fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
 apt-get update -y
-apt-get install -y curl git nginx ufw
+apt-get install -y curl git nginx ufw awscli
 
 echo ">>> [2/5] Installing Node.js 20 LTS..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
@@ -34,9 +42,15 @@ COGNITO_USER_POOL_ID=ap-south-1_HlHhFkttf
 COGNITO_CLIENT_ID=43egcoomllmis0ebef6pl6qnar
 EOF
 
-echo ">>> [5/5] Installing npm dependencies and building frontend..."
-npm install
-npm run build
+echo ">>> [5/5] Fetching production build or building frontend..."
+mkdir -p /var/www/AquaAlert/dist
+aws s3 sync s3://waterq-dev-frontend /var/www/AquaAlert/dist --no-sign-request || true
+
+if [ ! -f /var/www/AquaAlert/dist/index.html ]; then
+    echo ">>> Building locally from source..."
+    npm install
+    npm run build
+fi
 
 echo ">>> Configuring Nginx for React SPA client-side routing..."
 cat << 'EOF' > /etc/nginx/sites-available/default
