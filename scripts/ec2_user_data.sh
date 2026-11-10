@@ -52,11 +52,27 @@ if [ ! -f /var/www/AquaAlert/dist/index.html ]; then
     npm run build
 fi
 
-echo ">>> Configuring Nginx for React SPA client-side routing..."
+echo ">>> Generating self-signed SSL certificate for HTTPS (bypasses firewall blocks)..."
+mkdir -p /etc/ssl/certs /etc/ssl/private
+if [ ! -f /etc/ssl/certs/aquaalert.crt ]; then
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout /etc/ssl/private/aquaalert.key \
+        -out /etc/ssl/certs/aquaalert.crt \
+        -subj "/C=IN/ST=MP/L=Gwalior/O=AquaAlert/CN=aquaalert.local"
+fi
+
+echo ">>> Configuring Nginx for HTTP (Port 80) and HTTPS (Port 443) with React SPA routing..."
 cat << 'EOF' > /etc/nginx/sites-available/default
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+
+    ssl_certificate /etc/ssl/certs/aquaalert.crt;
+    ssl_certificate_key /etc/ssl/private/aquaalert.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
 
     root /var/www/AquaAlert/dist;
     index index.html;
@@ -79,13 +95,16 @@ server {
 }
 EOF
 
-# Open HTTP port in UFW if enabled
-ufw allow 'Nginx HTTP' || true
+# Open HTTP and HTTPS in UFW if enabled
+ufw allow 'Nginx Full' || true
+ufw allow 80/tcp || true
+ufw allow 443/tcp || true
 
-# Restart and enable Nginx
+# Test configuration and restart Nginx
+nginx -t
 systemctl restart nginx
 systemctl enable nginx
 
 echo "=============================================================================="
-echo "🎉 AquaAlert successfully deployed and serving on port 80!"
+echo "🎉 AquaAlert successfully deployed and serving on HTTP (Port 80) & HTTPS (Port 443)!"
 echo "=============================================================================="
