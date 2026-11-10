@@ -1128,6 +1128,7 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               readings={adminTables.readings}
               reports={adminTables.reports}
               onUploadReport={handleUploadReport}
+              onDeleteReport={adminTables.deleteReport}
             />
           )}
 

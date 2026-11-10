@@ -7,6 +7,7 @@ import type { LabReportRecord } from '../../hooks/useAdminTablesData';
 import { api } from '../../api/client';
 import {
   recordLocallyUploadedReport,
+  recordDeletedReportId,
   fetchFreshReportDownloadUrl,
   isPresignedUrlExpired,
   triggerDirectFileDownload,
@@ -34,6 +35,7 @@ import {
   RefreshCw,
   Search,
   Share2,
+  Trash2,
   Upload,
   User,
   X,
@@ -150,9 +152,15 @@ interface EvidenceS3ViewProps {
   reports?: LabReportRecord[];
   busy?: boolean;
   onUploadReport?: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onDeleteReport?: (reportId: string) => Promise<void>;
 }
 
-export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts = [], reports = [] }) => {
+export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({
+  sources = [],
+  alerts = [],
+  reports = [],
+  onDeleteReport,
+}) => {
   const dynamicEvidence = useMemo(() => {
     const list: EvidenceFile[] = [];
 
@@ -309,6 +317,39 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [actionToast, setActionToast] = useState<string | null>(null);
+  const [deletingFile, setDeletingFile] = useState<EvidenceFile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingFile) return;
+    setIsDeleting(true);
+    try {
+      if (onDeleteReport) {
+        await onDeleteReport(deletingFile.id);
+      } else {
+        recordDeletedReportId(deletingFile.id);
+        try {
+          await api(`/reports/${encodeURIComponent(deletingFile.id)}`, { method: 'DELETE' });
+        } catch {}
+      }
+
+      setEvidenceList(prev => prev.filter(e => e.id !== deletingFile.id));
+      if (selectedId === deletingFile.id) {
+        const remaining = evidenceList.filter(e => e.id !== deletingFile.id);
+        setSelectedId(remaining[0]?.id || '');
+      }
+      setActionToast(`Evidence document "${deletingFile.fileName}" deleted.`);
+      setTimeout(() => setActionToast(null), 3000);
+      setDeletingFile(null);
+      setPreviewModalOpen(false);
+    } catch (err) {
+      console.error('Delete evidence error:', err);
+      setActionToast(`Could not delete document: ${(err as Error).message}`);
+      setTimeout(() => setActionToast(null), 3000);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Close row action popover on outside click
   useEffect(() => {
@@ -895,6 +936,17 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
                             type="button"
                             onClick={e => {
                               e.stopPropagation();
+                              setDeletingFile(item);
+                            }}
+                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                            title="Delete Evidence File"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation();
                               setActiveMenuId(prev => (prev === item.id ? null : item.id));
                             }}
                             className={`p-1 rounded transition cursor-pointer ${
@@ -1002,6 +1054,18 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
                               >
                                 <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
                                 <span>Replace File</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  setDeletingFile(item);
+                                }}
+                                className="w-full px-3 py-1.5 text-left hover:bg-rose-50 hover:text-rose-700 flex items-center gap-2 cursor-pointer transition font-medium text-rose-600"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                <span>Delete File</span>
                               </button>
                             </div>
                           )}
@@ -1220,6 +1284,15 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
                   className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg transition bg-white shadow-xs cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" /> Replace
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeletingFile(selected)}
+                  className="flex items-center gap-1.5 text-xs font-semibold border border-rose-200 hover:bg-rose-50 text-rose-600 px-3 py-1.5 rounded-lg transition bg-white shadow-xs cursor-pointer ml-auto"
+                  title="Delete evidence document"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Delete</span>
                 </button>
               </div>
             </div>
@@ -1458,6 +1531,16 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
+                onClick={() => {
+                  setDeletingFile(selected);
+                }}
+                className="px-4 py-1.5 border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl transition cursor-pointer flex items-center gap-1.5 mr-auto"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                <span>Delete File</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setPreviewModalOpen(false)}
                 className="px-4 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer"
               >
@@ -1494,6 +1577,70 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
           s3Pointer={submissionModalData.s3Pointer}
           details={submissionModalData.details}
         />
+      )}
+
+      {/* ── DELETE EVIDENCE FILE CONFIRMATION MODAL ── */}
+      {deletingFile && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 text-slate-900 animate-in fade-in zoom-in-95 font-sans space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-900">Delete Evidence File</h3>
+                <p className="text-[11px] text-slate-500 font-mono truncate max-w-[280px]">
+                  {deletingFile.fileName}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to permanently delete{' '}
+              <strong className="text-slate-900 font-mono">{deletingFile.fileName}</strong>{' '}
+              ({deletingFile.size})? This document will be removed from the S3 Evidence Archive.
+            </p>
+
+            <div className="bg-slate-50 rounded-xl p-3 text-xs space-y-1.5 border border-slate-100 font-mono text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-slate-400">File ID:</span>
+                <span className="text-slate-700 truncate max-w-[220px]">{deletingFile.id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Source:</span>
+                <span className="text-slate-700">{deletingFile.source}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Uploaded At:</span>
+                <span className="text-slate-700">{deletingFile.uploadedAt}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeletingFile(null)}
+                className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                <span>{isDeleting ? 'Deleting…' : 'Delete File'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Action Toast */}
