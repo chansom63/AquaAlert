@@ -30,6 +30,11 @@ import type { LabReportRecord } from '../../hooks/useAdminTablesData';
 import { api } from '../../api/client';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../common/SubmissionSuccessModal';
 import DateRangePicker, { type DateRange } from '../common/DateRangePicker';
+import {
+  fetchFreshReportDownloadUrl,
+  isPresignedUrlExpired,
+  triggerDirectFileDownload,
+} from '../../utils/reportsSync';
 
 export interface ReportRow {
   reportId: string;
@@ -551,75 +556,47 @@ export const ReportsView: FC<ReportsViewProps> = ({
       return;
     }
 
-    // 2. Real signed URL from backend or s3Key
-    let targetUrl = report.downloadUrl;
-    if (!targetUrl && report.s3Key) {
-      try {
-        const res = await api<{ downloadUrl: string }>(`/reports/download-url?key=${encodeURIComponent(report.s3Key)}`);
-        if (res?.downloadUrl) targetUrl = res.downloadUrl;
-      } catch (err) {
-        console.warn('Backend download URL fetch warning:', err);
-      }
+    // 2. Fetch fresh presigned URL from backend using report.reportId or s3Key
+    let targetUrl: string | null = await fetchFreshReportDownloadUrl(report.reportId, report.s3Key);
+
+    // 3. If fresh fetch succeeded, cache it on report
+    if (targetUrl) {
+      report.downloadUrl = targetUrl;
+    } else if (report.downloadUrl && !isPresignedUrlExpired(report.downloadUrl)) {
+      targetUrl = report.downloadUrl;
     }
 
-    if (
-      targetUrl &&
-      (targetUrl.startsWith('http://') || targetUrl.startsWith('https://') || targetUrl.startsWith('blob:')) &&
-      !targetUrl.includes('water-evidence.gwl-municipal.in')
-    ) {
-      const safeFilename = report.filename || (report.name.endsWith('.pdf') ? report.name : `${report.name}.pdf`);
-      try {
-        const resp = await fetch(targetUrl);
-        if (resp.ok) {
-          const blob = await resp.blob();
-          const blobUrl = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = safeFilename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
-          return;
-        }
-      } catch (err) {
-        console.warn('Direct blob fetch failed, falling back to window.open:', err);
-      }
-      window.open(targetUrl, '_blank');
+    const safeFilename = report.filename || (report.name.endsWith('.pdf') ? report.name : `${report.name}.pdf`);
+
+    if (targetUrl) {
+      await triggerDirectFileDownload(targetUrl, safeFilename);
       return;
     }
 
-    // 3. Fallback to appropriate real A4 PDF certificate
+    // 4. Fallback to appropriate real A4 PDF certificate
     const fallbackUrl = getReportFallbackPdf(report);
-    const a = document.createElement('a');
-    a.href = fallbackUrl;
-    a.download = `${report.reportId}_water_quality_report.pdf`;
-    a.click();
+    await triggerDirectFileDownload(fallbackUrl, `${report.reportId}_water_quality_report.pdf`);
   };
 
   // Open PDF in tab
   const handleOpenPdfInTab = async (report: ReportRow) => {
-    let targetUrl = report.downloadUrl;
-    if (!targetUrl && report.s3Key) {
-      try {
-        const res = await api<{ downloadUrl: string }>(`/reports/download-url?key=${encodeURIComponent(report.s3Key)}`);
-        if (res?.downloadUrl) targetUrl = res.downloadUrl;
-      } catch (err) {
-        console.warn('Backend download URL fetch warning:', err);
-      }
+    // 1. Fetch fresh presigned URL from backend
+    let targetUrl: string | null = await fetchFreshReportDownloadUrl(report.reportId, report.s3Key);
+
+    if (targetUrl) {
+      report.downloadUrl = targetUrl;
+    } else if (report.downloadUrl && !isPresignedUrlExpired(report.downloadUrl)) {
+      targetUrl = report.downloadUrl;
     }
 
-    if (
-      targetUrl &&
-      (targetUrl.startsWith('http://') || targetUrl.startsWith('https://') || targetUrl.startsWith('blob:')) &&
-      !targetUrl.includes('water-evidence.gwl-municipal.in')
-    ) {
-      window.open(targetUrl, '_blank');
+    if (targetUrl) {
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
       return;
     }
+
     const fallback =
-      targetUrl && targetUrl.startsWith('/sample-reports/')
-        ? targetUrl
+      report.downloadUrl && report.downloadUrl.startsWith('/sample-reports/')
+        ? report.downloadUrl
         : getReportFallbackPdf(report);
     window.open(fallback, '_blank');
   };

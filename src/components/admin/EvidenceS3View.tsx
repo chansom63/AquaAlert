@@ -5,7 +5,12 @@ import type { Alert, Source } from '../../types/water';
 import type { ApiRecord } from '../../api/adminRecords';
 import type { LabReportRecord } from '../../hooks/useAdminTablesData';
 import { api } from '../../api/client';
-import { recordLocallyUploadedReport } from '../../utils/reportsSync';
+import {
+  recordLocallyUploadedReport,
+  fetchFreshReportDownloadUrl,
+  isPresignedUrlExpired,
+  triggerDirectFileDownload,
+} from '../../utils/reportsSync';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../common/SubmissionSuccessModal';
 import DateRangePicker, { type DateRange } from '../common/DateRangePicker';
 import {
@@ -474,22 +479,30 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const getEffectiveDownloadUrl = async (file: EvidenceFile): Promise<string | undefined> => {
-    if (file.downloadUrl) {
+    // 1. If it's a local sample PDF that doesn't expire, return it directly
+    if (file.downloadUrl?.startsWith('/sample-reports/')) {
       return file.downloadUrl;
     }
-    if (file.s3Key) {
-      try {
-        const res = await api<{ downloadUrl: string }>(
-          `/reports/download-url?key=${encodeURIComponent(file.s3Key)}`
-        );
-        if (res && res.downloadUrl) {
-          return res.downloadUrl;
-        }
-      } catch (err) {
-        console.warn('Backend download URL fetch warning:', err);
-      }
+
+    // 2. Fetch fresh presigned S3 download URL from backend using report ID or s3Key
+    const freshUrl = await fetchFreshReportDownloadUrl(file.id, file.s3Key);
+    if (freshUrl) {
+      file.downloadUrl = freshUrl;
+      file.previewUrl = freshUrl;
+      return freshUrl;
     }
-    return file.previewUrl;
+
+    // 3. If downloadUrl is an active blob: URL (just uploaded in this browser session)
+    if (file.downloadUrl?.startsWith('blob:')) {
+      return file.downloadUrl;
+    }
+
+    // 4. If cached URL is present and not yet expired, use it
+    if (file.downloadUrl && !isPresignedUrlExpired(file.downloadUrl)) {
+      return file.downloadUrl;
+    }
+
+    return undefined;
   };
 
   const handleDownloadEvidence = async (file: EvidenceFile) => {
@@ -500,37 +513,8 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
       const safeFilename = file.fileName.endsWith('.pdf') ? file.fileName : `${file.fileName}.pdf`;
 
       if (targetUrl) {
-        if (targetUrl.startsWith('/sample-reports/') || targetUrl.startsWith('blob:')) {
-          const a = document.createElement('a');
-          a.href = targetUrl;
-          a.download = safeFilename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          return;
-        }
-
-        if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
-          try {
-            const resp = await fetch(targetUrl);
-            if (resp.ok) {
-              const blob = await resp.blob();
-              const blobUrl = window.URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = blobUrl;
-              a.download = safeFilename;
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-              setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
-              return;
-            }
-          } catch (e) {
-            console.warn('Direct blob fetch failed, falling back to browser window:', e);
-          }
-          window.open(targetUrl, '_blank');
-          return;
-        }
+        await triggerDirectFileDownload(targetUrl, safeFilename);
+        return;
       }
 
       // Fallback for baseline demo items
@@ -544,15 +528,28 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
         ? '/sample-reports/ward28_chlorine_depletion_investigation.pdf'
         : '/sample-reports/ward14_spectroscopic_assay_2026.pdf';
 
-      const a = document.createElement('a');
-      a.href = samplePdf;
-      a.download = safeFilename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      await triggerDirectFileDownload(samplePdf, safeFilename);
     } finally {
       setDownloadingId(null);
     }
+  };
+
+  const handleOpenPdfInTab = async (file: EvidenceFile) => {
+    const targetUrl = await getEffectiveDownloadUrl(file);
+    if (targetUrl) {
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const samplePdf = file.fileName.includes('w58')
+      ? '/sample-reports/ward58_padav_post_flush_clearance.pdf'
+      : file.fileName.includes('w07') || file.fileName.includes('turbidity')
+      ? '/sample-reports/ward07_feeder_turbidity_spectrophotometry.pdf'
+      : file.fileName.includes('w01') || file.fileName.includes('casing')
+      ? '/sample-reports/ward01_tubewell_casing_integrity.pdf'
+      : file.fileName.includes('w28') || file.fileName.includes('A04')
+      ? '/sample-reports/ward28_chlorine_depletion_investigation.pdf'
+      : '/sample-reports/ward14_spectroscopic_assay_2026.pdf';
+    window.open(samplePdf, '_blank');
   };
 
   const selected = evidenceList.find(e => e.id === selectedId) ?? evidenceList[0];
@@ -1262,17 +1259,14 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  {(selected.downloadUrl || selected.previewUrl) && (
-                    <a
-                      href={selected.downloadUrl || selected.previewUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow-lg cursor-pointer"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Open PDF in Tab</span>
-                    </a>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPdfInTab(selected)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow-lg cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open PDF in Tab</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleDownloadEvidence(selected)}

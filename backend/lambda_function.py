@@ -291,16 +291,6 @@ def lambda_handler(event, context):
         if method == "GET" and match_report_download:
             return handle_get_report_download_url(unquote(match_report_download.group(1)))
 
-        match_report = re.match(r"^/reports/([^/]+)$", path)
-        if method == "GET" and match_report:
-            return handle_get_report_by_id(unquote(match_report.group(1)))
-
-        if method == "POST" and path == "/reports/presigned-url":
-            body = json.loads(event.get("body") or "{}")
-            if not isinstance(body, dict):
-                return make_response(400, {"error": {"code": "VALIDATION_ERROR", "message": "Request body must be a JSON object."}})
-            return handle_create_report_upload_url(body)
-
         if method == "GET" and path == "/reports/download-url":
             key = _query_params(event).get("key")
             if not key:
@@ -310,9 +300,19 @@ def lambda_handler(event, context):
             download_url = s3.generate_presigned_url(
                 ClientMethod="get_object",
                 Params={"Bucket": EVIDENCE_BUCKET, "Key": key},
-                ExpiresIn=600
+                ExpiresIn=3600
             )
-            return make_response(200, {"downloadUrl": download_url, "expiresInSeconds": 600})
+            return make_response(200, {"downloadUrl": download_url, "expiresInSeconds": 3600})
+
+        match_report = re.match(r"^/reports/([^/]+)$", path)
+        if method == "GET" and match_report:
+            return handle_get_report_by_id(unquote(match_report.group(1)))
+
+        if method == "POST" and path == "/reports/presigned-url":
+            body = json.loads(event.get("body") or "{}")
+            if not isinstance(body, dict):
+                return make_response(400, {"error": {"code": "VALIDATION_ERROR", "message": "Request body must be a JSON object."}})
+            return handle_create_report_upload_url(body)
 
         # =========================================================================
         # CRUD ROUTES: CITIZEN COMPLAINTS
@@ -578,7 +578,7 @@ def handle_get_reports(params):
                     it["downloadUrl"] = s3.generate_presigned_url(
                         ClientMethod="get_object",
                         Params={"Bucket": it.get("s3Bucket", EVIDENCE_BUCKET), "Key": s3_key},
-                        ExpiresIn=600
+                        ExpiresIn=3600
                     )
                 except Exception:
                     pass
@@ -608,7 +608,7 @@ def handle_get_report_by_id(report_id):
                 item["downloadUrl"] = s3.generate_presigned_url(
                     ClientMethod="get_object",
                     Params={"Bucket": item.get("s3Bucket", EVIDENCE_BUCKET), "Key": s3_key},
-                    ExpiresIn=600
+                    ExpiresIn=3600
                 )
             except Exception:
                 pass
@@ -676,7 +676,7 @@ def handle_post_report(body):
             report_item["downloadUrl"] = s3.generate_presigned_url(
                 ClientMethod="get_object",
                 Params={"Bucket": s3_bucket, "Key": s3_key},
-                ExpiresIn=600
+                ExpiresIn=3600
             )
         except Exception:
             pass
@@ -707,14 +707,14 @@ def handle_get_report_download_url(report_id):
         download_url = s3.generate_presigned_url(
             ClientMethod="get_object",
             Params={"Bucket": bucket, "Key": s3_key},
-            ExpiresIn=600
+            ExpiresIn=3600
         )
         return make_response(200, {
             "reportId": report_id,
             "downloadUrl": download_url,
             "s3Key": s3_key,
             "s3Bucket": bucket,
-            "expiresInSeconds": 600
+            "expiresInSeconds": 3600
         })
     except Exception as exc:
         print(f"Generate report download URL error: {type(exc).__name__}: {exc}")

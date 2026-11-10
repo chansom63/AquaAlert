@@ -19,7 +19,12 @@ import type { Alert, Source } from '../../types/water';
 import type { ApiRecord } from '../../api/adminRecords';
 import type { LabReportRecord } from '../../hooks/useAdminTablesData';
 import { api } from '../../api/client';
-import { recordLocallyUploadedReport } from '../../utils/reportsSync';
+import {
+  recordLocallyUploadedReport,
+  fetchFreshReportDownloadUrl,
+  isPresignedUrlExpired,
+  triggerDirectFileDownload,
+} from '../../utils/reportsSync';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../common/SubmissionSuccessModal';
 import DateRangePicker, { type DateRange } from '../common/DateRangePicker';
 
@@ -552,45 +557,23 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
   };
 
   const handleDownloadDoc = async (doc: DocumentRow) => {
-    let targetUrl = resolveSamplePdfUrl(doc);
-    if (!doc.downloadUrl && doc.s3Key) {
-      try {
-        const res = await api<{ downloadUrl: string }>(`/reports/download-url?key=${encodeURIComponent(doc.s3Key)}`);
-        if (res?.downloadUrl) targetUrl = res.downloadUrl;
-      } catch (err) {
-        console.warn('Backend download URL fetch notice:', err);
-      }
+    let targetUrl: string | null = await fetchFreshReportDownloadUrl(doc.reportId, doc.s3Key);
+
+    if (targetUrl) {
+      doc.downloadUrl = targetUrl;
+    } else if (doc.downloadUrl && !isPresignedUrlExpired(doc.downloadUrl)) {
+      targetUrl = doc.downloadUrl;
     }
+
     const safeFilename = doc.name.endsWith('.pdf') ? doc.name : `${doc.name}.pdf`;
 
-    if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
-      try {
-        const resp = await fetch(targetUrl);
-        if (resp.ok) {
-          const blob = await resp.blob();
-          const blobUrl = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = safeFilename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
-          return;
-        }
-      } catch (err) {
-        console.warn('Direct blob fetch failed, opening in new window:', err);
-      }
-      window.open(targetUrl, '_blank');
+    if (targetUrl) {
+      await triggerDirectFileDownload(targetUrl, safeFilename);
       return;
     }
 
-    const a = document.createElement('a');
-    a.href = targetUrl;
-    a.download = safeFilename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const fallback = resolveSamplePdfUrl(doc);
+    await triggerDirectFileDownload(fallback, safeFilename);
   };
 
   return (

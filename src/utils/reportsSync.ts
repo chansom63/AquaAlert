@@ -1,4 +1,5 @@
 import { allApiRecords } from '../api/adminRecords';
+import { api } from '../api/client';
 import type { LabReportRecord } from '../hooks/useAdminTablesData';
 
 const LOCAL_REPORTS_KEY = 'aquaalert_local_reports';
@@ -329,4 +330,122 @@ export const fetchSyncedReports = async (): Promise<LabReportRecord[]> => {
     console.warn('Central Database reports fetch notice:', err);
   }
   return sanitizeAndFilterReports(remoteRecords, true);
+};
+
+/**
+ * Checks whether an Amazon S3 presigned URL is expired or close to expiring (within 30s buffer).
+ */
+export const isPresignedUrlExpired = (urlStr?: string): boolean => {
+  if (!urlStr) return true;
+  if (urlStr.startsWith('blob:') || urlStr.startsWith('/sample-reports/')) {
+    return false;
+  }
+  try {
+    const u = new URL(urlStr);
+    const dateStr = u.searchParams.get('X-Amz-Date');
+    const expiresStr = u.searchParams.get('X-Amz-Expires');
+    if (dateStr && expiresStr) {
+      const year = parseInt(dateStr.slice(0, 4), 10);
+      const month = parseInt(dateStr.slice(4, 6), 10) - 1;
+      const day = parseInt(dateStr.slice(6, 8), 10);
+      const hours = parseInt(dateStr.slice(9, 11), 10);
+      const minutes = parseInt(dateStr.slice(11, 13), 10);
+      const seconds = parseInt(dateStr.slice(13, 15), 10);
+      const createdMs = Date.UTC(year, month, day, hours, minutes, seconds);
+      const ttlMs = parseInt(expiresStr, 10) * 1000;
+      return Date.now() > createdMs + ttlMs - 30000;
+    }
+  } catch {
+    // Ignore URL parse error
+  }
+  return false;
+};
+
+/**
+ * Requests a fresh presigned S3 download URL from the backend API for a given report ID or key.
+ */
+export const fetchFreshReportDownloadUrl = async (
+  reportId?: string,
+  s3Key?: string
+): Promise<string | null> => {
+  // 1. Direct fetch using reportId (e.g. REP-1794288247-54DE)
+  if (reportId && !reportId.startsWith('EV-GWL-') && !reportId.startsWith('REP-GWL-DEMO')) {
+    try {
+      const res = await api<{ downloadUrl?: string }>(
+        `/reports/${encodeURIComponent(reportId)}/download-url`
+      );
+      if (res?.downloadUrl) {
+        return res.downloadUrl;
+      }
+    } catch (err) {
+      console.warn(`Download URL lookup notice for report ${reportId}:`, err);
+    }
+  }
+
+  // 2. Fetch using s3Key
+  if (s3Key) {
+    try {
+      const res = await api<{ downloadUrl?: string }>(
+        `/reports/${encodeURIComponent(s3Key)}/download-url`
+      );
+      if (res?.downloadUrl) {
+        return res.downloadUrl;
+      }
+    } catch {}
+  }
+
+  return null;
+};
+
+/**
+ * Downloads a file cleanly in the browser. Tries blob fetch first (for proper filename),
+ * falls back to anchor download.
+ */
+export const triggerDirectFileDownload = async (
+  url: string,
+  filename: string
+): Promise<boolean> => {
+  if (!url) return false;
+  const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+
+  // Local sample PDF or blob URL
+  if (url.startsWith('/sample-reports/') || url.startsWith('blob:')) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = safeFilename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return true;
+  }
+
+  // Remote URL (e.g. S3 presigned URL)
+  try {
+    const resp = await fetch(url);
+    if (resp.ok) {
+      const blob = await resp.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = safeFilename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 30000);
+      return true;
+    }
+  } catch (err) {
+    console.warn('Direct blob fetch failed, falling back to anchor download:', err);
+  }
+
+  // Fallback: trigger browser download directly via anchor
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = safeFilename;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  return true;
 };
