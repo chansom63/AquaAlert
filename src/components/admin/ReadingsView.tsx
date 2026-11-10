@@ -22,6 +22,7 @@ import {
 import type { Source } from '../../types/water';
 import { displayDate, humanize, stringValue, type ApiRecord } from '../../api/adminRecords';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { sortReadingsDesc } from '../../utils/readingsSync';
 
 export interface ReadingsViewProps {
   readings: ApiRecord[];
@@ -200,7 +201,7 @@ export const ReadingsView: FC<ReadingsViewProps> = ({
 
   // Filtered readings list
   const filtered = useMemo(() => {
-    return readings.filter(reading => {
+    const result = readings.filter(reading => {
       // 1. Tab filter
       if (activeTab === 'verified') {
         const isVer = /verified/i.test(String(reading.verificationStatus ?? ''));
@@ -252,6 +253,7 @@ export const ReadingsView: FC<ReadingsViewProps> = ({
 
       return true;
     });
+    return sortReadingsDesc(result);
   }, [readings, activeTab, selectedSourceId, selectedVerification, selectedParamFilter, search, sourceMap]);
 
   // Selected reading for detail inspection

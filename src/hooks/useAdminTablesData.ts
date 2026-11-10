@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
-import { allApiRecords, recordsFrom, type ApiRecord } from '../api/adminRecords';
+import { allApiRecords, type ApiRecord } from '../api/adminRecords';
 import type { Alert, Source, ComplaintRecord } from '../types/water';
 import { DEMO_SOURCES, DEMO_ALERTS } from '../data/demoDataset';
 import { DEMO_ADMIN_READINGS, DEMO_ADMIN_ACTIONS } from '../data/demoAdminData';
@@ -20,6 +20,28 @@ import {
   recordAlertOverride,
   recordDeletedAlertId,
 } from '../utils/alertsSync';
+import {
+  fetchSyncedSources,
+  sanitizeAndFilterSources,
+  recordLocallyCreatedSource,
+  recordSourceOverride,
+  recordDeletedSourceId,
+} from '../utils/sourcesSync';
+import {
+  fetchSyncedReadings,
+  sanitizeAndFilterReadings,
+} from '../utils/readingsSync';
+import {
+  fetchSyncedReports,
+  sanitizeAndFilterReports,
+  recordLocallyUploadedReport,
+  recordReportOverride,
+  recordDeletedReportId,
+} from '../utils/reportsSync';
+import {
+  fetchSyncedActions,
+  sanitizeAndFilterActions,
+} from '../utils/actionsSync';
 
 export interface LabReportRecord {
   reportId: string;
@@ -85,12 +107,11 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     if (loadedSourcesRef.current && !force) return;
     setLoadingSources(true);
     try {
-      const res = await api<unknown>('/sources');
-      const items = recordsFrom(res) as Source[];
-      setSources(items.length > 0 ? items : DEMO_SOURCES);
+      const items = await fetchSyncedSources();
+      setSources(items);
       loadedSourcesRef.current = true;
     } catch (err) {
-      setSources(DEMO_SOURCES);
+      setSources(sanitizeAndFilterSources(DEMO_SOURCES, true));
       console.warn('Sources API notice:', (err as Error).message);
     } finally {
       setLoadingSources(false);
@@ -116,11 +137,11 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     if (loadedReadingsRef.current && !force) return;
     setLoadingReadings(true);
     try {
-      const res = await allApiRecords('/readings');
-      setReadings(res.length > 0 ? res : DEMO_ADMIN_READINGS);
+      const items = await fetchSyncedReadings();
+      setReadings(items);
       loadedReadingsRef.current = true;
     } catch (err) {
-      setReadings(DEMO_ADMIN_READINGS);
+      setReadings(sanitizeAndFilterReadings(DEMO_ADMIN_READINGS, true));
       console.warn('Readings API notice:', (err as Error).message);
     } finally {
       setLoadingReadings(false);
@@ -131,11 +152,11 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     if (loadedActionsRef.current && !force) return;
     setLoadingActions(true);
     try {
-      const res = await allApiRecords('/actions');
-      setActions(res.length > 0 ? res : DEMO_ADMIN_ACTIONS);
+      const items = await fetchSyncedActions();
+      setActions(items);
       loadedActionsRef.current = true;
     } catch (err) {
-      setActions(DEMO_ADMIN_ACTIONS);
+      setActions(sanitizeAndFilterActions(DEMO_ADMIN_ACTIONS, true));
       console.warn('Actions API notice:', (err as Error).message);
     } finally {
       setLoadingActions(false);
@@ -146,11 +167,12 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
     if (loadedReportsRef.current && !force) return;
     setLoadingReports(true);
     try {
-      const res = await allApiRecords('/reports');
-      setReports((res as unknown) as LabReportRecord[]);
+      const items = await fetchSyncedReports();
+      setReports(items);
       loadedReportsRef.current = true;
     } catch (err) {
-      setError(`Could not load lab reports from API: ${(err as Error).message}`);
+      setReports(sanitizeAndFilterReports([], true));
+      console.warn('Reports API notice:', (err as Error).message);
     } finally {
       setLoadingReports(false);
     }
@@ -318,12 +340,44 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
       }
     };
 
+    const handleReadingCreated = (e: Event) => {
+      const custom = e as CustomEvent<ApiRecord>;
+      if (custom.detail) {
+        setReadings(prev => sanitizeAndFilterReadings([custom.detail, ...prev], true));
+      }
+    };
+
+    const handleActionCreated = (e: Event) => {
+      const custom = e as CustomEvent<ApiRecord>;
+      if (custom.detail) {
+        setActions(prev => sanitizeAndFilterActions([custom.detail, ...prev], true));
+      }
+    };
+
+    const handleReportCreated = (e: Event) => {
+      const custom = e as CustomEvent<LabReportRecord>;
+      if (custom.detail) {
+        setReports(prev => sanitizeAndFilterReports([custom.detail, ...prev], true));
+      }
+    };
+
+    const handleSourceCreated = (e: Event) => {
+      const custom = e as CustomEvent<Source>;
+      if (custom.detail) {
+        setSources(prev => sanitizeAndFilterSources([custom.detail, ...prev], true));
+      }
+    };
+
     window.addEventListener('aquaalert:complaint-dismissed', handleDismissed);
     window.addEventListener('aquaalert:complaint-updated', handleUpdated);
     window.addEventListener('aquaalert:complaint-created', handleCreated);
     window.addEventListener('aquaalert:alert-created', handleAlertCreated);
     window.addEventListener('aquaalert:alert-updated', handleAlertUpdated);
     window.addEventListener('aquaalert:alert-deleted', handleAlertDeleted);
+    window.addEventListener('aquaalert:reading-created', handleReadingCreated);
+    window.addEventListener('aquaalert:action-created', handleActionCreated);
+    window.addEventListener('aquaalert:report-created', handleReportCreated);
+    window.addEventListener('aquaalert:source-created', handleSourceCreated);
 
     return () => {
       window.removeEventListener('aquaalert:complaint-dismissed', handleDismissed);
@@ -332,6 +386,10 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
       window.removeEventListener('aquaalert:alert-created', handleAlertCreated);
       window.removeEventListener('aquaalert:alert-updated', handleAlertUpdated);
       window.removeEventListener('aquaalert:alert-deleted', handleAlertDeleted);
+      window.removeEventListener('aquaalert:reading-created', handleReadingCreated);
+      window.removeEventListener('aquaalert:action-created', handleActionCreated);
+      window.removeEventListener('aquaalert:report-created', handleReportCreated);
+      window.removeEventListener('aquaalert:source-created', handleSourceCreated);
     };
   }, []);
 
@@ -433,38 +491,44 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
 
   // --- CRUD: Sources ---
   const createSource = useCallback(async (newSource: Partial<Source>): Promise<Source> => {
+    const payload: Source = {
+      sourceId: newSource.sourceId || `SRC-${Date.now().toString(36).toUpperCase()}`,
+      name: newSource.name || 'New Water Source',
+      sourceType: newSource.sourceType || 'HAND_PUMP',
+      district: newSource.district || 'Gwalior',
+      locality: newSource.locality || 'Municipal Zone',
+      latitude: newSource.latitude || 26.2183,
+      longitude: newSource.longitude || 78.1828,
+      publicStatus: newSource.publicStatus || 'ACTIVE',
+      lastReadingAt: newSource.lastReadingAt || new Date().toISOString(),
+      ...newSource,
+    };
     try {
       const res = await api<Source>('/sources', {
         method: 'POST',
-        body: JSON.stringify(newSource),
+        body: JSON.stringify(payload),
       });
-      setSources(prev => [res, ...prev.filter(s => s.sourceId !== res.sourceId)]);
-      return res;
+      const created = { ...payload, ...(res || {}) };
+      recordLocallyCreatedSource(created);
+      setSources(prev => sanitizeAndFilterSources([created, ...prev], true));
+      return created;
     } catch (err) {
-      const fallback = {
-        sourceId: newSource.sourceId || `SRC-${Date.now().toString(36).toUpperCase()}`,
-        name: newSource.name || 'New Water Source',
-        sourceType: newSource.sourceType || 'HAND_PUMP',
-        district: newSource.district || 'Gwalior',
-        locality: newSource.locality || 'Municipal Zone',
-        latitude: newSource.latitude || 26.2183,
-        longitude: newSource.longitude || 78.1828,
-        publicStatus: newSource.publicStatus || 'ACTIVE',
-        lastReadingAt: newSource.lastReadingAt || new Date().toISOString(),
-      } as Source;
-      setSources(prev => [fallback, ...prev]);
-      return fallback;
+      recordLocallyCreatedSource(payload);
+      setSources(prev => sanitizeAndFilterSources([payload, ...prev], true));
+      return payload;
     }
   }, []);
 
   const updateSource = useCallback(async (sourceId: string, updates: Partial<Source>): Promise<Source> => {
+    recordSourceOverride(sourceId, updates);
     try {
       const res = await api<Source>(`/sources/${encodeURIComponent(sourceId)}`, {
         method: 'PUT',
         body: JSON.stringify(updates),
       });
-      setSources(prev => prev.map(s => (s.sourceId === sourceId ? { ...s, ...res } : s)));
-      return res;
+      const updated = { ...(res || {}), ...updates, sourceId };
+      setSources(prev => prev.map(s => (s.sourceId === sourceId ? { ...s, ...updated } : s)));
+      return updated as Source;
     } catch (err) {
       setSources(prev => prev.map(s => (s.sourceId === sourceId ? { ...s, ...updates } : s)));
       return { sourceId, ...updates } as Source;
@@ -472,6 +536,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
   }, []);
 
   const deleteSource = useCallback(async (sourceId: string): Promise<void> => {
+    recordDeletedSourceId(sourceId);
     try {
       await api(`/sources/${encodeURIComponent(sourceId)}`, { method: 'DELETE' });
     } catch (err) {
@@ -584,28 +649,38 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
 
   // --- CRUD: Reports ---
   const createReport = useCallback(async (newReport: Partial<LabReportRecord>): Promise<LabReportRecord> => {
+    const objectKey = newReport.s3Key || `reports/lab-reports/${newReport.sourceId || 'gmc-ward-14'}/report_${Date.now()}.pdf`;
+    const payload: LabReportRecord = {
+      reportId: newReport.reportId || `REP-${Date.now().toString(36).toUpperCase()}`,
+      sourceId: newReport.sourceId || 'gmc-ward-14',
+      title: newReport.title || 'Laboratory Assay Report',
+      verificationStatus: newReport.verificationStatus || 'LAB_VERIFIED',
+      chemistName: newReport.chemistName || 'Dr. S. Mukherjee',
+      uploadedAt: newReport.uploadedAt || new Date().toISOString(),
+      s3Bucket: newReport.s3Bucket || 'waterq-dev-evidence-files',
+      s3Key: objectKey,
+      s3Uri: newReport.s3Uri || `s3://waterq-dev-evidence-files/${objectKey}`,
+      filename: newReport.filename || 'report.pdf',
+      ...newReport,
+    };
     try {
       const res = await api<LabReportRecord>('/reports', {
         method: 'POST',
-        body: JSON.stringify(newReport),
+        body: JSON.stringify(payload),
       });
-      setReports(prev => [res, ...prev.filter(r => r.reportId !== res.reportId)]);
-      return res;
+      const created = { ...payload, ...(res || {}) };
+      recordLocallyUploadedReport(created);
+      setReports(prev => sanitizeAndFilterReports([created, ...prev], true));
+      return created;
     } catch (err) {
-      const fallback = {
-        reportId: newReport.reportId || `REP-${Date.now().toString(36).toUpperCase()}`,
-        sourceId: newReport.sourceId || 'SRC-001',
-        title: newReport.title || 'Laboratory Assay Report',
-        verificationStatus: newReport.verificationStatus || 'LAB_VERIFIED',
-        chemistName: newReport.chemistName || 'Dr. S. Mukherjee',
-        uploadedAt: new Date().toISOString(),
-      } as LabReportRecord;
-      setReports(prev => [fallback, ...prev]);
-      return fallback;
+      recordLocallyUploadedReport(payload);
+      setReports(prev => sanitizeAndFilterReports([payload, ...prev], true));
+      return payload;
     }
   }, []);
 
   const updateReport = useCallback(async (reportId: string, updates: Partial<LabReportRecord>): Promise<void> => {
+    recordReportOverride(reportId, updates);
     try {
       await api(`/reports/${encodeURIComponent(reportId)}`, {
         method: 'PUT',
@@ -618,6 +693,7 @@ export const useAdminTablesData = (activeNav: string = 'Admin Dashboard') => {
   }, []);
 
   const deleteReport = useCallback(async (reportId: string): Promise<void> => {
+    recordDeletedReportId(reportId);
     try {
       await api(`/reports/${encodeURIComponent(reportId)}`, { method: 'DELETE' });
     } catch (err) {

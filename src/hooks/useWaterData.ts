@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { API, api } from '../api/client';
-import { recordsFrom } from '../api/adminRecords';
 import { DEMO_ALERTS, DEMO_SOURCES, GWALIOR_AREAS } from '../data/demoDataset';
 import { DEMO_COMPLAINTS } from '../data/demoComplaintsData';
 import type { Alert, ComplaintRecord, ComplaintPreview, Reading, Source } from '../types/water';
@@ -14,6 +13,13 @@ import {
   fetchSyncedAlerts,
   sanitizeAndFilterAlerts,
 } from '../utils/alertsSync';
+import {
+  fetchSyncedSources,
+  sanitizeAndFilterSources,
+} from '../utils/sourcesSync';
+import {
+  fetchSyncedSourceReadings,
+} from '../utils/readingsSync';
 
 export const useWaterData = (activePage: string = 'Overview') => {
   const [sources, setSources] = useState<Source[]>([]);
@@ -37,18 +43,17 @@ export const useWaterData = (activePage: string = 'Overview') => {
   const loadedAlertsRef = useRef(false);
   const loadedComplaintsRef = useRef(false);
 
-  // 1. Fetch Water Sources from Central Database
+  // 1. Fetch Water Sources from Central Database with Cross-Portal Synchronization
   const fetchSources = useCallback(async (force = false) => {
     if (loadedSourcesRef.current && !force) return;
     setLoadingSources(true);
     try {
-      const res = await api<unknown>('/sources');
-      const items = recordsFrom(res) as Source[];
-      setSources(items.length > 0 ? items : DEMO_SOURCES);
-      setSelected(s => s || (items.length > 0 ? items[0].sourceId : DEMO_SOURCES[0]?.sourceId || ''));
+      const items = await fetchSyncedSources();
+      setSources(items);
+      setSelected(s => s || items[0]?.sourceId || DEMO_SOURCES[0]?.sourceId || '');
       loadedSourcesRef.current = true;
     } catch (err) {
-      setSources(DEMO_SOURCES);
+      setSources(sanitizeAndFilterSources(DEMO_SOURCES, true));
       setSelected(s => s || DEMO_SOURCES[0]?.sourceId || '');
       console.warn('Sources API notice:', (err as Error).message);
     } finally {
@@ -147,12 +152,29 @@ export const useWaterData = (activePage: string = 'Overview') => {
       }
     };
 
+    const handleSourceCreated = (e: Event) => {
+      const custom = e as CustomEvent<Source>;
+      if (custom.detail) {
+        setSources(prev => sanitizeAndFilterSources([custom.detail, ...prev], true));
+      }
+    };
+
+    const handleReadingCreated = (e: Event) => {
+      const custom = e as CustomEvent<Reading>;
+      const newReading = custom.detail;
+      if (newReading) {
+        setReadings(prev => [newReading, ...prev.filter(r => r.readingId !== newReading.readingId)]);
+      }
+    };
+
     window.addEventListener('aquaalert:complaint-dismissed', handleDismissed);
     window.addEventListener('aquaalert:complaint-updated', handleUpdated);
     window.addEventListener('aquaalert:complaint-created', handleCreated);
     window.addEventListener('aquaalert:alert-created', handleAlertCreated);
     window.addEventListener('aquaalert:alert-updated', handleAlertUpdated);
     window.addEventListener('aquaalert:alert-deleted', handleAlertDeleted);
+    window.addEventListener('aquaalert:source-created', handleSourceCreated);
+    window.addEventListener('aquaalert:reading-created', handleReadingCreated);
 
     return () => {
       window.removeEventListener('aquaalert:complaint-dismissed', handleDismissed);
@@ -161,6 +183,8 @@ export const useWaterData = (activePage: string = 'Overview') => {
       window.removeEventListener('aquaalert:alert-created', handleAlertCreated);
       window.removeEventListener('aquaalert:alert-updated', handleAlertUpdated);
       window.removeEventListener('aquaalert:alert-deleted', handleAlertDeleted);
+      window.removeEventListener('aquaalert:source-created', handleSourceCreated);
+      window.removeEventListener('aquaalert:reading-created', handleReadingCreated);
     };
   }, []);
 
@@ -207,9 +231,8 @@ export const useWaterData = (activePage: string = 'Overview') => {
       return;
     }
     setLoadingReadings(true);
-    api<unknown>(`/sources/${encodeURIComponent(selected)}/readings`)
-      .then(r => {
-        const items = recordsFrom(r) as unknown as Reading[];
+    fetchSyncedSourceReadings(selected)
+      .then(items => {
         setReadings(items);
       })
       .catch(e => {

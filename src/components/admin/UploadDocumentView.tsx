@@ -282,9 +282,12 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
       });
     }
 
-    if (reports.length === 0) {
-      list.push(...STATIC_BASELINE_DOCUMENTS);
-    }
+    // Baseline Documents (always merged and deduplicated so baseline records are never lost)
+    STATIC_BASELINE_DOCUMENTS.forEach(baseDoc => {
+      if (!list.some(d => d.reportId === baseDoc.reportId)) {
+        list.push(baseDoc);
+      }
+    });
 
     list.sort((a, b) => {
       const timeA = a.generatedAt ? new Date(a.generatedAt).getTime() : 0;

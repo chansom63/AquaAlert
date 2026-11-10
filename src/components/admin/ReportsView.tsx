@@ -383,10 +383,12 @@ export const ReportsView: FC<ReportsViewProps> = ({
       });
     }
 
-    // 3. Fallback Standard Reports (only if database returns 0 records)
-    if (reports.length === 0) {
-      list.push(...STATIC_BASELINE_REPORTS);
-    }
+    // 3. Baseline Statutory Reports (always merged and deduplicated so baseline records are never lost)
+    STATIC_BASELINE_REPORTS.forEach(baseReport => {
+      if (!list.some(r => r.reportId === baseReport.reportId)) {
+        list.push(baseReport);
+      }
+    });
 
     // Sort newest first by generated timestamp
     list.sort((a, b) => {

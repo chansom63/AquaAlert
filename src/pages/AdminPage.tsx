@@ -39,6 +39,9 @@ import SourceDetailDrawer from '../components/sources/SourceDetailDrawer';
 import AlertDetailDrawer from '../components/alerts/AlertDetailDrawer';
 import { useWaterData } from '../hooks/useWaterData';
 import { useAdminTablesData } from '../hooks/useAdminTablesData';
+import { recordLocallySubmittedReading } from '../utils/readingsSync';
+import { recordLocallyCreatedAction } from '../utils/actionsSync';
+import { recordLocallyUploadedReport } from '../utils/reportsSync';
 import { humanize, displayDate } from '../api/adminRecords';
 import { api } from '../api/client';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../components/common/SubmissionSuccessModal';
@@ -141,6 +144,17 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
       const sourceObj = adminTables.sources.find(s => s.sourceId === sourceId);
       const sourceName = sourceObj ? `${sourceObj.name} (${sourceId})` : sourceId;
 
+      recordLocallySubmittedReading({
+        readingId,
+        readingKey: `${collectedAt}#${readingId}`,
+        sourceId,
+        collectedAt,
+        receivedAt: new Date().toISOString(),
+        method,
+        verificationStatus: 'SCREENING',
+        parameters,
+      });
+
       setAdminNotice(`Reading ${readingId} accepted! Recorded in Central Database. ${res.alertTriggered ? 'An anomaly alert was triggered.' : 'Recorded within standard parameter limits.'}`);
       setActiveModal(null);
 
@@ -208,6 +222,15 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
       const generatedActionId = res?.actionId || `act-${Date.now().toString(36)}`;
       const targetAlert = adminTables.alerts.find(a => a.alertId === alertId);
       const targetSource = adminTables.sources.find(s => s.sourceId === targetAlert?.sourceId);
+
+      recordLocallyCreatedAction({
+        actionId: generatedActionId,
+        alertId,
+        actionType,
+        summary,
+        actorRole,
+        createdAt: new Date().toISOString(),
+      });
 
       setAdminNotice(`Response action recorded to audit ledger for Alert ${alertId}!`);
       setActiveModal(null);
@@ -302,6 +325,23 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
       });
 
       const reportId = (ddbRes as any)?.reportId || signed.objectKey;
+
+      recordLocallyUploadedReport({
+        reportId,
+        sourceId,
+        sourceName: adminTables.sources.find(s => s.sourceId === sourceId)?.name || sourceId,
+        title: `Accredited Lab Report (${sourceId})`,
+        reportType: 'Lab Report',
+        s3Bucket: 'waterq-dev-evidence-files',
+        s3Key: signed.objectKey,
+        s3Uri: `s3://waterq-dev-evidence-files/${signed.objectKey}`,
+        filename: file.name,
+        fileSizeFormatted: `${(file.size / 1024).toFixed(1)} KB`,
+        chemistName: 'Dr. S. Mukherjee (TC-8491)',
+        verificationStatus: 'LAB_VERIFIED',
+        uploadedAt: new Date().toISOString(),
+      });
+
       setAdminNotice(`Evidence "${file.name}" uploaded and certified in Municipal Laboratory Archive! Key: ${signed.objectKey}`);
       setActiveModal(null);
 
