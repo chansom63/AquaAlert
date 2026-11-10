@@ -13,6 +13,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  ShieldAlert,
   Trash2,
   UserCheck,
   Users,
@@ -32,6 +33,7 @@ export interface ResponseActionsViewProps {
   onSelectAlert?: (alertId: string) => void;
   onUpdateAction?: (actionId: string, updates: ApiRecord) => Promise<void>;
   onDeleteAction?: (actionId: string) => Promise<void>;
+  onUpdateAlert?: (alertId: string, updates: Partial<Alert>) => Promise<Alert>;
 }
 
 type ActionCategoryTab = 'all' | 'dosing' | 'flushing' | 'inspection';
@@ -46,6 +48,7 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
   onSelectAlert,
   onUpdateAction,
   onDeleteAction,
+  onUpdateAlert,
 }) => {
   const [activeTab, setActiveTab] = useState<ActionCategoryTab>('all');
   const [search, setSearch] = useState('');
@@ -61,6 +64,65 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
+  // Facility incident severity reclassification states
+  const [severityModalAlert, setSeverityModalAlert] = useState<Alert | null>(null);
+  const [severityModalAction, setSeverityModalAction] = useState<ApiRecord | null>(null);
+  const [isUpdatingSeverity, setIsUpdatingSeverity] = useState(false);
+  const [severitySuccessMessage, setSeveritySuccessMessage] = useState<string | null>(null);
+
+  const handleQuickUpdateSeverity = async (alertId: string, newSeverity: string) => {
+    if (!onUpdateAlert) return;
+    setIsUpdatingSeverity(true);
+    setSeveritySuccessMessage(null);
+    try {
+      const updates: Partial<Alert> = { severity: newSeverity };
+      if (newSeverity === 'RESOLVED') {
+        updates.state = 'RESOLVED';
+      } else if (newSeverity === 'CRITICAL' || newSeverity === 'HIGH') {
+        updates.state = 'TRIGGERED';
+      } else {
+        updates.state = 'IN_PROGRESS';
+      }
+      await onUpdateAlert(alertId, updates);
+      setSeveritySuccessMessage(`Incident ${alertId} reclassified to ${newSeverity}!`);
+      setTimeout(() => setSeveritySuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('Failed to update severity:', err);
+    } finally {
+      setIsUpdatingSeverity(false);
+    }
+  };
+
+  const handleSeverityModalSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!onUpdateAlert || !severityModalAlert) return;
+    setIsUpdatingSeverity(true);
+    const form = new FormData(e.currentTarget);
+    const alertId = severityModalAlert.alertId;
+    const newSeverity = String(form.get('severity') || severityModalAlert.severity || 'WARNING');
+    const newState = String(form.get('state') || severityModalAlert.state || 'IN_PROGRESS');
+    const justification = String(form.get('justification') || '').trim();
+
+    try {
+      const updates: Partial<Alert> = {
+        severity: newSeverity,
+        state: newState,
+      };
+      if (justification) {
+        updates.publicMessage = `${justification} (Verified post-action: ${displayDate(new Date().toISOString())})`;
+      }
+      await onUpdateAlert(alertId, updates);
+      setActionFeedback(`Facility incident ${alertId} severity reclassified to ${newSeverity}!`);
+      setSeverityModalAlert(null);
+      setSeverityModalAction(null);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error('Failed to update incident severity:', err);
+    } finally {
+      setIsUpdatingSeverity(false);
+    }
+  };
+
   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!onUpdateAction || !editingAction) return;
@@ -72,9 +134,16 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
       summary: String(form.get('summary') || editingAction.summary),
       actorRole: String(form.get('actorRole') || editingAction.actorRole),
     };
+    const postActionSeverity = String(form.get('postActionSeverity') || 'NO_CHANGE');
 
     try {
       await onUpdateAction(actionId, updates);
+      if (postActionSeverity && postActionSeverity !== 'NO_CHANGE' && editingAction.alertId && onUpdateAlert) {
+        await onUpdateAlert(String(editingAction.alertId), {
+          severity: postActionSeverity,
+          state: postActionSeverity === 'RESOLVED' ? 'RESOLVED' : undefined,
+        });
+      }
       setActionFeedback(`Response action ${actionId} updated successfully!`);
       setEditingAction(null);
       setTimeout(() => setActionFeedback(null), 4000);
@@ -524,24 +593,53 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
                           </div>
                         </td>
 
-                        {/* Correlated Alert ID */}
+                        {/* Correlated Alert ID & Severity */}
                         <td className="p-3 whitespace-nowrap">
                           {action.alertId ? (
-                            <span
-                              onClick={e => {
-                                if (onSelectAlert && action.alertId) {
-                                  e.stopPropagation();
-                                  onSelectAlert(String(action.alertId));
-                                }
-                              }}
-                              className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-md border ${
-                                linkedAlert && /critical|high/i.test(linkedAlert.severity ?? '')
-                                  ? 'bg-[#3b1220] text-rose-300 border-rose-700/60 hover:bg-[#4a1829]'
-                                  : 'bg-[#0c2e56] text-sky-300 border-sky-700/60 hover:bg-[#133d70]'
-                              }`}
-                            >
-                              {stringValue(action.alertId)}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                onClick={e => {
+                                  if (onSelectAlert && action.alertId) {
+                                    e.stopPropagation();
+                                    onSelectAlert(String(action.alertId));
+                                  }
+                                }}
+                                className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-md border cursor-pointer ${
+                                  linkedAlert && /critical|high/i.test(linkedAlert.severity ?? '')
+                                    ? 'bg-[#3b1220] text-rose-300 border-rose-700/60 hover:bg-[#4a1829]'
+                                    : 'bg-[#0c2e56] text-sky-300 border-sky-700/60 hover:bg-[#133d70]'
+                                }`}
+                                title="Click to view alert details"
+                              >
+                                {stringValue(action.alertId)}
+                              </span>
+                              {linkedAlert?.severity && (
+                                <button
+                                  type="button"
+                                  onClick={e => {
+                                    if (onUpdateAlert && linkedAlert) {
+                                      e.stopPropagation();
+                                      setSeverityModalAlert(linkedAlert);
+                                      setSeverityModalAction(action);
+                                    }
+                                  }}
+                                  className={`text-[9px] font-bold font-mono px-1.5 py-0.2 rounded border cursor-pointer transition hover:scale-105 ${
+                                    /critical/i.test(linkedAlert.severity)
+                                      ? 'bg-rose-950/80 text-rose-300 border-rose-700/60'
+                                      : /high/i.test(linkedAlert.severity)
+                                      ? 'bg-orange-950/80 text-orange-300 border-orange-700/60'
+                                      : /warning|medium/i.test(linkedAlert.severity)
+                                      ? 'bg-amber-950/80 text-amber-300 border-amber-700/60'
+                                      : /resolved/i.test(linkedAlert.severity)
+                                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
+                                      : 'bg-sky-950/80 text-sky-300 border-sky-700/60'
+                                  }`}
+                                  title="Change incident severity for this facility"
+                                >
+                                  {humanize(linkedAlert.severity)}
+                                </button>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-slate-400 font-mono text-[11px]">System Routine</span>
                           )}
@@ -584,6 +682,20 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
                         {/* Action Buttons */}
                         <td className="p-3 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            {onUpdateAlert && linkedAlert && (
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setSeverityModalAlert(linkedAlert);
+                                  setSeverityModalAction(action);
+                                }}
+                                className="text-slate-400 hover:text-cyan-300 p-1 hover:bg-[#162758] rounded-lg transition"
+                                title="Change Incident Severity"
+                              >
+                                <ShieldAlert className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             {onUpdateAction && (
                               <button
                                 type="button"
@@ -682,29 +794,110 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
                     </span>
                   </div>
 
-                  {Boolean(alertMap.get(String(selectedAction.alertId))) && (
-                    <div className="space-y-1.5 text-xs">
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span>Incident Severity:</span>
-                        <span className="font-bold text-rose-400 bg-rose-950/70 px-2 py-0.5 rounded border border-rose-800/60 font-mono">
-                          {humanize(alertMap.get(String(selectedAction.alertId))?.severity)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span>Target Water Source:</span>
-                        <span className="font-semibold text-white">
-                          {sourceMap.get(String(alertMap.get(String(selectedAction.alertId))?.sourceId ?? ''))?.name ||
-                            stringValue(alertMap.get(String(selectedAction.alertId))?.sourceId)}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-300 pt-1 leading-relaxed bg-[#060e24] p-2.5 rounded-lg border border-[#162758]">
-                        {stringValue(
-                          alertMap.get(String(selectedAction.alertId))?.publicMessage,
-                          stringValue(alertMap.get(String(selectedAction.alertId))?.reason),
+                  {Boolean(alertMap.get(String(selectedAction.alertId))) && (() => {
+                    const linked = alertMap.get(String(selectedAction.alertId))!;
+                    const currentSev = String(linked.severity || 'WARNING').toUpperCase();
+                    const isCritical = /critical/i.test(currentSev);
+                    const isHigh = /high/i.test(currentSev);
+                    const isWarning = /warning|medium/i.test(currentSev);
+                    const isResolved = /resolved/i.test(currentSev);
+
+                    return (
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between items-center text-slate-300">
+                          <span>Incident Severity:</span>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`font-bold font-mono px-2 py-0.5 rounded border text-[11px] ${
+                                isCritical
+                                  ? 'text-rose-300 bg-rose-950/80 border-rose-700/60'
+                                  : isHigh
+                                  ? 'text-orange-300 bg-orange-950/80 border-orange-700/60'
+                                  : isWarning
+                                  ? 'text-amber-300 bg-amber-950/80 border-amber-700/60'
+                                  : isResolved
+                                  ? 'text-emerald-300 bg-emerald-950/80 border-emerald-700/60'
+                                  : 'text-sky-300 bg-sky-950/80 border-sky-700/60'
+                              }`}
+                            >
+                              {humanize(linked.severity)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono bg-[#060e24] px-1.5 py-0.5 rounded border border-[#162758]">
+                              {linked.state || 'ACTIVE'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center text-slate-300">
+                          <span>Target Water Facility:</span>
+                          <span className="font-semibold text-white">
+                            {sourceMap.get(String(linked.sourceId ?? ''))?.name || stringValue(linked.sourceId)}
+                          </span>
+                        </div>
+
+                        <div className="text-[11px] text-slate-300 pt-1 leading-relaxed bg-[#060e24] p-2.5 rounded-lg border border-[#162758]">
+                          {stringValue(linked.publicMessage, stringValue(linked.reason))}
+                        </div>
+
+                        {/* Facility Severity Option Post-Action */}
+                        {onUpdateAlert && (
+                          <div className="pt-2 border-t border-[#162758] space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-semibold text-slate-200 flex items-center gap-1.5 text-[11px]">
+                                <ShieldAlert className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>Facility Severity Option:</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSeverityModalAlert(linked);
+                                  setSeverityModalAction(selectedAction);
+                                }}
+                                className="text-[10px] text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer flex items-center gap-1 hover:underline"
+                                title="Reclassify incident severity and lifecycle state"
+                              >
+                                <span>Change Severity</span>
+                                <span>&rarr;</span>
+                              </button>
+                            </div>
+
+                            {/* Quick 1-click severity update buttons */}
+                            <div className="grid grid-cols-5 gap-1 pt-0.5">
+                              {[
+                                { val: 'RESOLVED', label: 'Resolved', bg: 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border-emerald-700/60' },
+                                { val: 'INFO', label: 'Info', bg: 'bg-sky-950/80 hover:bg-sky-900 text-sky-300 border-sky-700/60' },
+                                { val: 'WARNING', label: 'Warning', bg: 'bg-amber-950/80 hover:bg-amber-900 text-amber-300 border-amber-700/60' },
+                                { val: 'HIGH', label: 'High', bg: 'bg-orange-950/80 hover:bg-orange-900 text-orange-300 border-orange-700/60' },
+                                { val: 'CRITICAL', label: 'Critical', bg: 'bg-rose-950/80 hover:bg-rose-900 text-rose-300 border-rose-700/60' },
+                              ].map(btn => {
+                                const isCurrent = currentSev === btn.val;
+                                return (
+                                  <button
+                                    key={btn.val}
+                                    type="button"
+                                    disabled={isCurrent || isUpdatingSeverity}
+                                    onClick={() => handleQuickUpdateSeverity(String(selectedAction.alertId), btn.val)}
+                                    className={`text-[9px] font-bold py-1 px-1 rounded border transition text-center truncate cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${btn.bg} ${
+                                      isCurrent ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-[#091533]' : ''
+                                    }`}
+                                    title={isCurrent ? 'Current Severity' : `Change severity to ${btn.val}`}
+                                  >
+                                    {isCurrent ? `✓ ${btn.label}` : btn.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {severitySuccessMessage && (
+                              <div className="text-[10px] text-emerald-300 bg-emerald-950/80 border border-emerald-600/70 rounded-lg p-1.5 text-center font-semibold animate-in fade-in">
+                                {severitySuccessMessage}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {Boolean(onSelectAlert && selectedAction.alertId) && (
                     <button
@@ -864,6 +1057,33 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
                 />
               </div>
 
+              {/* Optional Post-Action Incident Severity adjustment during Edit */}
+              {Boolean(editingAction.alertId && alertMap.get(String(editingAction.alertId))) && (
+                <div className="p-3 bg-[#080e26] rounded-xl border border-[#1e3470] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-300 text-[11px] flex items-center gap-1.5">
+                      <ShieldAlert className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Post-Action Incident Severity</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-cyan-300">
+                      Current: {alertMap.get(String(editingAction.alertId))?.severity || 'Active'}
+                    </span>
+                  </div>
+                  <select
+                    name="postActionSeverity"
+                    defaultValue="NO_CHANGE"
+                    className="w-full px-3 py-1.5 bg-[#0c1938] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="NO_CHANGE">No change (Keep current severity)</option>
+                    <option value="RESOLVED">✅ RESOLVED — Incident Cleared / Normal Quality</option>
+                    <option value="INFO">ℹ️ INFO — Minor Advisory / Monitoring</option>
+                    <option value="WARNING">⚠️ WARNING — Standard Quality Advisory</option>
+                    <option value="HIGH">🟠 HIGH — Elevated Operational Alert</option>
+                    <option value="CRITICAL">🔴 CRITICAL — Emergency Contamination Alert</option>
+                  </select>
+                </div>
+              )}
+
               <div className="pt-3 border-t border-[#1c295c] flex items-center justify-end gap-2">
                 <button
                   type="button"
@@ -927,6 +1147,132 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
                 <span>Confirm Delete</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Facility Incident Severity Reclassification Modal */}
+      {severityModalAlert && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1938] border border-[#1c295c] rounded-2xl shadow-2xl max-w-lg w-full p-6 text-white animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1c295c]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-cyan-600/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">
+                    Facility Incident Severity Reclassification
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Update incident severity post-action for Alert {severityModalAlert.alertId}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSeverityModalAlert(null);
+                  setSeverityModalAction(null);
+                }}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#162758] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Context Card */}
+            <div className="mt-4 p-3 bg-[#080e26] rounded-xl border border-[#1c295c] space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Target Water Facility / Source:</span>
+                <span className="font-bold text-cyan-300">
+                  {sourceMap.get(severityModalAlert.sourceId)?.name || severityModalAlert.sourceId}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Current Incident Severity:</span>
+                <span className="font-mono font-bold text-rose-300 bg-rose-950/70 px-2 py-0.5 rounded border border-rose-800/60">
+                  {severityModalAlert.severity || 'WARNING'}
+                </span>
+              </div>
+              {severityModalAction && (
+                <div className="flex justify-between items-center pt-1 border-t border-[#1c295c]/60">
+                  <span className="text-slate-400">Response Action Executed:</span>
+                  <span className="font-medium text-emerald-300">
+                    {humanize(severityModalAction.actionType)} ({displayDate(severityModalAction.createdAt)})
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleSeverityModalSubmit} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    New Incident Severity
+                  </label>
+                  <select
+                    name="severity"
+                    defaultValue={severityModalAlert.severity || 'WARNING'}
+                    className="w-full px-3 py-2 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="RESOLVED">✅ RESOLVED — De-escalated / Quality Normal</option>
+                    <option value="INFO">ℹ️ INFO — Minor Advisory / Monitoring</option>
+                    <option value="WARNING">⚠️ WARNING — Standard Quality Advisory</option>
+                    <option value="HIGH">🟠 HIGH — Elevated Operational Alert</option>
+                    <option value="CRITICAL">🔴 CRITICAL — Emergency Contamination Alert</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Lifecycle State
+                  </label>
+                  <select
+                    name="state"
+                    defaultValue={severityModalAlert.state || 'IN_PROGRESS'}
+                    className="w-full px-3 py-2 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="RESOLVED">RESOLVED — Incident Closed</option>
+                    <option value="IN_PROGRESS">IN_PROGRESS — Remediation Continuing</option>
+                    <option value="ACKNOWLEDGED">ACKNOWLEDGED — Office Aware</option>
+                    <option value="TRIGGERED">TRIGGERED — Active Alarm</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  Verification Note / Remediation Justification
+                </label>
+                <textarea
+                  name="justification"
+                  rows={2}
+                  placeholder="e.g. Chlorine residual restored to 0.4 ppm following chlorination flush. BIS IS 10500 standards met."
+                  className="w-full px-3 py-2 bg-[#080e26] border border-[#1e3470] rounded-xl text-slate-100 text-xs focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#1c295c]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSeverityModalAlert(null);
+                    setSeverityModalAction(null);
+                  }}
+                  className="px-4 py-2 bg-[#152347] hover:bg-[#1c3060] text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer border border-[#1e3470]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingSeverity}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer"
+                >
+                  {isUpdatingSeverity && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Commit Severity Change</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

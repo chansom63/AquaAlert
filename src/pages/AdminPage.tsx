@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   User,
   Users,
+  ShieldAlert,
   X,
   MessageSquareWarning,
   PanelLeftClose,
@@ -39,6 +40,7 @@ import { SettingsView } from '../components/admin/SettingsView';
 import { EvidenceS3View } from '../components/admin/EvidenceS3View';
 import SourceDetailDrawer from '../components/sources/SourceDetailDrawer';
 import AlertDetailDrawer from '../components/alerts/AlertDetailDrawer';
+import type { Alert } from '../types/water';
 import { useWaterData } from '../hooks/useWaterData';
 import { useAdminTablesData } from '../hooks/useAdminTablesData';
 import { recordLocallySubmittedReading } from '../utils/readingsSync';
@@ -234,6 +236,8 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
     const actionType = String(form.get('actionType') || 'FIELD_INVESTIGATION');
     const summary = String(form.get('summary') || '').trim();
     const actorRole = String(form.get('actorRole') || 'MUNICIPAL_OFFICER');
+    const newSeverity = String(form.get('newSeverity') || 'NO_CHANGE');
+    const newState = String(form.get('newState') || 'UNCHANGED');
 
     if (!alertId) {
       setAdminError('Please select a target alert.');
@@ -247,9 +251,19 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
     }
 
     try {
+      const payload: Record<string, any> = { actionType, summary, actorRole };
+      if (newSeverity && newSeverity !== 'NO_CHANGE') {
+        payload.newSeverity = newSeverity;
+      }
+      if (newState && newState !== 'UNCHANGED') {
+        payload.newState = newState;
+      } else if (newSeverity === 'RESOLVED') {
+        payload.newState = 'RESOLVED';
+      }
+
       const res = await api<{ result: string; actionId?: string }>(`/alerts/${encodeURIComponent(alertId)}/actions`, {
         method: 'POST',
-        body: JSON.stringify({ actionType, summary, actorRole }),
+        body: JSON.stringify(payload),
       });
       const generatedActionId = res?.actionId || `act-${Date.now().toString(36)}`;
       const targetAlert = adminTables.alerts.find(a => a.alertId === alertId);
@@ -264,8 +278,45 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
         createdAt: new Date().toISOString(),
       });
 
-      setAdminNotice(`Response action recorded to audit ledger for Alert ${alertId}!`);
+      let severityNotice = '';
+      if (newSeverity && newSeverity !== 'NO_CHANGE') {
+        const alertUpdates: Partial<Alert> = { severity: newSeverity };
+        if (newState && newState !== 'UNCHANGED') {
+          alertUpdates.state = newState;
+        } else if (newSeverity === 'RESOLVED') {
+          alertUpdates.state = 'RESOLVED';
+        } else if (newSeverity === 'CRITICAL' || newSeverity === 'HIGH') {
+          alertUpdates.state = 'TRIGGERED';
+        } else {
+          alertUpdates.state = 'IN_PROGRESS';
+        }
+        await adminTables.updateAlert(alertId, alertUpdates);
+        severityNotice = ` & Incident Severity set to ${newSeverity}`;
+      }
+
+      setAdminNotice(`Response action recorded for Alert ${alertId}${severityNotice}!`);
       setActiveModal(null);
+
+      const submissionDetails: SubmissionDetail[] = [
+        { label: 'Target Alert ID', value: alertId, isMono: true },
+        { label: 'Water Source / Facility', value: targetSource ? `${targetSource.name} (${targetSource.sourceId})` : (targetAlert?.sourceId || 'Gwalior Municipal Grid') },
+        { label: 'Intervention Category', value: actionType },
+        { label: 'Authorized Officer / Role', value: actorRole },
+        { label: 'Engineering Summary', value: summary },
+      ];
+
+      if (newSeverity && newSeverity !== 'NO_CHANGE') {
+        submissionDetails.push({
+          label: 'Post-Action Incident Severity',
+          value: `${newSeverity} (Facility Reclassification)`,
+          isMono: true,
+        });
+      }
+
+      submissionDetails.push({
+        label: 'Compliance Audit Status',
+        value: 'Recorded & Immutable (ISO 14001 / BIS)',
+      });
 
       setSubmissionModalData({
         title: 'Response Action Recorded',
@@ -273,14 +324,7 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
         badgeText: actionType.replace(/_/g, ' '),
         recordId: generatedActionId,
         tableTarget: 'ResponseActions',
-        details: [
-          { label: 'Target Alert ID', value: alertId, isMono: true },
-          { label: 'Water Source', value: targetSource ? `${targetSource.name} (${targetSource.sourceId})` : (targetAlert?.sourceId || 'Gwalior Municipal Grid') },
-          { label: 'Intervention Category', value: actionType },
-          { label: 'Authorized Officer / Role', value: actorRole },
-          { label: 'Engineering Summary', value: summary },
-          { label: 'Compliance Audit Status', value: 'Recorded & Immutable (ISO 14001 / BIS)' },
-        ],
+        details: submissionDetails,
       });
 
       await Promise.all([adminTables.fetchActions(true), adminTables.fetchAlerts(true)]);
@@ -1144,6 +1188,7 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
               onSelectAlert={handleSelectAlert}
               onUpdateAction={adminTables.updateAction}
               onDeleteAction={adminTables.deleteAction}
+              onUpdateAlert={adminTables.updateAlert}
             />
           )}
 
@@ -1269,6 +1314,53 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
                   placeholder="Describe field inspection observations, dosing rate changes, pipe flush procedure, or laboratory chain of custody details..."
                   className="w-full rounded-xl border border-slate-300 p-2.5 text-xs bg-white text-slate-800"
                 />
+              </div>
+
+              {/* Facility Incident Severity Post-Action Option */}
+              <div className="p-3 bg-blue-50/70 border border-blue-200/90 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                    <ShieldAlert className="w-4 h-4 text-blue-600" />
+                    <span>Facility Incident Severity Post-Action</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                    Facility Reclassification
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Optionally update or de-escalate the water facility's incident severity after executing this corrective action:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block font-semibold text-slate-700 text-[11px] mb-1">New Severity</label>
+                    <select
+                      name="newSeverity"
+                      defaultValue="NO_CHANGE"
+                      className="w-full rounded-xl border border-slate-300 p-2 text-xs bg-white text-slate-800 font-medium"
+                    >
+                      <option value="NO_CHANGE">No change (Keep current severity)</option>
+                      <option value="RESOLVED">✅ RESOLVED — Incident Cleared / Normal Quality</option>
+                      <option value="INFO">ℹ️ INFO — De-escalated to Informational Monitoring</option>
+                      <option value="WARNING">⚠️ WARNING — Maintained under Advisory</option>
+                      <option value="HIGH">🟠 HIGH — Elevated Operational Alert</option>
+                      <option value="CRITICAL">🔴 CRITICAL — Emergency Contamination Alert</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 text-[11px] mb-1">Lifecycle State</label>
+                    <select
+                      name="newState"
+                      defaultValue="UNCHANGED"
+                      className="w-full rounded-xl border border-slate-300 p-2 text-xs bg-white text-slate-800 font-medium"
+                    >
+                      <option value="UNCHANGED">Keep current status</option>
+                      <option value="RESOLVED">RESOLVED (Close Incident)</option>
+                      <option value="IN_PROGRESS">IN_PROGRESS (Ongoing Mitigation)</option>
+                      <option value="ACKNOWLEDGED">ACKNOWLEDGED (Office Notified)</option>
+                      <option value="TRIGGERED">TRIGGERED (Active Critical Alarm)</option>
+                    </select>
+                  </div>
+                </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button

@@ -1073,6 +1073,26 @@ def handle_post_alert_action(alert_id, payload):
         "summary": summary.strip(),
         "createdAt": now_utc
     }
+    if "actorRole" in payload:
+        action_item["actorRole"] = payload["actorRole"]
+
+    # Optional: reclassify or update alert severity and lifecycle state post-action
+    new_severity = payload.get("newSeverity") or payload.get("severity")
+    if new_severity:
+        try:
+            alert_item = alert_response.get("Item")
+            if alert_item:
+                alert_item["severity"] = str(new_severity).upper()
+                alert_item["updatedAt"] = now_utc
+                new_state = payload.get("newState") or payload.get("state")
+                if new_state:
+                    alert_item["state"] = str(new_state).upper()
+                elif str(new_severity).upper() == "RESOLVED":
+                    alert_item["state"] = "RESOLVED"
+                dynamodb.Table(ALERTS_TABLE).put_item(Item=alert_item)
+        except Exception as exc:
+            print(f"Warning: Failed to update alert severity on action create: {exc}")
+
     try:
         dynamodb.Table(ACTIONS_TABLE).put_item(Item=action_item)
     except Exception as exc:
