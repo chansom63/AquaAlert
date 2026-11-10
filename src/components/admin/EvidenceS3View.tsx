@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Download,
   ExternalLink,
   Eye,
@@ -32,6 +33,7 @@ import {
   Paperclip,
   RefreshCw,
   Search,
+  Share2,
   Upload,
   User,
   X,
@@ -305,6 +307,21 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
   const [dateRange, setDateRange] = useState<DateRange>({ startDate: '', endDate: '' });
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [actionToast, setActionToast] = useState<string | null>(null);
+
+  // Close row action popover on outside click
+  useEffect(() => {
+    const handleDocumentClick = () => {
+      setActiveMenuId(null);
+    };
+    if (activeMenuId) {
+      document.addEventListener('click', handleDocumentClick);
+    }
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, [activeMenuId]);
 
   // Real S3 Upload State
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -810,8 +827,9 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map(item => {
+                {filtered.map((item, idx) => {
                   const isPdf = item.fileName.endsWith('.pdf');
+                  const isNearBottom = idx >= filtered.length - 2 && filtered.length > 3;
                   return (
                     <tr
                       key={item.id}
@@ -860,24 +878,133 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
                       </td>
                       <td className="py-2.5 px-3 text-slate-500 font-mono text-[11px]">{item.size}</td>
                       <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-1">
+                        <div className="relative flex items-center gap-1">
                           <button
+                            type="button"
                             onClick={e => {
                               e.stopPropagation();
                               setSelectedId(item.id);
                               setPreviewModalOpen(true);
                             }}
-                            className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                            className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
                             title="Preview File"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={e => e.stopPropagation()}
-                            className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setActiveMenuId(prev => (prev === item.id ? null : item.id));
+                            }}
+                            className={`p-1 rounded transition cursor-pointer ${
+                              activeMenuId === item.id
+                                ? 'bg-blue-100 text-blue-600'
+                                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                            }`}
+                            title="More Actions"
                           >
                             <MoreHorizontal className="w-3.5 h-3.5" />
                           </button>
+
+                          {/* Popover Action Menu */}
+                          {activeMenuId === item.id && (
+                            <div
+                              onClick={e => e.stopPropagation()}
+                              className={`absolute right-0 ${
+                                isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                              } z-50 bg-white border border-slate-200 rounded-xl shadow-2xl py-1.5 w-52 text-xs text-slate-700 animate-in fade-in zoom-in-95 font-sans`}
+                            >
+                              <div className="px-3 py-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                Actions
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  handleDownloadEvidence(item);
+                                }}
+                                className="w-full px-3 py-1.5 text-left hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 cursor-pointer transition font-medium"
+                              >
+                                <Download className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Download File</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  handleOpenPdfInTab(item);
+                                }}
+                                className="w-full px-3 py-1.5 text-left hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2 cursor-pointer transition font-medium"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 text-purple-600" />
+                                <span>Open in New Tab</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  setSelectedId(item.id);
+                                  setPreviewModalOpen(true);
+                                }}
+                                className="w-full px-3 py-1.5 text-left hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition font-medium"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-slate-500" />
+                                <span>View File Dossier</span>
+                              </button>
+
+                              <div className="border-t border-slate-100 my-1" />
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  const text = item.s3Key || item.id;
+                                  navigator.clipboard.writeText(text);
+                                  setActionToast(`Copied S3 Key: ${text}`);
+                                  setTimeout(() => setActionToast(null), 3000);
+                                }}
+                                className="w-full px-3 py-1.5 text-left hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition font-medium"
+                              >
+                                <Copy className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Copy S3 Key</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  const bucket = item.s3Bucket || 'waterq-dev-evidence-files';
+                                  const uri = `s3://${bucket}/${item.s3Key || item.id}`;
+                                  navigator.clipboard.writeText(uri);
+                                  setActionToast(`Copied S3 URI: ${uri}`);
+                                  setTimeout(() => setActionToast(null), 3000);
+                                }}
+                                className="w-full px-3 py-1.5 text-left hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition font-medium"
+                              >
+                                <Share2 className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Copy S3 URI</span>
+                              </button>
+
+                              <div className="border-t border-slate-100 my-1" />
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  setSelectedId(item.id);
+                                  setShowUploadModal(true);
+                                }}
+                                className="w-full px-3 py-1.5 text-left hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2 cursor-pointer transition font-medium"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Replace File</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1367,6 +1494,14 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
           s3Pointer={submissionModalData.s3Pointer}
           details={submissionModalData.details}
         />
+      )}
+
+      {/* Action Toast */}
+      {actionToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 border border-slate-700">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{actionToast}</span>
+        </div>
       )}
     </div>
   );
