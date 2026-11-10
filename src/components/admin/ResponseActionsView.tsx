@@ -641,7 +641,7 @@ export const ResponseActionsView: FC<ResponseActionsViewProps> = ({
         </div>
 
         {/* RIGHT: Detail Inspection Card (4 cols) */}
-        <div className="lg:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-4 self-start sticky top-4 h-fit">
           {selectedAction ? (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
               {/* Header Badge */}

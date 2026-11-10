@@ -1547,7 +1547,7 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
             </div>
 
             {/* RIGHT: Selected Rule Inspection & Simulator Panel (4 cols) */}
-            <div className="lg:col-span-4 bg-[#0c1938] rounded-2xl border border-[#1c295c] shadow-sm flex flex-col overflow-hidden">
+            <div className="lg:col-span-4 bg-[#0c1938] rounded-2xl border border-[#1c295c] shadow-sm flex flex-col overflow-hidden self-start sticky top-4 h-fit">
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-[#1c295c] bg-[#0b1438]">
                 <div className="flex items-center gap-2">
@@ -1564,7 +1564,7 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
               </div>
 
               {/* Body */}
-              <div className="p-4 space-y-4 flex-1 overflow-y-auto text-xs">
+              <div className="p-4 space-y-3.5 overflow-y-auto text-xs max-h-[calc(100vh-140px)]">
                 {/* Meta Attributes Grid */}
                 <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-[#080e26] border border-[#1c295c]">
                   <div>
@@ -1926,7 +1926,7 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
             </div>
 
             {/* RIGHT: Selected Threshold Standard Inspector (4 cols) */}
-            <div className="lg:col-span-4 bg-[#0c1938] rounded-2xl border border-[#1c295c] shadow-sm flex flex-col overflow-hidden">
+            <div className="lg:col-span-4 bg-[#0c1938] rounded-2xl border border-[#1c295c] shadow-sm flex flex-col overflow-hidden self-start sticky top-4 h-fit">
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-[#1c295c] bg-[#0b1438]">
                 <div className="flex items-center gap-2">
@@ -1939,7 +1939,7 @@ export const RulesThresholdsView: FC<RulesThresholdsViewProps> = ({
               </div>
 
               {/* Body */}
-              <div className="p-4 space-y-4 flex-1 overflow-y-auto text-xs">
+              <div className="p-4 space-y-3.5 overflow-y-auto text-xs max-h-[calc(100vh-140px)]">
                 {/* Visual Tolerance Bar Indicator */}
                 <div className="p-3 rounded-xl bg-[#080e26] border border-[#1c295c] space-y-2">
                   <div className="flex items-center justify-between">

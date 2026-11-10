@@ -317,7 +317,7 @@ export const UsersRolesView: FC = () => {
             </div>
 
             {/* RIGHT: User Detail */}
-            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col self-start sticky top-4 h-fit overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-blue-600" />
@@ -326,7 +326,7 @@ export const UsersRolesView: FC = () => {
                 <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{selected.status}</span>
               </div>
 
-              <div className="p-4 space-y-4 flex-1">
+              <div className="p-4 space-y-3.5">
                 {/* Avatar */}
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center text-xl shrink-0">

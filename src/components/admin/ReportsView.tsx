@@ -376,7 +376,7 @@ export const ReportsView: FC<ReportsViewProps> = ({
             : `Statutory alert ${alert.alertId} flagged for ${alert.sourceId} exceeding permissible BIS thresholds.`;
         list.push({
           reportId: `REP-${alert.alertId}`,
-          name: `Incident Investigation – ${alert.sourceId} (${paramStr})`,
+          name: `Incident Investigation – ${alert.sourceId || (alert as any).sourceName || 'Entire Grid'} (${paramStr})`,
           type: 'Incident',
           period: dateStr,
           generatedBy: 'Surveillance Alert Engine',
@@ -1053,7 +1053,7 @@ export const ReportsView: FC<ReportsViewProps> = ({
             </div>
 
             {/* RIGHT: Document Compliance & Storage Usage Widgets (4 cols) */}
-            <div className="lg:col-span-4 space-y-4">
+            <div className="lg:col-span-4 space-y-4 self-start sticky top-4 h-fit">
               {/* Document Compliance Widget */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-3">
                 <div className="flex items-center justify-between">
@@ -1562,7 +1562,7 @@ export const ReportsView: FC<ReportsViewProps> = ({
             </div>
 
             {/* RIGHT: Report Detail Panel (5 cols) */}
-            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col">
+            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col self-start sticky top-4 h-fit overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-blue-600" />
@@ -1579,7 +1579,7 @@ export const ReportsView: FC<ReportsViewProps> = ({
                 </span>
               </div>
 
-              <div className="p-4 flex-1 space-y-4">
+              <div className="p-4 space-y-3.5">
                 {/* Report Title Banner */}
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shrink-0">

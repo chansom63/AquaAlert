@@ -320,7 +320,7 @@ export const LabReportsPanel: FC<{
         </div>
 
         {/* Right Column (4 cols): BIS IS 10500 Chemical Tolerance Matrix */}
-        <div className="lg:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-4 self-start sticky top-4 h-fit">
           <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3.5 shadow-xl">
             <div className="border-b border-slate-800 pb-2">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">

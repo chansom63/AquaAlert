@@ -274,7 +274,7 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
             : 'pH, TDS, Turbidity';
         list.push({
           reportId: `REP-${alert.alertId}`,
-          name: `Incident Investigation – ${alert.sourceId} (${paramStr})`,
+          name: `Incident Investigation – ${alert.sourceId || (alert as any).sourceName || 'Entire Grid'} (${paramStr})`,
           type: 'Incident',
           period: dateStr,
           generatedBy: 'Surveillance Alert Engine',
@@ -829,7 +829,7 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
         </div>
 
         {/* RIGHT: Document Compliance & Storage Usage Widgets (4 cols) */}
-        <div className="lg:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-4 self-start sticky top-4 h-fit">
           {/* Document Compliance Widget */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-3">
             <div className="flex items-center justify-between">
