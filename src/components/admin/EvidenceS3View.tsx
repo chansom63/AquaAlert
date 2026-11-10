@@ -908,171 +908,183 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
         </div>
 
         {/* RIGHT: Selected Evidence Details & Interactive Preview Card */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                <FileText className="w-3.5 h-3.5" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-xs font-mono truncate max-w-[220px]">
-                {selected.fileName}
-              </h3>
-            </div>
-            <button className="text-slate-400 hover:text-slate-600 transition">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        {(() => {
+          const isSelectedImage =
+            selected.type === 'Field Photo' ||
+            (!selected.fileName.toLowerCase().endsWith('.pdf') &&
+              (selected.previewUrl?.includes('.jpg') ||
+                selected.previewUrl?.includes('.png') ||
+                selected.previewUrl?.includes('.jpeg') ||
+                selected.previewUrl?.includes('.webp')));
 
-          <div className="p-4 space-y-4 flex-1 overflow-y-auto">
-            {/* Visual Document Mockup Preview (Matching Screenshot) */}
-            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 shadow-inner">
-              {selected.previewUrl ? (
-                <div className="relative rounded-lg overflow-hidden border border-slate-200">
-                  <img
-                    src={selected.previewUrl}
-                    alt={selected.fileName}
-                    className="w-full h-44 object-cover"
-                  />
-                  <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px] backdrop-blur-xs font-mono">
-                    JPG · {selected.size}
+          return (
+            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col self-start sticky top-4 h-fit overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                  <div className="w-5 h-5 rounded bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                    <FileText className="w-3.5 h-3.5" />
                   </div>
+                  <h3 className="font-bold text-slate-900 text-xs font-mono truncate">
+                    {selected.fileName}
+                  </h3>
                 </div>
-              ) : (
-                <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs space-y-3">
-                  <div className="text-center pb-2 border-b border-slate-100">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-1">
-                      <FileCheck className="w-4 h-4" />
-                    </div>
-                    <h4 className="font-bold text-slate-900 text-xs tracking-tight">Water Quality</h4>
-                    <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
-                      Laboratory Report
-                    </div>
-                  </div>
-
-                  {/* Micro parameter table */}
-                  {selected.parameters && (
-                    <table className="w-full text-[11px] text-left border-collapse">
-                      <thead>
-                        <tr className="text-slate-400 border-b border-slate-100 font-semibold text-[10px]">
-                          <th className="py-1">Parameter</th>
-                          <th className="py-1">Result</th>
-                          <th className="py-1">Unit</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {selected.parameters.map((p, i) => (
-                          <tr key={i}>
-                            <td className="py-1 text-slate-700">{p.name}</td>
-                            <td className={`py-1 font-bold ${p.alert ? 'text-rose-600' : 'text-slate-900'}`}>
-                              {p.result}
-                            </td>
-                            <td className="py-1 text-slate-400 text-[10px]">{p.unit}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {/* Signature & Stamp */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px] text-slate-500">
-                    <div className="italic">Verified by Lab Director</div>
-                    <div className="w-10 h-10 rounded-full border border-blue-400 border-dashed text-blue-600 text-[9px] font-bold flex items-center justify-center uppercase tracking-tight text-center leading-none">
-                      LAB CERT
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Metadata Fields (Matching Screenshot) */}
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Evidence Type</span>
-                </div>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    TYPE_STYLES[selected.type]
-                  }`}
+                <button
+                  type="button"
+                  onClick={() => {}}
+                  className="text-slate-400 hover:text-slate-600 transition shrink-0"
+                  title="Close panel"
                 >
-                  {selected.type}
-                </span>
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Linked Alert</span>
+              <div className="p-4 space-y-3.5">
+                {/* Visual Document Mockup Preview */}
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 shadow-inner">
+                  {isSelectedImage && selected.previewUrl ? (
+                    <div className="relative rounded-lg overflow-hidden border border-slate-200">
+                      <img
+                        src={selected.previewUrl}
+                        alt={selected.fileName}
+                        className="w-full h-36 object-cover"
+                      />
+                      <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px] backdrop-blur-xs font-mono">
+                        {selected.fileName.split('.').pop()?.toUpperCase() || 'IMG'} · {selected.size}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-900 rounded-lg border border-slate-800 p-4 shadow-xs text-center space-y-2 relative overflow-hidden">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mx-auto border border-blue-500/30">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 max-w-full px-1">
+                        <h4 className="font-bold text-white text-xs font-mono truncate">{selected.fileName}</h4>
+                        <p className="text-[10px] text-slate-400 mt-0.5 font-sans">{selected.type} &bull; {selected.size}</p>
+                      </div>
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-blue-950/90 text-blue-300 border border-blue-800/60 text-[9px] font-mono">
+                        PDF
+                      </div>
+
+                      {/* Micro parameter table if present */}
+                      {selected.parameters && selected.parameters.length > 0 && (
+                        <div className="pt-2 border-t border-slate-800/80 text-left">
+                          <table className="w-full text-[10px] border-collapse">
+                            <thead>
+                              <tr className="text-slate-400 border-b border-slate-800 font-semibold text-[9px]">
+                                <th className="py-0.5">Parameter</th>
+                                <th className="py-0.5">Result</th>
+                                <th className="py-0.5">Unit</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800">
+                              {selected.parameters.slice(0, 3).map((p, i) => (
+                                <tr key={i}>
+                                  <td className="py-0.5 text-slate-300 font-sans">{p.name}</td>
+                                  <td className={`py-0.5 font-bold ${p.alert ? 'text-rose-400' : 'text-slate-200'}`}>
+                                    {p.result}
+                                  </td>
+                                  <td className="py-0.5 text-slate-400 font-mono text-[9px]">{p.unit}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <a href={`#${selected.linkedTo}`} className="font-bold text-blue-600 hover:underline font-mono">
-                  {selected.linkedTo}
-                </a>
+
+                {/* Metadata Fields (Matching Screenshot) */}
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Evidence Type</span>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        TYPE_STYLES[selected.type] || 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {selected.type}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Linked Alert</span>
+                    </div>
+                    <a href={`#${selected.linkedTo}`} className="font-bold text-blue-600 hover:underline font-mono">
+                      {selected.linkedTo}
+                    </a>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <Folder className="w-3.5 h-3.5" />
+                      <span>Source</span>
+                    </div>
+                    <span className="font-medium text-slate-800">{selected.sourceLocation}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <User className="w-3.5 h-3.5" />
+                      <span>Uploaded By</span>
+                    </div>
+                    <span className="font-medium text-slate-800">{selected.uploadedBy}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Uploaded At</span>
+                    </div>
+                    <span className="font-medium text-slate-800">{selected.uploadedAt}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>File Size</span>
+                    </div>
+                    <span className="font-mono font-medium text-slate-800">{selected.size}</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <Folder className="w-3.5 h-3.5" />
-                  <span>Source</span>
-                </div>
-                <span className="font-medium text-slate-800">{selected.sourceLocation}</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <User className="w-3.5 h-3.5" />
-                  <span>Uploaded By</span>
-                </div>
-                <span className="font-medium text-slate-800">{selected.uploadedBy}</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>Uploaded At</span>
-                </div>
-                <span className="font-medium text-slate-800">{selected.uploadedAt}</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>File Size</span>
-                </div>
-                <span className="font-mono font-medium text-slate-800">{selected.size}</span>
+              {/* Action Buttons Footer */}
+              <div className="px-4 py-3 border-t border-slate-100 flex items-center gap-2 flex-wrap bg-slate-50/50 rounded-b-2xl">
+                <button
+                  onClick={() => setPreviewModalOpen(true)}
+                  className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition shadow-xs cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" /> View
+                </button>
+                <button
+                  onClick={() => handleDownloadEvidence(selected)}
+                  disabled={downloadingId === selected.id}
+                  className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg transition bg-white shadow-xs cursor-pointer"
+                >
+                  {downloadingId === selected.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  <span>Download</span>
+                </button>
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg transition bg-white shadow-xs cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Replace
+                </button>
               </div>
             </div>
-          </div>
-
-          {/* Action Buttons Footer (Matching Screenshot) */}
-          <div className="px-4 py-3 border-t border-slate-100 flex items-center gap-2 flex-wrap bg-slate-50/50 rounded-b-2xl">
-            <button
-              onClick={() => setPreviewModalOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition shadow-xs"
-            >
-              <Eye className="w-3.5 h-3.5" /> View
-            </button>
-            <button
-              onClick={() => handleDownloadEvidence(selected)}
-              disabled={downloadingId === selected.id}
-              className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg transition bg-white shadow-xs cursor-pointer"
-            >
-              {downloadingId === selected.id ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
-              ) : (
-                <Download className="w-3.5 h-3.5" />
-              )}
-              <span>Download</span>
-            </button>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg transition bg-white shadow-xs"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Replace
-            </button>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       {/* ── MODAL: Upload New Evidence ── */}
