@@ -22,6 +22,8 @@ import {
   Users,
   X,
   MessageSquareWarning,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { AdminDashboardView } from '../components/admin/AdminDashboardView';
 import { AlertsIncidentsView } from '../components/admin/AlertsIncidentsView';
@@ -79,6 +81,36 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
   const [drawerSourceId, setDrawerSourceId] = useState<string | null>(null);
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Sidebar Toggle State with LocalStorage Persistence
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('aquaalert_admin_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('aquaalert_admin_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
@@ -425,26 +457,68 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
 
   return (
     <div className="admin-root admin-dark flex min-h-screen bg-[#F3F6FA] text-slate-800 font-sans selection:bg-blue-500 selection:text-white">
+      {/* Mobile Backdrop Overlay */}
+      {!sidebarCollapsed && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 md:hidden cursor-pointer"
+          onClick={toggleSidebar}
+          title="Click to close sidebar"
+        />
+      )}
+
       {/* ========================================================================= */}
       {/* 1. LEFT SIDEBAR NAVIGATION (Dark Navy #0B1728)                             */}
       {/* ========================================================================= */}
-      <aside className="w-64 bg-[#0A1728] text-slate-300 flex flex-col justify-between shrink-0 border-r border-slate-800/80 shadow-2xl z-30">
+      <aside
+        className={`${
+          sidebarCollapsed ? 'w-20' : 'w-64'
+        } bg-[#0A1728] text-slate-300 flex flex-col justify-between shrink-0 border-r border-slate-800/80 shadow-2xl z-30 transition-all duration-300 ease-in-out select-none`}
+      >
         <div>
           {/* Brand Logo & Name */}
-          <div className="px-5 py-5 border-b border-slate-800/80 flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 via-cyan-500 to-blue-400 p-0.5 flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0">
-              <div className="w-full h-full bg-[#0A1728] rounded-[10px] flex items-center justify-center">
-                <Droplets className="w-5 h-5 text-cyan-400" />
+          <div
+            className={`py-4 ${
+              sidebarCollapsed ? 'px-2 flex flex-col items-center gap-2' : 'px-4 flex items-center justify-between gap-2'
+            } border-b border-slate-800/80 transition-all duration-300`}
+          >
+            <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} overflow-hidden min-w-0`}>
+              <div
+                className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 via-cyan-500 to-blue-400 p-0.5 flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0 cursor-pointer"
+                onClick={toggleSidebar}
+                title={sidebarCollapsed ? "Expand sidebar (Ctrl+B)" : "AquaAlert"}
+              >
+                <div className="w-full h-full bg-[#0A1728] rounded-[10px] flex items-center justify-center">
+                  <Droplets className="w-5 h-5 text-cyan-400" />
+                </div>
               </div>
+              {!sidebarCollapsed && (
+                <div className="leading-tight transition-all duration-200 min-w-0">
+                  <h2 className="text-xs font-black text-white tracking-wide uppercase truncate">
+                    Transparent Public
+                  </h2>
+                  <div className="text-[11px] text-cyan-400 font-semibold tracking-tight truncate">
+                    Water Quality Alert System
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="leading-tight">
-              <h2 className="text-xs font-black text-white tracking-wide uppercase">
-                Transparent Public
-              </h2>
-              <div className="text-[11px] text-cyan-400 font-semibold tracking-tight">
-                Water Quality Alert System
-              </div>
-            </div>
+
+            {/* Sidebar Toggle Button inside Sidebar */}
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className={`p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition cursor-pointer shrink-0 ${
+                sidebarCollapsed ? 'mt-1' : ''
+              }`}
+              title={sidebarCollapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
+              aria-label="Toggle sidebar"
+            >
+              {sidebarCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4 text-cyan-400" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4" />
+              )}
+            </button>
           </div>
 
           {/* Primary Navigation Menu */}
@@ -452,190 +526,258 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
             {/* Admin Dashboard */}
             <button
               onClick={() => handleNavChange('Admin Dashboard')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              title="Admin Dashboard"
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3.5 py-2.5'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Admin Dashboard'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <LayoutDashboard className="w-4 h-4 shrink-0" />
-              <span>Admin Dashboard</span>
+              {!sidebarCollapsed && <span>Admin Dashboard</span>}
             </button>
 
             {/* Readings */}
             <button
               onClick={() => handleNavChange('Readings')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              title="Readings"
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3.5 py-2.5'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Readings'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <FlaskConical className="w-4 h-4 shrink-0" />
-              <span>Readings</span>
+              {!sidebarCollapsed && <span>Readings</span>}
             </button>
 
             {/* Water Sources */}
             <button
               onClick={() => handleNavChange('Water Sources')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              title="Water Sources"
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3.5 py-2.5'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Water Sources'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <MapPin className="w-4 h-4 shrink-0" />
-              <span>Water Sources</span>
+              {!sidebarCollapsed && <span>Water Sources</span>}
             </button>
 
             {/* Alerts & Incidents */}
             <button
               onClick={() => handleNavChange('Alerts & Incidents')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              title={`Alerts & Incidents (${adminTables.alerts.length})`}
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'justify-between px-3.5 py-2.5'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Alerts & Incidents'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
                 <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
-                <span>Alerts &amp; Incidents</span>
+                {!sidebarCollapsed && <span>Alerts &amp; Incidents</span>}
               </div>
-              <span className="bg-rose-600 text-white text-[11px] font-black px-1.5 py-0.2 rounded-full leading-none">
-                {adminTables.alerts.length}
-              </span>
+              {sidebarCollapsed ? (
+                adminTables.alerts.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full leading-none shadow-sm">
+                    {adminTables.alerts.length}
+                  </span>
+                )
+              ) : (
+                <span className="bg-rose-600 text-white text-[11px] font-black px-1.5 py-0.2 rounded-full leading-none">
+                  {adminTables.alerts.length}
+                </span>
+              )}
             </button>
 
             {/* Citizen Complaints */}
             <button
               onClick={() => handleNavChange('Complaints')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              title={`Complaints (${adminTables.complaints.length})`}
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'justify-between px-3.5 py-2.5'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Complaints'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
                 <MessageSquareWarning className="w-4 h-4 shrink-0 text-amber-400" />
-                <span>Complaints</span>
+                {!sidebarCollapsed && <span>Complaints</span>}
               </div>
-              <span className="bg-amber-600 text-white text-[11px] font-black px-1.5 py-0.2 rounded-full leading-none">
-                {adminTables.complaints.length}
-              </span>
+              {sidebarCollapsed ? (
+                adminTables.complaints.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full leading-none shadow-sm">
+                    {adminTables.complaints.length}
+                  </span>
+                )
+              ) : (
+                <span className="bg-amber-600 text-white text-[11px] font-black px-1.5 py-0.2 rounded-full leading-none">
+                  {adminTables.complaints.length}
+                </span>
+              )}
             </button>
 
             {/* Response Actions */}
             <button
               onClick={() => handleNavChange('Response Actions')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              title="Response Actions"
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3.5 py-2.5'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Response Actions'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <ClipboardList className="w-4 h-4 shrink-0" />
-              <span>Response Actions</span>
+              {!sidebarCollapsed && <span>Response Actions</span>}
             </button>
 
             {/* Rules & Thresholds */}
             <button
               onClick={() => handleNavChange('Rules & Thresholds')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              title="Rules & Thresholds"
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3.5 py-2.5'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Rules & Thresholds'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <SlidersHorizontal className="w-4 h-4 shrink-0" />
-              <span>Rules &amp; Thresholds</span>
+              {!sidebarCollapsed && <span>Rules &amp; Thresholds</span>}
             </button>
 
             {/* Evidence Archive */}
             <button
               onClick={() => handleNavChange('Evidence Archive')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              title="Evidence Archive"
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3.5 py-2.5'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Evidence Archive' || activeNav === 'Evidence (S3)'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <Folder className="w-4 h-4 shrink-0" />
-              <span>Evidence Archive</span>
+              {!sidebarCollapsed && <span>Evidence Archive</span>}
             </button>
 
             {/* Reports Registry */}
             <button
               onClick={() => handleNavChange('Reports')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              title={`Reports (${adminTables.reports.length})`}
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'justify-between px-3.5 py-2.5'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Reports'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
                 <BarChart3 className="w-4 h-4 shrink-0" />
-                <span>Reports</span>
+                {!sidebarCollapsed && <span>Reports</span>}
               </div>
-              <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-blue-900/80 text-blue-200 border border-blue-700/60">
-                {adminTables.reports.length}
-              </span>
+              {sidebarCollapsed ? (
+                adminTables.reports.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-blue-900 text-blue-200 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full leading-none border border-blue-700/60">
+                    {adminTables.reports.length}
+                  </span>
+                )
+              ) : (
+                <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-blue-900/80 text-blue-200 border border-blue-700/60">
+                  {adminTables.reports.length}
+                </span>
+              )}
             </button>
 
-
             {/* Administration Section */}
-            <div className="pt-4 pb-1 px-3">
-              <span className="text-[10px] font-mono font-bold tracking-wider text-slate-500 uppercase">
-                Administration
-              </span>
-            </div>
+            {sidebarCollapsed ? (
+              <div className="my-2 border-t border-slate-800/80" />
+            ) : (
+              <div className="pt-4 pb-1 px-3">
+                <span className="text-[10px] font-mono font-bold tracking-wider text-slate-500 uppercase">
+                  Administration
+                </span>
+              </div>
+            )}
 
             {/* Users & Roles */}
             <button
               onClick={() => setActiveNav('Users & Roles')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
+              title="Users & Roles"
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3.5 py-2'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Users & Roles'
                   ? 'bg-blue-600 text-white font-bold'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <Users className="w-4 h-4 shrink-0" />
-              <span>Users &amp; Roles</span>
+              {!sidebarCollapsed && <span>Users &amp; Roles</span>}
             </button>
-
 
             {/* Settings */}
             <button
               onClick={() => setActiveNav('Settings')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
+              title="Settings"
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3.5 py-2'
+              } rounded-xl text-xs font-semibold transition-all relative ${
                 activeNav === 'Settings'
                   ? 'bg-blue-600 text-white font-bold'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <Settings className="w-4 h-4 shrink-0" />
-              <span>Settings</span>
+              {!sidebarCollapsed && <span>Settings</span>}
             </button>
           </nav>
         </div>
 
         {/* Bottom Switch to Portals Links */}
-        <div className="p-3 border-t border-slate-800/80 space-y-1">
+        <div className={`p-3 border-t border-slate-800/80 space-y-1 ${sidebarCollapsed ? 'flex flex-col items-center' : ''}`}>
           <button
             onClick={() => navigate('/lab')}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-semibold text-purple-300 hover:text-white hover:bg-purple-950/40 transition cursor-pointer"
+            title="Lab Portal View"
+            className={`w-full flex items-center ${
+              sidebarCollapsed ? 'justify-center p-2' : 'justify-between px-3 py-2'
+            } rounded-xl text-[11px] font-semibold text-purple-300 hover:text-white hover:bg-purple-950/40 transition cursor-pointer`}
           >
             <div className="flex items-center gap-2">
               <FlaskConical className="w-3.5 h-3.5 text-purple-400" />
-              <span>Lab Portal View</span>
+              {!sidebarCollapsed && <span>Lab Portal View</span>}
             </div>
-            <ChevronRight className="w-3.5 h-3.5" />
+            {!sidebarCollapsed && <ChevronRight className="w-3.5 h-3.5" />}
           </button>
           <button
             onClick={() => navigate('/user')}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition cursor-pointer"
+            title="Citizen Portal View"
+            className={`w-full flex items-center ${
+              sidebarCollapsed ? 'justify-center p-2' : 'justify-between px-3 py-2'
+            } rounded-xl text-[11px] font-semibold text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition cursor-pointer`}
           >
-            <span>Citizen Portal View</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2">
+              <Users className="w-3.5 h-3.5 text-cyan-400" />
+              {!sidebarCollapsed && <span>Citizen Portal View</span>}
+            </div>
+            {!sidebarCollapsed && <ChevronRight className="w-3.5 h-3.5" />}
           </button>
         </div>
       </aside>
@@ -646,24 +788,41 @@ const AdminPage: FC<AdminPageProps> = ({ initialNav }) => {
       <main className="flex-1 flex flex-col min-w-0 min-h-screen overflow-y-auto">
         {/* TOP HEADER BAR matching screenshot */}
         <header className="bg-white border-b border-slate-200/90 px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-xs">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-              {activeNav}
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {activeNav === 'Admin Dashboard'      && 'Monitor water quality, manage alerts, and take response actions'}
-              {activeNav === 'Alerts & Incidents'   && 'View active alerts, track investigation, and manage incident lifecycle'}
-              {activeNav === 'Complaints'           && 'Monitor, triage, and resolve citizen water grievances with S3 photo evidence and field engineer assignment.'}
-              {activeNav === 'Water Sources'        && 'Manage and monitor water sources, their details, status, and latest water quality'}
-              {activeNav === 'Readings'             && 'View, search, and manage water quality readings'}
-              {activeNav === 'Reports'              && 'View, download, and analyze statutory water quality reports and certified documentation'}
-              {(activeNav === 'Upload Document' || activeNav === 'Upload Reports') && 'Upload certified NABL lab reports, chemical assays, and field surveillance documents.'}
-              {activeNav === 'Users & Roles'        && 'Manage system users, roles, and access permissions'}
-              {activeNav === 'Response Actions'     && 'Track, manage, and close response actions for water quality incidents'}
-              {activeNav === 'Rules & Thresholds'   && 'Configure water quality rules, threshold limits, and their versions for alert evaluation.'}
-              {(activeNav === 'Evidence Archive' || activeNav === 'Evidence (S3)') && 'Manage lab reports, field sheets, and supporting evidence for readings and incidents.'}
-              {activeNav === 'Settings'             && 'Configure system preferences, integrations, security, and operational parameters.'}
-            </p>
+          <div className="flex items-center gap-3.5">
+            {/* Sidebar Toggle Button in Header */}
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/90 transition cursor-pointer shadow-2xs flex items-center justify-center shrink-0"
+              title={sidebarCollapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
+              aria-label="Toggle sidebar"
+            >
+              {sidebarCollapsed ? (
+                <PanelLeftOpen className="w-5 h-5 text-blue-600" />
+              ) : (
+                <PanelLeftClose className="w-5 h-5 text-slate-700" />
+              )}
+            </button>
+
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
+                {activeNav}
+              </h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {activeNav === 'Admin Dashboard'      && 'Monitor water quality, manage alerts, and take response actions'}
+                {activeNav === 'Alerts & Incidents'   && 'View active alerts, track investigation, and manage incident lifecycle'}
+                {activeNav === 'Complaints'           && 'Monitor, triage, and resolve citizen water grievances with S3 photo evidence and field engineer assignment.'}
+                {activeNav === 'Water Sources'        && 'Manage and monitor water sources, their details, status, and latest water quality'}
+                {activeNav === 'Readings'             && 'View, search, and manage water quality readings'}
+                {activeNav === 'Reports'              && 'View, download, and analyze statutory water quality reports and certified documentation'}
+                {(activeNav === 'Upload Document' || activeNav === 'Upload Reports') && 'Upload certified NABL lab reports, chemical assays, and field surveillance documents.'}
+                {activeNav === 'Users & Roles'        && 'Manage system users, roles, and access permissions'}
+                {activeNav === 'Response Actions'     && 'Track, manage, and close response actions for water quality incidents'}
+                {activeNav === 'Rules & Thresholds'   && 'Configure water quality rules, threshold limits, and their versions for alert evaluation.'}
+                {(activeNav === 'Evidence Archive' || activeNav === 'Evidence (S3)') && 'Manage lab reports, field sheets, and supporting evidence for readings and incidents.'}
+                {activeNav === 'Settings'             && 'Configure system preferences, integrations, security, and operational parameters.'}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3.5">
