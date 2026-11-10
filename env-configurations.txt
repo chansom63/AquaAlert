@@ -1,0 +1,46 @@
+================================================================================
+                    AQUAALERT - ENVIRONMENT CONFIGURATIONS
+================================================================================
+
+--------------------------------------------------------------------------------
+1. FRONTEND ENVIRONMENT FILE (.env)
+Location: /home/chansom163/Academics/CC_Project/AquaAlert/.env
+Used by : Vite development server and production build (npm run build)
+--------------------------------------------------------------------------------
+
+VITE_API_BASE_URL=https://znjdsbpuhd.execute-api.ap-south-1.amazonaws.com/default/
+VITE_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiY2hhbnNvbTE2MyIsImEiOiJjbXZ3OXloZmIwM205MnlxdzYya28zcjUzIn0.MdwxivUiQpnNB6CNVDZdcw
+VITE_COGNITO_USER_POOL_ID=ap-south-1_HlHhFkttf
+VITE_COGNITO_CLIENT_ID=43egcoomllmis0ebef6pl6qnar
+VITE_AWS_REGION=ap-south-1
+COGNITO_USER_POOL_ID=ap-south-1_HlHhFkttf
+COGNITO_CLIENT_ID=43egcoomllmis0ebef6pl6qnar
+
+
+--------------------------------------------------------------------------------
+2. BACKEND / DEPLOYMENT ENVIRONMENT FILE (backend/.env)
+Location: /home/chansom163/Academics/CC_Project/AquaAlert/backend/.env
+Used by : Python DynamoDB seed scripts, Lambda update tools, S3/CloudFront deployer
+--------------------------------------------------------------------------------
+
+AWS_REGION=ap-south-1
+AWS_PROFILE=aquaalert
+WATER_SOURCES_TABLE=WaterSources
+WATER_READINGS_TABLE=WaterReadings
+ALERTS_TABLE=Alerts
+RESPONSE_ACTIONS_TABLE=ResponseActions
+LAB_REPORTS_TABLE=LabReports
+RULES_TABLE=Rules
+THRESHOLDS_TABLE=Thresholds
+RULES_THRESHOLDS_TABLE=RulesThresholds
+COMPLAINTS_TABLE=Complaints
+EVIDENCE_BUCKET=waterq-dev-evidence-files
+COMPLAINTS_BUCKET=waterq-dev-complaints-evidence
+FRONTEND_BUCKET=waterq-dev-frontend
+VITE_COGNITO_USER_POOL_ID=ap-south-1_HlHhFkttf
+VITE_COGNITO_CLIENT_ID=43egcoomllmis0ebef6pl6qnar
+VITE_AWS_REGION=ap-south-1
+COGNITO_USER_POOL_ID=ap-south-1_HlHhFkttf
+COGNITO_CLIENT_ID=43egcoomllmis0ebef6pl6qnar
+
+================================================================================
