@@ -5,6 +5,7 @@ import type { Alert, Source } from '../../types/water';
 import type { ApiRecord } from '../../api/adminRecords';
 import type { LabReportRecord } from '../../hooks/useAdminTablesData';
 import { api } from '../../api/client';
+import { recordLocallyUploadedReport } from '../../utils/reportsSync';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../common/SubmissionSuccessModal';
 import {
   Calendar,
@@ -12,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  ExternalLink,
   Eye,
   FileCheck,
   FileText,
@@ -39,6 +41,9 @@ interface EvidenceFile {
   uploadedBy: string;
   uploadedAt: string;
   size: string;
+  downloadUrl?: string;
+  s3Key?: string;
+  s3Bucket?: string;
   previewUrl?: string;
   parameters?: { name: string; result: string; unit: string; alert?: boolean }[];
   verifiedBy?: string;
@@ -156,6 +161,9 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
           uploadedBy: r.chemistName || r.uploadedBy || 'Dr. S. Mukherjee (TC-8491)',
           uploadedAt: r.uploadedAt ? new Date(r.uploadedAt).toLocaleString() : 'Recent',
           size: r.fileSizeFormatted || '1.2 MB',
+          downloadUrl: r.downloadUrl,
+          s3Key: r.s3Key,
+          s3Bucket: r.s3Bucket,
           previewUrl: r.downloadUrl,
           parameters: r.testParameters
             ? Object.entries(r.testParameters).slice(0, 4).map(([name, val]) => ({
@@ -180,6 +188,8 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
         uploadedBy: 'Dr. S. K. Gupta',
         uploadedAt: '04 Nov 2026, 09:20 AM',
         size: '1.4 MB',
+        downloadUrl: '/sample-reports/ward14_spectroscopic_assay_2026.pdf',
+        previewUrl: '/sample-reports/ward14_spectroscopic_assay_2026.pdf',
         parameters: [
           { name: 'TDS', result: '790', unit: 'mg/L', alert: true },
           { name: 'Turbidity', result: '4.2', unit: 'NTU', alert: true },
@@ -198,6 +208,8 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
         uploadedBy: 'Vikas M.',
         uploadedAt: '03 Nov 2026, 05:40 PM',
         size: '890 KB',
+        downloadUrl: '/sample-reports/ward28_chlorine_depletion_investigation.pdf',
+        previewUrl: '/sample-reports/ward28_chlorine_depletion_investigation.pdf',
         parameters: [
           { name: 'Residual Chlorine', result: '0.05', unit: 'mg/L', alert: true },
           { name: 'Turbidity', result: '1.65', unit: 'NTU' },
@@ -215,6 +227,8 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
         uploadedBy: 'Anita P.',
         uploadedAt: '03 Nov 2026, 12:15 PM',
         size: '1.1 MB',
+        downloadUrl: '/sample-reports/ward07_feeder_turbidity_spectrophotometry.pdf',
+        previewUrl: '/sample-reports/ward07_feeder_turbidity_spectrophotometry.pdf',
         parameters: [
           { name: 'Turbidity', result: '5.80', unit: 'NTU', alert: true },
           { name: 'pH', result: '7.3', unit: '-' },
@@ -232,6 +246,8 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
         uploadedBy: 'Rohit K.',
         uploadedAt: '02 Nov 2026, 10:45 AM',
         size: '1.6 MB',
+        downloadUrl: '/sample-reports/ward14_spectroscopic_assay_2026.pdf',
+        previewUrl: '/sample-reports/ward14_spectroscopic_assay_2026.pdf',
         parameters: [
           { name: 'Nitrate (NO3-)', result: '58.0', unit: 'mg/L', alert: true },
           { name: 'TDS', result: '490', unit: 'mg/L' },
@@ -249,6 +265,8 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
         uploadedBy: 'Meera S.',
         uploadedAt: '01 Nov 2026, 07:30 PM',
         size: '1.3 MB',
+        downloadUrl: '/sample-reports/ward58_padav_post_flush_clearance.pdf',
+        previewUrl: '/sample-reports/ward58_padav_post_flush_clearance.pdf',
         parameters: [
           { name: 'Turbidity', result: '0.45', unit: 'NTU' },
           { name: 'TDS', result: '240', unit: 'mg/L' },
@@ -375,6 +393,7 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
       });
 
       const registeredId = (ddbRes as any)?.reportId || signed.objectKey;
+      const localBlobUrl = URL.createObjectURL(uploadFile);
 
       const newRecord: EvidenceFile = {
         id: registeredId,
@@ -386,9 +405,33 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
         uploadedBy: uploadNote || 'Municipal Chemist',
         uploadedAt: new Date().toLocaleString(),
         size: `${(uploadFile.size / (1024 * 1024)).toFixed(2)} MB`,
-        previewUrl: uploadFile.type.startsWith('image/') ? URL.createObjectURL(uploadFile) : undefined,
+        downloadUrl: localBlobUrl,
+        s3Key: signed.objectKey,
+        s3Bucket: 'waterq-dev-evidence-files',
+        previewUrl: localBlobUrl,
         verifiedBy: uploadNote || 'GMC Water Surveillance Unit',
       };
+
+      // Ensure universal cross-portal sync receives the uploaded lab document
+      recordLocallyUploadedReport({
+        reportId: registeredId,
+        sourceId: uploadSourceId,
+        sourceName: sources.find(s => s.sourceId === uploadSourceId)?.name || uploadSourceId,
+        title: `${uploadType} - ${uploadFile.name}`,
+        reportType: uploadType,
+        s3Bucket: 'waterq-dev-evidence-files',
+        s3Key: signed.objectKey,
+        s3Uri: `s3://waterq-dev-evidence-files/${signed.objectKey}`,
+        filename: uploadFile.name,
+        downloadUrl: localBlobUrl,
+        contentType: signed.contentType || detectedContentType,
+        fileSizeBytes: uploadFile.size,
+        fileSizeFormatted: `${(uploadFile.size / (1024 * 1024)).toFixed(2)} MB`,
+        chemistName: uploadNote || 'Municipal Chemist',
+        notes: uploadNote || 'Uploaded via Evidence Archive.',
+        verificationStatus: 'LAB_VERIFIED',
+        uploadedAt: new Date().toISOString(),
+      });
 
       setEvidenceList(prev => [newRecord, ...prev]);
       setSelectedId(newRecord.id);
@@ -423,6 +466,90 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
       alert(`Upload failed: ${(err as Error).message}`);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const getEffectiveDownloadUrl = async (file: EvidenceFile): Promise<string | undefined> => {
+    if (file.downloadUrl) {
+      return file.downloadUrl;
+    }
+    if (file.s3Key) {
+      try {
+        const res = await api<{ downloadUrl: string }>(
+          `/reports/download-url?key=${encodeURIComponent(file.s3Key)}`
+        );
+        if (res && res.downloadUrl) {
+          return res.downloadUrl;
+        }
+      } catch (err) {
+        console.warn('Backend download URL fetch warning:', err);
+      }
+    }
+    return file.previewUrl;
+  };
+
+  const handleDownloadEvidence = async (file: EvidenceFile) => {
+    if (!file) return;
+    setDownloadingId(file.id);
+    try {
+      const targetUrl = await getEffectiveDownloadUrl(file);
+      const safeFilename = file.fileName.endsWith('.pdf') ? file.fileName : `${file.fileName}.pdf`;
+
+      if (targetUrl) {
+        if (targetUrl.startsWith('/sample-reports/') || targetUrl.startsWith('blob:')) {
+          const a = document.createElement('a');
+          a.href = targetUrl;
+          a.download = safeFilename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          return;
+        }
+
+        if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+          try {
+            const resp = await fetch(targetUrl);
+            if (resp.ok) {
+              const blob = await resp.blob();
+              const blobUrl = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = blobUrl;
+              a.download = safeFilename;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+              return;
+            }
+          } catch (e) {
+            console.warn('Direct blob fetch failed, falling back to browser window:', e);
+          }
+          window.open(targetUrl, '_blank');
+          return;
+        }
+      }
+
+      // Fallback for baseline demo items
+      const samplePdf = file.fileName.includes('w58')
+        ? '/sample-reports/ward58_padav_post_flush_clearance.pdf'
+        : file.fileName.includes('w07') || file.fileName.includes('turbidity')
+        ? '/sample-reports/ward07_feeder_turbidity_spectrophotometry.pdf'
+        : file.fileName.includes('w01') || file.fileName.includes('casing')
+        ? '/sample-reports/ward01_tubewell_casing_integrity.pdf'
+        : file.fileName.includes('w28') || file.fileName.includes('A04')
+        ? '/sample-reports/ward28_chlorine_depletion_investigation.pdf'
+        : '/sample-reports/ward14_spectroscopic_assay_2026.pdf';
+
+      const a = document.createElement('a');
+      a.href = samplePdf;
+      a.download = safeFilename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -927,20 +1054,16 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
               <Eye className="w-3.5 h-3.5" /> View
             </button>
             <button
-              onClick={() => {
-                const samplePdf = selected.fileName.includes('w58')
-                  ? '/sample-reports/ward58_padav_post_flush_clearance.pdf'
-                  : selected.fileName.includes('A04')
-                  ? '/sample-reports/ward28_chlorine_depletion_investigation.pdf'
-                  : '/sample-reports/ward14_spectroscopic_assay_2026.pdf';
-                const a = document.createElement('a');
-                a.href = samplePdf;
-                a.download = selected.fileName.endsWith('.pdf') ? selected.fileName : `${selected.fileName}.pdf`;
-                a.click();
-              }}
-              className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg transition bg-white shadow-xs"
+              onClick={() => handleDownloadEvidence(selected)}
+              disabled={downloadingId === selected.id}
+              className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg transition bg-white shadow-xs cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5" /> Download
+              {downloadingId === selected.id ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              <span>Download</span>
             </button>
             <button
               onClick={() => setShowUploadModal(true)}
@@ -1094,11 +1217,52 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
               </button>
             </div>
 
-            {selected.previewUrl ? (
+            {selected.type === 'Field Photo' || (!selected.fileName.toLowerCase().endsWith('.pdf') && (selected.previewUrl?.includes('.jpg') || selected.previewUrl?.includes('.png'))) ? (
               <div className="rounded-xl overflow-hidden border border-slate-200">
-                <img src={selected.previewUrl} alt={selected.fileName} className="w-full h-80 object-cover" />
+                <img src={selected.previewUrl || selected.downloadUrl} alt={selected.fileName} className="w-full h-80 object-cover" />
               </div>
             ) : (
+              <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-900 flex flex-col items-center justify-center p-6 space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
+                  <FileText className="w-7 h-7" />
+                </div>
+                <div className="text-center">
+                  <h4 className="text-white font-bold text-sm font-mono">{selected.fileName}</h4>
+                  <p className="text-xs text-slate-400 mt-1">Verified Laboratory Evidence Document &bull; {selected.size}</p>
+                  {selected.s3Key && (
+                    <p className="text-[11px] text-slate-500 mt-0.5 font-mono">Key: {selected.s3Key}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {(selected.downloadUrl || selected.previewUrl) && (
+                    <a
+                      href={selected.downloadUrl || selected.previewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow-lg cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Open PDF in Tab</span>
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadEvidence(selected)}
+                    disabled={downloadingId === selected.id}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition cursor-pointer"
+                  >
+                    {downloadingId === selected.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span>Download PDF</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {selected.parameters && (
               <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-4">
                 <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs space-y-3">
                   <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
@@ -1111,30 +1275,28 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
                     </span>
                   </div>
 
-                  {selected.parameters && (
-                    <table className="w-full text-xs text-left">
-                      <thead>
-                        <tr className="text-slate-400 border-b border-slate-100 text-[11px]">
-                          <th className="py-1.5">Parameter</th>
-                          <th className="py-1.5">Measured Value</th>
-                          <th className="py-1.5">Unit</th>
-                          <th className="py-1.5">Standard Threshold</th>
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="text-slate-400 border-b border-slate-100 text-[11px]">
+                        <th className="py-1.5">Parameter</th>
+                        <th className="py-1.5">Measured Value</th>
+                        <th className="py-1.5">Unit</th>
+                        <th className="py-1.5">Standard Threshold</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {selected.parameters.map((p, idx) => (
+                        <tr key={idx}>
+                          <td className="py-2 font-medium text-slate-800">{p.name}</td>
+                          <td className={`py-2 font-bold ${p.alert ? 'text-rose-600' : 'text-slate-900'}`}>
+                            {p.result}
+                          </td>
+                          <td className="py-2 text-slate-500">{p.unit}</td>
+                          <td className="py-2 text-slate-400">IS 10500:2012</td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {selected.parameters.map((p, idx) => (
-                          <tr key={idx}>
-                            <td className="py-2 font-medium text-slate-800">{p.name}</td>
-                            <td className={`py-2 font-bold ${p.alert ? 'text-rose-600' : 'text-slate-900'}`}>
-                              {p.result}
-                            </td>
-                            <td className="py-2 text-slate-500">{p.unit}</td>
-                            <td className="py-2 text-slate-400">IS 10500:2012</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                      ))}
+                    </tbody>
+                  </table>
 
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                     <div>Signatory: <span className="font-semibold text-slate-800">{selected.verifiedBy}</span></div>
@@ -1148,26 +1310,22 @@ export const EvidenceS3View: FC<EvidenceS3ViewProps> = ({ sources = [], alerts =
               <button
                 type="button"
                 onClick={() => setPreviewModalOpen(false)}
-                className="px-4 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition"
+                className="px-4 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer"
               >
                 Close
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const samplePdf = selected.fileName.includes('w58')
-                    ? '/sample-reports/ward58_padav_post_flush_clearance.pdf'
-                    : selected.fileName.includes('A04')
-                    ? '/sample-reports/ward28_chlorine_depletion_investigation.pdf'
-                    : '/sample-reports/ward14_spectroscopic_assay_2026.pdf';
-                  const a = document.createElement('a');
-                  a.href = samplePdf;
-                  a.download = selected.fileName.endsWith('.pdf') ? selected.fileName : `${selected.fileName}.pdf`;
-                  a.click();
-                }}
+                onClick={() => handleDownloadEvidence(selected)}
+                disabled={downloadingId === selected.id}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5" /> Download Document
+                {downloadingId === selected.id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                <span>Download Document</span>
               </button>
             </div>
           </div>

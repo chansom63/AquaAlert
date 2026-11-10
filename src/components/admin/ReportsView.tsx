@@ -46,6 +46,7 @@ export interface ReportRow {
   s3Key?: string;
   s3Uri?: string;
   downloadUrl?: string;
+  filename?: string;
   testParameters?: Record<string, unknown>;
   fileSizeFormatted?: string;
   folderCategory?: 'policies' | 'inspection' | 'claim' | 'verify';
@@ -340,6 +341,7 @@ export const ReportsView: FC<ReportsViewProps> = ({
           s3Key: r.s3Key,
           s3Uri: r.s3Uri,
           downloadUrl: r.downloadUrl,
+          filename: r.filename,
           fileSizeFormatted: r.fileSizeFormatted || '1.2 MB',
           folderCategory,
           testParameters: r.testParameters as Record<string, unknown> | undefined,
@@ -522,7 +524,7 @@ export const ReportsView: FC<ReportsViewProps> = ({
   };
 
   // ── REAL ASSET & PDF DOWNLOAD HANDLER ──
-  const handleDownloadReport = (report: ReportRow) => {
+  const handleDownloadReport = async (report: ReportRow) => {
     // 1. Direct local sample report download
     if (report.downloadUrl && report.downloadUrl.startsWith('/sample-reports/')) {
       const a = document.createElement('a');
@@ -533,13 +535,41 @@ export const ReportsView: FC<ReportsViewProps> = ({
       return;
     }
 
-    // 2. Real signed URL from backend
+    // 2. Real signed URL from backend or s3Key
+    let targetUrl = report.downloadUrl;
+    if (!targetUrl && report.s3Key) {
+      try {
+        const res = await api<{ downloadUrl: string }>(`/reports/download-url?key=${encodeURIComponent(report.s3Key)}`);
+        if (res?.downloadUrl) targetUrl = res.downloadUrl;
+      } catch (err) {
+        console.warn('Backend download URL fetch warning:', err);
+      }
+    }
+
     if (
-      report.downloadUrl &&
-      (report.downloadUrl.startsWith('http://') || report.downloadUrl.startsWith('https://')) &&
-      !report.downloadUrl.includes('water-evidence.gwl-municipal.in')
+      targetUrl &&
+      (targetUrl.startsWith('http://') || targetUrl.startsWith('https://') || targetUrl.startsWith('blob:')) &&
+      !targetUrl.includes('water-evidence.gwl-municipal.in')
     ) {
-      window.open(report.downloadUrl, '_blank');
+      const safeFilename = report.filename || (report.name.endsWith('.pdf') ? report.name : `${report.name}.pdf`);
+      try {
+        const resp = await fetch(targetUrl);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = safeFilename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+          return;
+        }
+      } catch (err) {
+        console.warn('Direct blob fetch failed, falling back to window.open:', err);
+      }
+      window.open(targetUrl, '_blank');
       return;
     }
 
@@ -552,18 +582,28 @@ export const ReportsView: FC<ReportsViewProps> = ({
   };
 
   // Open PDF in tab
-  const handleOpenPdfInTab = (report: ReportRow) => {
+  const handleOpenPdfInTab = async (report: ReportRow) => {
+    let targetUrl = report.downloadUrl;
+    if (!targetUrl && report.s3Key) {
+      try {
+        const res = await api<{ downloadUrl: string }>(`/reports/download-url?key=${encodeURIComponent(report.s3Key)}`);
+        if (res?.downloadUrl) targetUrl = res.downloadUrl;
+      } catch (err) {
+        console.warn('Backend download URL fetch warning:', err);
+      }
+    }
+
     if (
-      report.downloadUrl &&
-      (report.downloadUrl.startsWith('http://') || report.downloadUrl.startsWith('https://')) &&
-      !report.downloadUrl.includes('water-evidence.gwl-municipal.in')
+      targetUrl &&
+      (targetUrl.startsWith('http://') || targetUrl.startsWith('https://') || targetUrl.startsWith('blob:')) &&
+      !targetUrl.includes('water-evidence.gwl-municipal.in')
     ) {
-      window.open(report.downloadUrl, '_blank');
+      window.open(targetUrl, '_blank');
       return;
     }
     const fallback =
-      report.downloadUrl && report.downloadUrl.startsWith('/sample-reports/')
-        ? report.downloadUrl
+      targetUrl && targetUrl.startsWith('/sample-reports/')
+        ? targetUrl
         : getReportFallbackPdf(report);
     window.open(fallback, '_blank');
   };

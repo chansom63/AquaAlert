@@ -19,6 +19,7 @@ import type { Alert, Source } from '../../types/water';
 import type { ApiRecord } from '../../api/adminRecords';
 import type { LabReportRecord } from '../../hooks/useAdminTablesData';
 import { api } from '../../api/client';
+import { recordLocallyUploadedReport } from '../../utils/reportsSync';
 import SubmissionSuccessModal, { type SubmissionDetail } from '../common/SubmissionSuccessModal';
 
 export interface DocumentRow {
@@ -431,6 +432,30 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
       });
 
       const assignedId = (ddbRes as any)?.reportId || signed.objectKey;
+      const localBlobUrl = URL.createObjectURL(uploadFile);
+
+      // Immediately sync uploaded report locally across all portals
+      recordLocallyUploadedReport({
+        reportId: assignedId,
+        sourceId: uploadSourceId,
+        sourceName: sourceObj?.name || uploadSourceId,
+        title: `${uploadType} - ${uploadFile.name}`,
+        reportType: uploadType,
+        s3Bucket: 'waterq-dev-evidence-files',
+        s3Key: signed.objectKey,
+        s3Uri: `s3://waterq-dev-evidence-files/${signed.objectKey}`,
+        filename: uploadFile.name,
+        downloadUrl: localBlobUrl,
+        contentType: signed.contentType || detectedContentType,
+        fileSizeBytes: uploadFile.size,
+        fileSizeFormatted: `${(uploadFile.size / 1024).toFixed(1)} KB`,
+        chemistName: uploadChemist || 'Dr. S. Mukherjee (TC-8491)',
+        sampleId: uploadBatchId || 'GWL-LAB-891',
+        notes: uploadNote || 'Certified laboratory report uploaded via AquaAlert Console.',
+        verificationStatus: 'LAB_VERIFIED',
+        uploadedAt: new Date().toISOString(),
+      });
+
       setSelectedId(assignedId);
       setUploadFile(null);
       setUploadNote('');
@@ -491,13 +516,64 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
   };
 
   const resolveSamplePdfUrl = (doc: DocumentRow) => {
-    if (doc.downloadUrl && doc.downloadUrl.startsWith('/sample-reports/')) return doc.downloadUrl;
+    if (doc.downloadUrl) {
+      if (
+        doc.downloadUrl.startsWith('http://') ||
+        doc.downloadUrl.startsWith('https://') ||
+        doc.downloadUrl.startsWith('/sample-reports/') ||
+        doc.downloadUrl.startsWith('blob:')
+      ) {
+        return doc.downloadUrl;
+      }
+    }
     if (doc.name.includes('Ward 14') || doc.sourceId === 'gmc-ward-14') return '/sample-reports/ward14_spectroscopic_assay_2026.pdf';
     if (doc.name.includes('Ward 28') || doc.sourceId === 'gmc-ward-28') return '/sample-reports/ward28_chlorine_depletion_investigation.pdf';
     if (doc.name.includes('Ward 07') || doc.sourceId === 'gmc-ward-07') return '/sample-reports/ward07_feeder_turbidity_spectrophotometry.pdf';
     if (doc.name.includes('Ward 01') || doc.sourceId === 'gmc-ward-01') return '/sample-reports/ward01_tubewell_casing_integrity.pdf';
     if (doc.name.includes('Ward 58') || doc.sourceId === 'E-05') return '/sample-reports/ward58_padav_post_flush_clearance.pdf';
     return '/sample-reports/ward14_spectroscopic_assay_2026.pdf';
+  };
+
+  const handleDownloadDoc = async (doc: DocumentRow) => {
+    let targetUrl = resolveSamplePdfUrl(doc);
+    if (!doc.downloadUrl && doc.s3Key) {
+      try {
+        const res = await api<{ downloadUrl: string }>(`/reports/download-url?key=${encodeURIComponent(doc.s3Key)}`);
+        if (res?.downloadUrl) targetUrl = res.downloadUrl;
+      } catch (err) {
+        console.warn('Backend download URL fetch notice:', err);
+      }
+    }
+    const safeFilename = doc.name.endsWith('.pdf') ? doc.name : `${doc.name}.pdf`;
+
+    if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+      try {
+        const resp = await fetch(targetUrl);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = safeFilename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+          return;
+        }
+      } catch (err) {
+        console.warn('Direct blob fetch failed, opening in new window:', err);
+      }
+      window.open(targetUrl, '_blank');
+      return;
+    }
+
+    const a = document.createElement('a');
+    a.href = targetUrl;
+    a.download = safeFilename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   return (
@@ -1002,16 +1078,14 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-                        <a
-                          href={resolveSamplePdfUrl(doc)}
-                          download={`${doc.reportId}_certificate.pdf`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition"
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadDoc(doc)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition cursor-pointer"
                           title="Download Document"
                         >
                           <Download className="w-3.5 h-3.5" />
-                        </a>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1092,16 +1166,14 @@ export const UploadDocumentView: FC<UploadDocumentViewProps> = ({
               >
                 Close
               </button>
-              <a
-                href={resolveSamplePdfUrl(selected)}
-                download={`${selected.reportId}_certificate.pdf`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-blue-500/30 border border-blue-400/40"
+              <button
+                type="button"
+                onClick={() => handleDownloadDoc(selected)}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-blue-500/30 border border-blue-400/40 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Open / Download PDF</span>
-              </a>
+              </button>
             </div>
           </div>
         </div>
