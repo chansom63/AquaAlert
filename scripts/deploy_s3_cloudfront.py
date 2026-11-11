@@ -48,11 +48,24 @@ mimetypes.add_type("image/webp", ".webp")
 
 
 def get_session() -> boto3.Session:
-    sess = boto3.Session(profile_name=PROFILE, region_name=REGION)
-    sts = sess.client("sts")
-    ident = sts.get_caller_identity()
-    print(f"✓ Authenticated: {ident['Arn']} (Account: {ident['Account']})")
-    return sess
+    for prof in [PROFILE, "default", "aquaalert-dev", None]:
+        try:
+            sess = (
+                boto3.Session(profile_name=prof, region_name=REGION)
+                if prof
+                else boto3.Session(region_name=REGION)
+            )
+            sts = sess.client("sts")
+            ident = sts.get_caller_identity()
+            print(f"✓ Authenticated: {ident['Arn']} (Account: {ident['Account']})")
+            return sess
+        except Exception:
+            continue
+
+    raise RuntimeError(
+        "Could not authenticate with AWS.\n"
+        "Please run 'aws login --profile aquaalert' in your terminal or set AWS credentials."
+    )
 
 
 def build_frontend():
