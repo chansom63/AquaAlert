@@ -16,15 +16,12 @@
 
 ---
 
-## 🌐 Live Project Deployments
+## 🌐 Live Project Deployment
 
 | Platform | Deployment Target | Live URL | Status |
 | :--- | :--- | :--- | :--- |
-| **Amazon CloudFront (CDN)** | Global Edge Network (TLS 1.3, OAC + S3 Origin) | [**`https://d1awtc6bnq8jpy.cloudfront.net`**](https://d1awtc6bnq8jpy.cloudfront.net) | 🟢 **Live (Primary CDN)** |
-| **AWS EC2 (Production)** | Ubuntu 24.04 LTS (Nginx SPA, Port 80 & 443) | [**`http://ec2-13-233-163-91.ap-south-1.compute.amazonaws.com`**](http://ec2-13-233-163-91.ap-south-1.compute.amazonaws.com) | 🟢 **Live** |
-| **AWS EC2 (Secure HTTPS)** | TLS-Encrypted Endpoint *(Bypasses Campus/Sophos Firewalls)* | [**`https://ec2-13-233-163-91.ap-south-1.compute.amazonaws.com`**](https://ec2-13-233-163-91.ap-south-1.compute.amazonaws.com) | 🟢 **Live** |
-| **AWS S3 Static Web** | High-availability object storage endpoint | [**`http://waterq-dev-frontend.s3-website.ap-south-1.amazonaws.com`**](http://waterq-dev-frontend.s3-website.ap-south-1.amazonaws.com) | 🟢 **Live** |
-| **Serverless Backend** | AWS API Gateway + Lambda REST API | [**`https://znjdsbpuhd.execute-api.ap-south-1.amazonaws.com/default/`**](https://znjdsbpuhd.execute-api.ap-south-1.amazonaws.com/default/) | 🟢 **Active** |
+| **Amazon CloudFront (CDN)** | Global Edge Network (TLS 1.3, OAC + S3 Origin) | [**`https://d1awtc6bnq8jpy.cloudfront.net`**](https://d1awtc6bnq8jpy.cloudfront.net) | 🟢 **Live (Production CDN)** |
+| **AWS Cloud Infrastructure** | Scalable Multi-Tier Architecture (ap-south-1) | Managed via CloudFront Edge & API Gateway | 🟢 **Active** |
 
 ---
 
@@ -41,8 +38,8 @@ flowchart TD
 
     subgraph CDN_VM["Edge & Compute Tier (AWS Global CDN & ap-south-1)"]
         CF["⚡ Amazon CloudFront (Global Edge CDN)<br/>• URL: https://d1awtc6bnq8jpy.cloudfront.net<br/>• Origin Access Control (OAC)<br/>• TLS 1.3 Encryption & Edge Caching<br/>• SPA 403/404 Redirect to /index.html"]
-        EC2["🖥 AWS EC2 (Ubuntu 24.04 LTS)<br/>• Nginx Web Server<br/>• React SPA Client-Side Routing<br/>• TLS/SSL Termination (Port 80/443)"]
-        S3Web["🪣 AWS S3 Frontend Bucket<br/>(waterq-dev-frontend)"]
+        EC2["🖥 AWS EC2 (Application Host)<br/>• Nginx Web Server<br/>• React SPA Client-Side Routing<br/>• TLS/SSL Termination"]
+        S3Web["🪣 Amazon S3 (Static Web Assets Storage)"]
     end
 
     subgraph Serverless["API & Compute Layer"]
@@ -62,8 +59,6 @@ flowchart TD
 
     Citizen -->|HTTPS| CF
     Admin -->|HTTPS| CF
-    Citizen -.->|Direct Fallback| EC2
-    Admin -.->|Direct Fallback| EC2
     CF -->|OAC SigV4| S3Web
 
     CF -->|REST API Requests| APIGW
@@ -203,7 +198,7 @@ AquaAlert/
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/chansom63/AquaAlert.git
+git clone https://github.com/<your-username>/AquaAlert.git
 cd AquaAlert
 ```
 
@@ -215,14 +210,14 @@ cp .env.example .env
 Populate `.env` with your endpoints:
 ```env
 # AWS API Gateway REST Base URL
-VITE_API_BASE_URL=https://znjdsbpuhd.execute-api.ap-south-1.amazonaws.com/default/
+VITE_API_BASE_URL=https://<api-gateway-id>.execute-api.ap-south-1.amazonaws.com/default/
 
 # Optional Mapbox Access Token (defaults to OpenStreetMap if omitted)
-VITE_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiY2hhbnNvbTE2MyIsImEiOiJjbXZ3OXloZmIwM205MnlxdzYya28zcjUzIn0.MdwxivUiQpnNB6CNVDZdcw
+VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_public_token_here
 
 # Amazon Cognito Configuration
-VITE_COGNITO_USER_POOL_ID=ap-south-1_HlHhFkttf
-VITE_COGNITO_CLIENT_ID=43egcoomllmis0ebef6pl6qnar
+VITE_COGNITO_USER_POOL_ID=your_cognito_user_pool_id
+VITE_COGNITO_CLIENT_ID=your_cognito_app_client_id
 VITE_AWS_REGION=ap-south-1
 ```
 
@@ -249,17 +244,19 @@ npm run preview
 
 ## ☁️ EC2 Cloud Deployment Guide
 
-To deploy or update AquaAlert on any fresh Ubuntu EC2 instance (`t2.micro` or `t3.micro` Free Tier):
+To deploy or update AquaAlert on an Ubuntu EC2 instance (`t2.micro` or `t3.micro` Free Tier):
 
 1. **Connect to the EC2 Terminal** via **AWS Systems Manager** or **EC2 Instance Connect**.
-2. Run the deployment one-liner:
+2. Run the deployment script:
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/chansom63/AquaAlert/main/scripts/ec2_user_data.sh | sudo bash
+   git clone https://github.com/<your-username>/AquaAlert.git
+   cd AquaAlert
+   sudo bash scripts/ec2_user_data.sh
    ```
 3. The script automatically:
    * Allocates a 2 GB swapfile to ensure zero memory exhaustion.
-   * Pulls the pre-built bundle directly from S3.
-   * Generates a self-signed TLS certificate for **Port 443 (HTTPS)**.
+   * Fetches the production bundle or builds locally.
+   * Generates a TLS certificate for **Port 443 (HTTPS)**.
    * Configures **Nginx** with client-side SPA fallback routing (`try_files $uri $uri/ /index.html`).
    * Opens firewall ports `80` & `443` and starts Nginx.
 
