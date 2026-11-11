@@ -1,5 +1,6 @@
 # 🌊 AquaAlert — Municipal Water Quality Surveillance & Emergency Response System
 
+[![Amazon CloudFront](https://img.shields.io/badge/CloudFront-Live%20CDN-FF9900?logo=amazon-aws&logoColor=white)](https://d1awtc6bnq8jpy.cloudfront.net)
 [![AWS Cloud](https://img.shields.io/badge/AWS-ap--south--1-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
 [![React 18](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -19,6 +20,7 @@
 
 | Platform | Deployment Target | Live URL | Status |
 | :--- | :--- | :--- | :--- |
+| **Amazon CloudFront (CDN)** | Global Edge Network (TLS 1.3, OAC + S3 Origin) | [**`https://d1awtc6bnq8jpy.cloudfront.net`**](https://d1awtc6bnq8jpy.cloudfront.net) | 🟢 **Live (Primary CDN)** |
 | **AWS EC2 (Production)** | Ubuntu 24.04 LTS (Nginx SPA, Port 80 & 443) | [**`http://ec2-13-233-163-91.ap-south-1.compute.amazonaws.com`**](http://ec2-13-233-163-91.ap-south-1.compute.amazonaws.com) | 🟢 **Live** |
 | **AWS EC2 (Secure HTTPS)** | TLS-Encrypted Endpoint *(Bypasses Campus/Sophos Firewalls)* | [**`https://ec2-13-233-163-91.ap-south-1.compute.amazonaws.com`**](https://ec2-13-233-163-91.ap-south-1.compute.amazonaws.com) | 🟢 **Live** |
 | **AWS S3 Static Web** | High-availability object storage endpoint | [**`http://waterq-dev-frontend.s3-website.ap-south-1.amazonaws.com`**](http://waterq-dev-frontend.s3-website.ap-south-1.amazonaws.com) | 🟢 **Live** |
@@ -37,9 +39,10 @@ flowchart TD
         Admin["🛡 Municipal Operators & Lab Analysts"]
     end
 
-    subgraph CDN_VM["Edge & Compute Tier (AWS ap-south-1)"]
+    subgraph CDN_VM["Edge & Compute Tier (AWS Global CDN & ap-south-1)"]
+        CF["⚡ Amazon CloudFront (Global Edge CDN)<br/>• URL: https://d1awtc6bnq8jpy.cloudfront.net<br/>• Origin Access Control (OAC)<br/>• TLS 1.3 Encryption & Edge Caching<br/>• SPA 403/404 Redirect to /index.html"]
         EC2["🖥 AWS EC2 (Ubuntu 24.04 LTS)<br/>• Nginx Web Server<br/>• React SPA Client-Side Routing<br/>• TLS/SSL Termination (Port 80/443)"]
-        S3Web["🪣 AWS S3 Static Website Bucket<br/>(waterq-dev-frontend)"]
+        S3Web["🪣 AWS S3 Frontend Bucket<br/>(waterq-dev-frontend)"]
     end
 
     subgraph Serverless["API & Compute Layer"]
@@ -57,12 +60,14 @@ flowchart TD
         S3Audit[("🪣 Amazon S3: Digital Lab Evidence<br/>& Statutory Audit PDF Archive")]
     end
 
-    Citizen -->|HTTP/HTTPS| EC2
-    Citizen -->|Direct Fallback| S3Web
-    Admin -->|HTTP/HTTPS| EC2
+    Citizen -->|HTTPS| CF
+    Admin -->|HTTPS| CF
+    Citizen -.->|Direct Fallback| EC2
+    Admin -.->|Direct Fallback| EC2
+    CF -->|OAC SigV4| S3Web
 
+    CF -->|REST API Requests| APIGW
     EC2 -->|REST API Requests| APIGW
-    S3Web -->|REST API Requests| APIGW
 
     APIGW -->|Proxy Invocation| Lambda
     Admin -.->|JWT Authentication| Cognito
